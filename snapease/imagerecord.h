@@ -18,6 +18,12 @@ public:
   WDL_String m_fn;
   WDL_String m_outname;
 
+#define IR_STATE_NEEDLOAD 0
+#define IR_STATE_DECODING 1
+#define IR_STATE_LOADED 2
+#define IR_STATE_ERROR 3
+
+  int m_state;
   LICE_IBitmap *m_preview_image;
 };
 

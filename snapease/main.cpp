@@ -14,6 +14,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
 
   CreateDialog(g_hInst,MAKEINTRESOURCE(IDD_MAIN),GetDesktopWindow(),MainWindowProc);
 
+  g_DecodeThreadQuit=false;
+
+
+  int numCPU = 1; // todo: smp option?
+
+  HANDLE hThread[4]={0,};
+  if (numCPU>sizeof(hThread)/sizeof(hThread[0])) numCPU=sizeof(hThread)/sizeof(hThread[0]);
+
+  int x;
+  for(x=0;x<numCPU;x++)
+  {
+    DWORD tid;
+    hThread[x] = CreateThread(NULL,0,DecodeThreadProc,0,NULL,&tid);
+    SetThreadPriority(hThread[x],THREAD_PRIORITY_BELOW_NORMAL);
+  }
+
   for(;;)
 	{	      
     MSG msg={0,};
@@ -35,7 +51,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
 		DispatchMessage(&msg);
 
   }
-
+  g_DecodeThreadQuit = true;
+  for(x=0;x<sizeof(hThread)/sizeof(hThread[0]);x++)
+  {
+    if (hThread[x])
+    {
+      WaitForSingleObject(hThread[x],INFINITE);
+      CloseHandle(hThread[x]);
+      hThread[x]=0;
+    }
+  }
   return 0;
 }
 

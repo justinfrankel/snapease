@@ -5,12 +5,13 @@
 
 #include "../jmde/coolsb/coolscroll.h"
 
-#include "imagerecord.h"
+WDL_PtrList<ImageRecord> g_images;
+WDL_Mutex g_images_mutex;
 
 HWND g_hwnd;
 WDL_VWnd_Painter g_hwnd_painter;
 WDL_VWnd g_vwnd; // owns all children windows
-WDL_PtrList<ImageRecord> g_images;
+
 int g_vwnd_scrollpos;
 
 int OrganizeWindow(HWND hwndDlg)
@@ -88,12 +89,27 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       DoWindowSizeScrollUpdate(hwndDlg);
       ShowWindow(hwndDlg,SW_SHOW);
 
+      SetTimer(hwndDlg,1,100,NULL);
     return 0;
     case WM_DESTROY:
-      g_images.Empty(); // do not free -- g_vwnd owns all images!
+
+      g_images_mutex.Enter();
+      g_images.Empty(); // does not free -- g_vwnd owns all images!
       g_vwnd.RemoveAllChildren(true);
+      g_images_mutex.Leave();
+
       UninitializeCoolSB(hwndDlg);
       PostQuitMessage(0);
+    return 0;
+    case WM_TIMER:
+      if (wParam==1)
+      {
+        if (g_DecodeDidSomething)
+        {
+          g_DecodeDidSomething=false;
+          InvalidateRect(hwndDlg,NULL,FALSE);
+        }
+      }
     return 0;
     case WM_COMMAND:
       switch (LOWORD(wParam))
@@ -175,8 +191,11 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           if (buf[0])
           {
             ImageRecord *w = new ImageRecord(buf);
+
+            g_images_mutex.Enter();
             g_images.Add(w);
             g_vwnd.AddChild(w);
+            g_images_mutex.Leave();
           }
         }
         DragFinish(hDrop);

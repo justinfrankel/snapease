@@ -7,10 +7,9 @@
 
 LICE_CachedFont g_imagerecord_font;
 
-#define DESIRED_PREVIEW_CACHEDIM 192
-
 ImageRecord::ImageRecord(const char *fn)
 {
+  m_state=IR_STATE_NEEDLOAD;
   m_preview_image=NULL;
   m_fn.Set(fn);
   {
@@ -26,33 +25,6 @@ ImageRecord::ImageRecord(const char *fn)
     if (p > m_outname.Get()) *p=0;
   }
 
-
-  static LICE_MemBitmap bm;
-
-  LICE_IBitmap *b = LICE_LoadImage(m_fn.Get(),&bm,false);
-
-  if (b)
-  {
-    int outw = b->getWidth();
-    int outh = b->getHeight();
-    if (outw > DESIRED_PREVIEW_CACHEDIM)
-    {
-      outh = (outh * DESIRED_PREVIEW_CACHEDIM) / outw;
-      outw=DESIRED_PREVIEW_CACHEDIM;
-    }
-    if (outh > DESIRED_PREVIEW_CACHEDIM)
-    {
-      outw = (outw * DESIRED_PREVIEW_CACHEDIM) / outh;
-      outh = DESIRED_PREVIEW_CACHEDIM;
-    }
-    if (outw > 0 && outh > 0)
-    {
-      m_preview_image = new LICE_MemBitmap(outw,outh);
-      LICE_ScaledBlit(m_preview_image,b,0,0,outw,outh,0,0,b->getWidth(),b->getHeight(),1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
-    }
-
-  }
-  // load image etc
 }
 
 ImageRecord::~ImageRecord()
@@ -64,10 +36,11 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
 {
   if (!g_imagerecord_font.GetHFont())
   {
-    static LOGFONT lf = 
+    bool doOutLine = true;
+    LOGFONT lf = 
     {
         14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
-        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,DEFAULT_PITCH,
+          OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,doOutLine ? NONANTIALIASED_QUALITY : DEFAULT_QUALITY,DEFAULT_PITCH,
 	    #ifdef _WIN32
         "MS Shell Dlg"
 	    #else
@@ -75,7 +48,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
 	    #endif
     };
 
-    g_imagerecord_font.SetFromHFont(CreateFontIndirect(&lf),LICE_FONT_FLAG_OWNS_HFONT);
+    g_imagerecord_font.SetFromHFont(CreateFontIndirect(&lf),LICE_FONT_FLAG_OWNS_HFONT|(doOutLine?LICE_FONT_FLAG_FX_OUTLINE:0));
   }
 
   RECT r;
@@ -111,9 +84,31 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
 
     LICE_ScaledBlit(drawbm,m_preview_image,r.left+xoffs + 2,r.top+yoffs + 2,w,h,0,0,srcw,srch,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
   }
-
   g_imagerecord_font.SetTextColor(LICE_RGBA(255,255,255,0));
-  g_imagerecord_font.SetCombineMode(LICE_BLIT_MODE_COPY,0.25f);
+  g_imagerecord_font.SetEffectColor(LICE_RGBA(0,0,0,0));
+
+  if (m_state != IR_STATE_LOADED)
+  {
+    const char *str= "ERROR";
+    switch (m_state)
+    {
+      case IR_STATE_NEEDLOAD:
+        str="LOADING";
+      break;
+      case IR_STATE_DECODING:
+        str="DECODING...";
+      break;
+    }
+
+    if (str[0])
+    {
+      g_imagerecord_font.SetCombineMode(LICE_BLIT_MODE_COPY,1.0f);
+      g_imagerecord_font.DrawText(drawbm,str,-1,&r,DT_VCENTER|DT_CENTER|DT_SINGLELINE);
+    }
+
+  }
+
+  g_imagerecord_font.SetCombineMode(LICE_BLIT_MODE_COPY,0.5f);
   g_imagerecord_font.DrawText(drawbm,m_outname.Get(),-1,&r,DT_BOTTOM|DT_CENTER|DT_SINGLELINE);
 
 }
