@@ -2,10 +2,49 @@
 
 #include "../WDL/lice/lice.h"
 #include "../WDL/lice/lice_text.h"
+#include "../WDL/wingui/virtwnd-controls.h"
 
 #include "imagerecord.h"
 
+#define BUTTONID_BASE 1000
+#define BUTTONID_CLOSE 1000
+#define NUM_BUTTONS 1
+
+#define BUTTON_SIZE 10
+
+
 LICE_CachedFont g_imagerecord_font;
+static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx)
+{
+  switch (idx)
+  {
+    case BUTTONID_CLOSE:
+      {
+        static WDL_VirtualIconButton_SkinConfig img;
+        if (!img.image)
+        {
+          img.image = new LICE_MemBitmap(BUTTON_SIZE*3,BUTTON_SIZE);
+          LICE_Clear(img.image,LICE_RGBA(0,0,0,64));
+          int x;
+          for(x=0;x<3;x++)
+          {
+            if (x==1)
+              LICE_FillRect(img.image,BUTTON_SIZE*x,0,BUTTON_SIZE-1,BUTTON_SIZE-1,LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY);
+            else
+              LICE_DrawRect(img.image,BUTTON_SIZE*x,0,BUTTON_SIZE-1,BUTTON_SIZE-1,LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY);
+
+            int edg  = 3;
+            LICE_Line(img.image,BUTTON_SIZE*x + edg, edg, BUTTON_SIZE*x + BUTTON_SIZE - edg - 1, BUTTON_SIZE - edg -1,x==1 ? LICE_RGBA(0,0,0,128) :LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY,TRUE);
+            LICE_Line(img.image,BUTTON_SIZE*x + edg, BUTTON_SIZE - edg - 1, BUTTON_SIZE*x + BUTTON_SIZE - edg - 1, edg,x==1 ? LICE_RGBA(0,0,0,128) :LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY,TRUE);
+
+          }
+        }
+        return &img;
+      }
+  }
+  return NULL;
+}
+
 
 ImageRecord::ImageRecord(const char *fn)
 {
@@ -25,11 +64,64 @@ ImageRecord::ImageRecord(const char *fn)
     if (p > m_outname.Get()) *p=0;
   }
 
+  // add our button children
+  int x;
+  for(x=0;x<NUM_BUTTONS;x++)
+  {
+    WDL_VirtualIconButton *b = new WDL_VirtualIconButton;
+    b->SetID(x+BUTTONID_BASE);
+    b->SetIcon(GetButtonIcon(x+BUTTONID_BASE));
+    AddChild(b);
+  }
 }
 
 ImageRecord::~ImageRecord()
 {
   delete m_preview_image;
+}
+
+INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_VWnd *src)
+{
+  if (command == WM_COMMAND && src)
+  {
+    switch (src->GetID())
+    {
+      case BUTTONID_CLOSE:
+
+      break;
+    }   
+  }
+  // dont allow anything upstream
+  return 0; // WDL_VWnd::SendCommand(command,parm1,parm2,src);
+}
+
+void ImageRecord::SetPosition(const RECT *r)
+{
+  if ((r->right-r->left) != (m_position.right-m_position.left) ||
+      (r->bottom-r->top) != (m_position.bottom-m_position.top))
+  {
+    // reposition images on size change
+    int x;
+    int rightpos = (r->right-r->left) - 2;
+    int toppos = 2;
+    for (x = 0; x < NUM_BUTTONS; x ++)
+    {
+      WDL_VWnd *b = GetChildByID(x+BUTTONID_BASE);
+      if (b)
+      {
+        RECT tr={rightpos - BUTTON_SIZE, toppos, rightpos, toppos+BUTTON_SIZE};
+        b->SetPosition(&tr);
+        rightpos -= BUTTON_SIZE + 4;
+        if (rightpos < 0)
+        {
+          rightpos = (r->right-r->left) - 2;
+          toppos += BUTTON_SIZE+4;
+        }
+      }
+    }
+  }
+
+  WDL_VWnd::SetPosition(r);
 }
 
 void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect)
@@ -111,4 +203,5 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
   g_imagerecord_font.SetCombineMode(LICE_BLIT_MODE_COPY,0.5f);
   g_imagerecord_font.DrawText(drawbm,m_outname.Get(),-1,&r,DT_BOTTOM|DT_CENTER|DT_SINGLELINE);
 
+  WDL_VWnd::OnPaint(drawbm,origin_x,origin_y,cliprect);
 }

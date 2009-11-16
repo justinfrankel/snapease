@@ -12,6 +12,8 @@ public:
   ////// WDL_VWnd impl
 
   virtual void OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect);
+  virtual void SetPosition(const RECT *r);
+  virtual INT_PTR SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_VWnd *src);
 
   //////
 
