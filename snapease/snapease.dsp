@@ -845,6 +845,18 @@ SOURCE=..\WDL\wingui\wndsize.h
 # End Source File
 # End Group
 # End Group
+# Begin Group "coolsb"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=..\jmde\coolsb\coolsblib.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\jmde\coolsb\coolscroll.cpp
+# End Source File
+# End Group
 # Begin Source File
 
 SOURCE=.\imagerecord.cpp
