@@ -37,6 +37,8 @@ HWND g_hwnd;
 WDL_VWnd_Painter g_hwnd_painter;
 WDL_VWnd g_vwnd; // owns all children windows
 
+ImageRecord *g_fullmode_item;
+
 int g_vwnd_scrollpos;
 
 int OrganizeWindow(HWND hwndDlg)
@@ -58,22 +60,50 @@ int OrganizeWindow(HWND hwndDlg)
 
   int xpos=border_size_x/2, ypos=border_size_y/2;
   int x;
+  bool hadFullItem=false;
   for (x = 0; x < g_images.GetSize(); x ++)
   {
     ImageRecord *rec = g_images.Get(x);
     if (rec)
     {
-      if (xpos + preview_w > r.right)
+      if (g_fullmode_item&&g_fullmode_item!=rec)
       {
-        xpos=border_size_x/2;
-        ypos += preview_h + border_size_y;
-      }   
+        rec->SetVisible(false);
+      }
+      else
+      {
+        rec->SetVisible(true);
+        if (g_fullmode_item)
+        {
+          hadFullItem=true;
+          RECT rr={4,4,r.right-4,r.bottom-4};
+          rec->SetPosition(&rr);
+        }
+        else
+        {
+          if (xpos + preview_w > r.right)
+          {
+            xpos=border_size_x/2;
+            ypos += preview_h + border_size_y;
+          }   
 
-      RECT r = {xpos,ypos - g_vwnd_scrollpos,xpos+preview_w,ypos+preview_h - g_vwnd_scrollpos};
-      rec->SetPosition(&r);
+          RECT rr = {xpos,ypos - g_vwnd_scrollpos,xpos+preview_w,ypos+preview_h - g_vwnd_scrollpos};
+          rec->SetPosition(&rr);
+        }
+      }
     }
     xpos += preview_w + border_size_x;
   }
+  if (!hadFullItem&&g_fullmode_item)
+  {
+    g_images_mutex.Enter();
+    g_fullmode_item=0;
+    g_images_mutex.Leave();
+    return OrganizeWindow(hwndDlg);
+  }
+
+  if (hadFullItem) return r.bottom - 4;
+
   int maxPos = ypos + preview_h + border_size_y/2;
   if (maxPos < 0) maxPos=0;
 
@@ -101,6 +131,44 @@ void UpdateMainWindowWithSizeChanged()
   CoolSB_SetScrollInfo(hwndDlg,SB_VERT,&si,TRUE);
   InvalidateRect(hwndDlg,NULL,FALSE);
 }
+
+
+void OpenFullItemView(ImageRecord *w)
+{
+  RemoveFullItemView(false);
+
+  g_images_mutex.Enter();
+  w->m_want_fullimage=true;
+  LICE_IBitmap *old = w->m_fullimage;
+  w->m_fullimage = 0;
+  g_fullmode_item=w;
+  g_images_mutex.Leave();
+  delete old;
+  UpdateMainWindowWithSizeChanged();
+
+  // tell thread to background-load full quality imagea for this
+}
+
+bool RemoveFullItemView(bool refresh)
+{
+  if (g_fullmode_item)
+  {
+    g_images_mutex.Enter();
+    if (g_images.Find(g_fullmode_item)>=0)
+    {
+      LICE_IBitmap *old = g_fullmode_item->m_fullimage;
+      g_fullmode_item->m_want_fullimage = false;
+      g_fullmode_item->m_fullimage = 0;
+      delete old;
+    }
+    g_fullmode_item=0;
+    g_images_mutex.Leave();
+    if (refresh) UpdateMainWindowWithSizeChanged();
+    return true;
+  }
+  return false;
+}
+
 
 void AddImage(const char *fn)
 {
@@ -277,6 +345,23 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         UpdateMainWindowWithSizeChanged();
       }
 
+    return 0;
+    case WM_LBUTTONDBLCLK:
+      if (g_vwnd.OnMouseDown(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam)))
+      {
+        g_vwnd.OnMouseUp(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
+      }
+      else
+      {
+        if (!RemoveFullItemView())
+        {
+          WDL_VWnd *w = g_vwnd.VirtWndFromPoint(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
+          if (w && g_images.Find((ImageRecord*)w)>=0)
+          {
+            OpenFullItemView((ImageRecord*)w);
+          }
+        }
+      }
     return 0;
     case WM_LBUTTONDOWN:
       if (g_vwnd.OnMouseDown(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam)))

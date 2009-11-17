@@ -9,8 +9,7 @@
 bool g_DecodeDidSomething;
 bool g_DecodeThreadQuit;
 
-
-static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *workBM)
+static bool LoadFullBitmap(LICE_IBitmap *bmOut, const char *fn)
 {
   bool success=false;
 #ifdef _WIN32
@@ -18,32 +17,7 @@ static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *w
   {
 #endif
 
-    LICE_IBitmap *b = LICE_LoadImage(fn,workBM,false);
-
-    if (b)
-    {
-      int outw = b->getWidth();
-      int outh = b->getHeight();
-      if (outw > DESIRED_PREVIEW_CACHEDIM)
-      {
-        outh = (outh * DESIRED_PREVIEW_CACHEDIM) / outw;
-        outw=DESIRED_PREVIEW_CACHEDIM;
-      }
-      if (outh > DESIRED_PREVIEW_CACHEDIM)
-      {
-        outw = (outw * DESIRED_PREVIEW_CACHEDIM) / outh;
-        outh = DESIRED_PREVIEW_CACHEDIM;
-      }
-      if (outw > 0 && outh > 0)
-      {
-        bmOut->resize(outw,outh);
-
-        LICE_ScaledBlit(bmOut,b,0,0,outw,outh,0,0,b->getWidth(),b->getHeight(),1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
-
-        success=true;
-      }
-
-    }
+    if (LICE_LoadImage(fn,bmOut,false)) success=true;
 
 #ifdef _WIN32
   }
@@ -52,6 +26,32 @@ static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *w
   }
 #endif
   return success;
+}
+
+static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *workBM)
+{
+  if (!LoadFullBitmap(workBM,fn)) return false;
+
+  int outw = workBM->getWidth();
+  int outh = workBM->getHeight();
+  if (outw > DESIRED_PREVIEW_CACHEDIM)
+  {
+    outh = (outh * DESIRED_PREVIEW_CACHEDIM) / outw;
+    outw=DESIRED_PREVIEW_CACHEDIM;
+  }
+  if (outh > DESIRED_PREVIEW_CACHEDIM)
+  {
+    outw = (outw * DESIRED_PREVIEW_CACHEDIM) / outh;
+    outh = DESIRED_PREVIEW_CACHEDIM;
+  }
+  if (outw > 0 && outh > 0)
+  {
+    bmOut->resize(outw,outh);
+
+    LICE_ScaledBlit(bmOut,workBM,0,0,outw,outh,0,0,workBM->getWidth(),workBM->getHeight(),1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
+    return true;
+  }
+  return false;
 }
 
 DWORD WINAPI DecodeThreadProc(LPVOID v)
@@ -65,6 +65,31 @@ DWORD WINAPI DecodeThreadProc(LPVOID v)
   {
     int sleepAmt=1;
     g_images_mutex.Enter();
+
+    if (g_fullmode_item && g_images.Find(g_fullmode_item)>=0) // prioritize any full image loads
+    {
+      if (g_fullmode_item->m_want_fullimage && !g_fullmode_item->m_fullimage)
+      {
+        curfn.Set(g_fullmode_item->m_fn.Get());
+        g_fullmode_item->m_want_fullimage=false;
+        g_images_mutex.Leave();
+
+        if (!bmOut) bmOut = new LICE_MemBitmap;
+
+        bool suc = LoadFullBitmap(bmOut,curfn.Get());
+
+        g_images_mutex.Enter();
+
+        if (suc && g_fullmode_item && g_images.Find(g_fullmode_item)>=0 && !g_fullmode_item->m_fullimage &&
+            !strcmp(g_fullmode_item->m_fn.Get(),curfn.Get()))
+        {
+          g_fullmode_item->m_fullimage = bmOut;
+          bmOut=NULL;
+        }
+        g_DecodeDidSomething=true;
+      }
+    }
+
     ImageRecord *rec = g_images.Get(scanpos++);
     if (!rec) 
     {

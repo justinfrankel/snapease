@@ -24,6 +24,8 @@
 
 #endif
 
+class ImageRecord;
+
 extern HINSTANCE g_hInst;
 extern WDL_String g_ini_file;
 extern char g_exepath[4096];
@@ -34,12 +36,14 @@ extern bool g_DecodeThreadQuit, g_DecodeDidSomething;
 DWORD WINAPI DecodeThreadProc(LPVOID v);
 
 void UpdateMainWindowWithSizeChanged();
+bool RemoveFullItemView(bool refresh=true); // if in full view, removes full view (and returns true)
+void OpenFullItemView(ImageRecord *w);
 
 #include "imagerecord.h"
 
 extern WDL_PtrList<ImageRecord> g_images;
 extern WDL_Mutex g_images_mutex;
-
+extern ImageRecord *g_fullmode_item;
 
 void config_readstr(const char *what, char *out, int outsz);
 int config_readint(const char *what, int def);

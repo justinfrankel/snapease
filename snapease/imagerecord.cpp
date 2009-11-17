@@ -14,6 +14,7 @@ enum
   BUTTONID_ROTCW,
   BUTTONID_ROTCCW,
   BUTTONID_BW,
+  BUTTONID_CROP,
   BUTTONID_END
 };
 #define NUM_BUTTONS (BUTTONID_END-BUTTONID_BASE)
@@ -27,7 +28,8 @@ static int GetButtonSize(int idx)
   {
     case BUTTONID_CLOSE: return 10;
     case BUTTONID_ROTCCW:
-    case BUTTONID_ROTCW: return 16;
+    case BUTTONID_ROTCW: 
+    case BUTTONID_CROP:
     case BUTTONID_BW: return 16;
   }
   return 16;
@@ -103,6 +105,34 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state=0)
         return img;
       }
     break;
+    case BUTTONID_CROP:
+      {
+        static WDL_VirtualIconButton_SkinConfig img;
+        if (!img.image) 
+        {
+          img.image = new LICE_MemBitmap(sz*3,sz);
+          LICE_Clear(img.image,LICE_RGBA(0,0,0,64));
+          int x;
+          for(x=0;x<3;x++)
+          {
+            if (x==2)
+              LICE_FillRect(img.image,sz*x,0,sz-1,sz-1,LICE_RGBA(64,250,64,128),1.0f,LICE_BLIT_MODE_COPY);
+
+            LICE_DrawRect(img.image,sz*x,0,sz-1,sz-1,LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY);
+
+            int edg  = 3;
+            int col = x==2 ? LICE_RGBA(255,255,255,128) :LICE_RGBA(255,255,255,128);
+            LICE_Line(img.image,sz*x + sz/2 - edg, edg, sz*x + sz/2 - edg, sz - edg -1,col,1.0f,LICE_BLIT_MODE_COPY,TRUE);
+            LICE_Line(img.image,sz*x + sz/2 + edg - 1, edg, sz*x + sz/2 + edg -1, sz - edg -1,col,1.0f,LICE_BLIT_MODE_COPY,TRUE);
+
+            LICE_Line(img.image,sz*x + edg, sz/2 - edg, sz*x + sz  -1 -edg, sz/2 - edg,col,1.0f,LICE_BLIT_MODE_COPY,TRUE);
+            LICE_Line(img.image,sz*x + edg, sz/2 + edg - 1, sz*x + sz  -1 -edg, sz/2 + edg - 1,col,1.0f,LICE_BLIT_MODE_COPY,TRUE);
+
+          }
+        }
+        return &img;
+      }
+    break;
     case BUTTONID_CLOSE:
       {
         static WDL_VirtualIconButton_SkinConfig img;
@@ -127,6 +157,7 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state=0)
         }
         return &img;
       }
+    break;
   }
   return NULL;
 }
@@ -134,6 +165,8 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state=0)
 
 ImageRecord::ImageRecord(const char *fn)
 {
+  m_fullimage=0;
+  m_want_fullimage=0;
   m_bw=false;
   m_rot=0;
   m_state=IR_STATE_NEEDLOAD;
@@ -168,6 +201,7 @@ ImageRecord::ImageRecord(const char *fn)
 ImageRecord::~ImageRecord()
 {
   delete m_preview_image;
+  delete m_fullimage;
 }
 
 INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_VWnd *src)
@@ -197,13 +231,16 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
           WDL_VWnd *par = GetParent();
           if (par)
           {
-            g_images_mutex.Enter();
-            g_images.Delete(g_images.Find(this));
-            g_images_mutex.Leave();
+            if (!RemoveFullItemView())
+            {
+              g_images_mutex.Enter();
+              g_images.Delete(g_images.Find(this));
+              g_images_mutex.Leave();
 
-            par->RemoveChild(this,true);
-            // do nothing after this, "this" not valid anymore!
-            UpdateMainWindowWithSizeChanged();
+              par->RemoveChild(this,true);
+              // do nothing after this, "this" not valid anymore!
+              UpdateMainWindowWithSizeChanged();
+            }
           }
         }
 
@@ -279,10 +316,11 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
   r.bottom += origin_y;
   LICE_DrawRect(drawbm,r.left,r.top,r.right-r.left,r.bottom-r.top,LICE_RGBA(32,32,32,32),1.0f,LICE_BLIT_MODE_COPY);
 
-  if (m_preview_image)
+  LICE_IBitmap *srcimage = (m_fullimage &&!m_want_fullimage) ? m_fullimage : m_preview_image;
+  if (srcimage)
   {
-    int srcw=m_preview_image->getWidth();
-    int srch=m_preview_image->getHeight();
+    int srcw=srcimage->getWidth();
+    int srch=srcimage->getHeight();
 
 
     int rot = m_rot&3;
@@ -312,31 +350,31 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
 
 
     if (!rot)
-      LICE_ScaledBlit(drawbm,m_preview_image,r.left+xoffs + 2,r.top+yoffs + 2,w,h,0,0,srcw,srch,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
+      LICE_ScaledBlit(drawbm,srcimage,r.left+xoffs + 2,r.top+yoffs + 2,w,h,0,0,srcw,srch,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
     else
     {
 
       double dsdx=0, dsdy=0,dtdx=0,dtdy=0;
 
-      int sx = rot != 1 ? m_preview_image->getWidth() - 1 : 0;
-      int sy = rot != 3 ? m_preview_image->getHeight() - 1 : 0;
+      int sx = rot != 1 ? srcimage->getWidth() - 1 : 0;
+      int sy = rot != 3 ? srcimage->getHeight() - 1 : 0;
 
       if (rot!=2)
       {
-        dtdx = m_preview_image->getHeight() / (double) w;
-        dsdy = m_preview_image->getWidth() / (double) h;
+        dtdx = srcimage->getHeight() / (double) w;
+        dsdy = srcimage->getWidth() / (double) h;
         if (rot==1) dtdx=-dtdx;
         else dsdy=-dsdy;
       }
       else // flip
       {
-        dsdx=-m_preview_image->getWidth() / (double) w;
-        dtdy=-m_preview_image->getHeight() / (double) h;
+        dsdx=-srcimage->getWidth() / (double) w;
+        dtdy=-srcimage->getHeight() / (double) h;
       }
 
-      LICE_DeltaBlit(drawbm,m_preview_image,r.left+xoffs+2,r.top+yoffs+2,w,h,
+      LICE_DeltaBlit(drawbm,srcimage,r.left+xoffs+2,r.top+yoffs+2,w,h,
                 sx,sy, // start x,y
-            m_preview_image->getWidth(),m_preview_image->getHeight(),
+            srcimage->getWidth(),srcimage->getHeight(),
               dsdx, dtdx,
               dsdy, dtdy,
               0,0,false,1.0f,LICE_BLIT_MODE_COPY);
@@ -351,7 +389,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
   g_imagerecord_font.SetTextColor(LICE_RGBA(255,255,255,0));
   g_imagerecord_font.SetEffectColor(LICE_RGBA(0,0,0,0));
 
-  if (m_state != IR_STATE_LOADED)
+  if (m_state != IR_STATE_LOADED && !srcimage)
   {
     const char *str= "ERROR";
     switch (m_state)

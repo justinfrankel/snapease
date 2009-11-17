@@ -798,6 +798,10 @@ SOURCE=..\WDL\lice\lice_png_write.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=..\WDL\lice\lice_text.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=..\WDL\lice\lice_text.h
 # End Source File
 # Begin Source File
