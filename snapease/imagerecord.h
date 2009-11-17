@@ -17,6 +17,10 @@ public:
 
   //////
 
+  void GetCropRectForScreen(int w, int h, RECT *cr); // scales + rotates m_croprect for output to w,h
+
+  ///
+
   WDL_String m_fn;
   WDL_String m_outname;
 
@@ -27,6 +31,7 @@ public:
 
   int m_state;
   LICE_IBitmap *m_preview_image;
+  int m_srcimage_w, m_srcimage_h;
 
   bool m_want_fullimage;
   LICE_IBitmap *m_fullimage;
@@ -34,6 +39,9 @@ public:
 
   bool m_bw;
   char m_rot; // 90deg steps (0..3)
+  bool m_crop_active;
+
+  RECT m_croprect;
 
   static int sortByFN(const void *a, const void *b)
   {

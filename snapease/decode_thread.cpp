@@ -83,6 +83,8 @@ DWORD WINAPI DecodeThreadProc(LPVOID v)
         if (suc && g_fullmode_item && g_images.Find(g_fullmode_item)>=0 && !g_fullmode_item->m_fullimage &&
             !strcmp(g_fullmode_item->m_fn.Get(),curfn.Get()))
         {
+          g_fullmode_item->m_srcimage_w = bmOut->getWidth();
+          g_fullmode_item->m_srcimage_h = bmOut->getHeight();
           g_fullmode_item->m_fullimage = bmOut;
           bmOut=NULL;
         }
@@ -126,6 +128,8 @@ DWORD WINAPI DecodeThreadProc(LPVOID v)
 
         if (g_images.Find(rec)>=0 && rec->m_state == IR_STATE_DECODING)
         {
+          rec->m_srcimage_w = bm.getWidth();
+          rec->m_srcimage_h = bm.getHeight();
           if (!success) rec->m_state = IR_STATE_ERROR;
           else if (strcmp(rec->m_fn.Get(),curfn.Get())) rec->m_state = IR_STATE_ERROR;
           else

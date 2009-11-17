@@ -76,7 +76,7 @@ int OrganizeWindow(HWND hwndDlg)
         if (g_fullmode_item)
         {
           hadFullItem=true;
-          RECT rr={4,4,r.right-4,r.bottom-4};
+          RECT rr={12,12,r.right-12,r.bottom-12};
           rec->SetPosition(&rr);
         }
         else
