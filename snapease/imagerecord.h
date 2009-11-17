@@ -17,11 +17,14 @@ public:
   virtual int OnMouseDown(int xpos, int ypos);
   virtual void OnMouseMove(int xpos, int ypos);
   virtual void OnMouseUp(int xpos, int ypos);
+  virtual bool UpdateCursor(int xpos, int ypos);
 
   //////
 
+
+
   void GetCropRectForScreen(int w, int h, RECT *cr); // scales + rotates m_croprect for output to w,h
-  void SetCropRectFromScreen(int w, int h, const RECT *cr);
+  bool SetCropRectFromScreen(int w, int h, const RECT *cr); // return true on update
 
   ///
 

@@ -377,6 +377,22 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
       }
     return 0;
+    case WM_SETCURSOR:
+      {
+        POINT p;
+        GetCursorPos(&p);
+        ScreenToClient(hwndDlg,&p);
+        if (g_vwnd.UpdateCursor(p.x,p.y))
+        {
+          return TRUE;
+        }
+        else 
+        {
+          SetCursor(LoadCursor(NULL,MAKEINTRESOURCE(IDC_ARROW)));
+          return TRUE;
+        }
+      }
+    return 0;
     case WM_LBUTTONDOWN:
       if (g_vwnd.OnMouseDown(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam)))
       {

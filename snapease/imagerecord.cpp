@@ -82,8 +82,8 @@ static int GetButtonSize(int idx)
     case BUTTONID_CLOSE: return 10;
     case BUTTONID_ROTCCW:
     case BUTTONID_ROTCW: 
-    case BUTTONID_CROP:
-    case BUTTONID_BW: return 16;
+    case BUTTONID_CROP: return 16;
+    case BUTTONID_BW: return 20;
   }
   return 16;
 }
@@ -113,7 +113,7 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state)
             LICE_DrawRect(img->image,sz*x,0,sz-1,sz-1,LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY);
 
             int col = x==2 ? LICE_RGBA(255,255,255,128) :LICE_RGBA(255,255,255,128);
-            LICE_DrawText(img->image,sz*x+sz/2-8/2,sz/2-8/2,"G",col,1.0f,LICE_BLIT_MODE_COPY);
+            LICE_DrawText(img->image,sz*x+sz/2-16/2,sz/2-8/2,"BW",col,1.0f,LICE_BLIT_MODE_COPY);
 
           }
         }
@@ -312,7 +312,7 @@ static void makeBWFunc(LICE_pixel *p, void *parm)
 
 
 
-void ImageRecord::SetCropRectFromScreen(int w, int h, const RECT *cr)
+bool ImageRecord::SetCropRectFromScreen(int w, int h, const RECT *cr)
 {
   if (w<1) w=1;
   if (h<1) h=1;
@@ -354,7 +354,12 @@ void ImageRecord::SetCropRectFromScreen(int w, int h, const RECT *cr)
   if (tr.top<0) tr.top=0; else if (tr.top > sh) tr.top = sh;
   if (tr.bottom<0) tr.bottom=0; else if (tr.bottom > sh) tr.bottom = sh;
 
-  m_croprect = tr;
+  if (memcmp(&tr,&m_croprect,sizeof(RECT)))
+  {
+    m_croprect = tr;
+    return true;
+  }
+  return false;
 }
 
 
@@ -419,9 +424,55 @@ enum
 {
   LOCAL_CAP_NIL=-1000,
   LOCAL_CAP_CROP,
-  LOCAL_CAP_CROPMOVE,
 
 };
+
+bool ImageRecord::UpdateCursor(int xpos, int ypos)
+{
+  if (WDL_VWnd::UpdateCursor(xpos,ypos)) return true;
+
+  if (VirtWndFromPoint(xpos,ypos,0)) return false; // dont update cursor if in a child wnd
+
+  if (m_crop_active)
+  {
+    int cm=0,f=0;
+    if (ypos >= m_last_crop_drawrect.top-3 && ypos <= m_last_crop_drawrect.bottom+3)
+    {
+      if (xpos >= m_last_crop_drawrect.left-3 && xpos <= m_last_crop_drawrect.left+3) cm|=1;
+      else if (xpos >= m_last_crop_drawrect.right-3 && xpos <= m_last_crop_drawrect.right+3) cm|=4;
+      else f|=1;
+    }
+    if (xpos >= m_last_crop_drawrect.left-3 && xpos <= m_last_crop_drawrect.right+3)
+    {
+      if (ypos >= m_last_crop_drawrect.top-3 && ypos <= m_last_crop_drawrect.top+3) cm|=2;
+      else if (ypos >= m_last_crop_drawrect.bottom-3 && ypos <= m_last_crop_drawrect.bottom+3) cm|=8;
+      else f|=2;
+    }
+
+    if (f==3) 
+    {
+      SetCursor(LoadCursor(NULL,MAKEINTRESOURCE(IDC_SIZEALL)));
+      return true;
+    }
+    if (cm&5) // left or right
+    {
+      void *idx=IDC_SIZEWE;
+
+      if (cm&10) idx = ((cm&1)^!!(cm&2)) ? IDC_SIZENESW : IDC_SIZENWSE;
+
+      SetCursor(LoadCursor(NULL,MAKEINTRESOURCE(idx)));
+      return true;
+    }   
+    if (cm&10)
+    {
+      SetCursor(LoadCursor(NULL,MAKEINTRESOURCE(IDC_SIZENS)));
+      return true;
+    }
+  }
+
+  return false;
+}
+
 int ImageRecord::OnMouseDown(int xpos, int ypos)
 {
   int a = WDL_VWnd::OnMouseDown(xpos,ypos);
@@ -429,16 +480,16 @@ int ImageRecord::OnMouseDown(int xpos, int ypos)
   {
     m_crop_capmode = 0;
     int f=0;
-    if (ypos >= m_last_crop_drawrect.top-2 && ypos <= m_last_crop_drawrect.bottom+2)
+    if (ypos >= m_last_crop_drawrect.top-3 && ypos <= m_last_crop_drawrect.bottom+3)
     {
-      if (xpos >= m_last_crop_drawrect.left-2 && xpos <= m_last_crop_drawrect.left+2) m_crop_capmode|=1;
-      else if (xpos >= m_last_crop_drawrect.right-2 && xpos <= m_last_crop_drawrect.right+2) m_crop_capmode|=4;
+      if (xpos >= m_last_crop_drawrect.left-3 && xpos <= m_last_crop_drawrect.left+3) m_crop_capmode|=1;
+      else if (xpos >= m_last_crop_drawrect.right-3 && xpos <= m_last_crop_drawrect.right+3) m_crop_capmode|=4;
       else f|=1;
     }
-    if (xpos >= m_last_crop_drawrect.left-2 && xpos <= m_last_crop_drawrect.right+2)
+    if (xpos >= m_last_crop_drawrect.left-3 && xpos <= m_last_crop_drawrect.right+3)
     {
-      if (ypos >= m_last_crop_drawrect.top-2 && ypos <= m_last_crop_drawrect.top+2) m_crop_capmode|=2;
-      else if (ypos >= m_last_crop_drawrect.bottom-2 && ypos <= m_last_crop_drawrect.bottom+2) m_crop_capmode|=8;
+      if (ypos >= m_last_crop_drawrect.top-3 && ypos <= m_last_crop_drawrect.top+3) m_crop_capmode|=2;
+      else if (ypos >= m_last_crop_drawrect.bottom-3 && ypos <= m_last_crop_drawrect.bottom+3) m_crop_capmode|=8;
       else f|=2;
     }
 
@@ -468,7 +519,6 @@ void ImageRecord::OnMouseMove(int xpos, int ypos)
         RECT r;
         GetCropRectForScreen(m_last_drawrect.right-m_last_drawrect.left,m_last_drawrect.bottom-m_last_drawrect.top,&r);
 
-        RECT or = m_croprect;
 
         if (m_crop_capmode==0xf) // move all
         {
@@ -492,9 +542,8 @@ void ImageRecord::OnMouseMove(int xpos, int ypos)
           if (m_crop_capmode&2) r.top = ypos - m_crop_capmode_lastpos.y - m_last_drawrect.top;
           if (m_crop_capmode&8) r.bottom = ypos - m_crop_capmode_lastpos.y - m_last_drawrect.top;
         }
-        SetCropRectFromScreen(m_last_drawrect.right-m_last_drawrect.left,m_last_drawrect.bottom-m_last_drawrect.top,&r);
-
-        if (memcmp(&or,&m_croprect,sizeof(RECT))) RequestRedraw(NULL);
+        if (SetCropRectFromScreen(m_last_drawrect.right-m_last_drawrect.left,m_last_drawrect.bottom-m_last_drawrect.top,&r))
+          RequestRedraw(NULL);
       }
     return;
   }
