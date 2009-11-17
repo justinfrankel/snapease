@@ -115,20 +115,25 @@ void UpdateMainWindowWithSizeChanged()
   HWND hwndDlg=g_hwnd;
   RECT r;
   GetClientRect(hwndDlg,&r);
+  if (g_vwnd_scrollpos<0)g_vwnd_scrollpos=0;
   int wh = OrganizeWindow(hwndDlg);
-  if (g_vwnd_scrollpos<0)
-  {
-    g_vwnd_scrollpos=0;
-    OrganizeWindow(hwndDlg);
-  }
-  else if (g_vwnd_scrollpos > wh - r.bottom && wh > r.bottom) 
-  {
-    g_vwnd_scrollpos=wh - r.bottom;
-    OrganizeWindow(hwndDlg);
-  }
 
-  SCROLLINFO si={sizeof(si),SIF_PAGE|SIF_POS|SIF_RANGE,0,wh, r.bottom, g_vwnd_scrollpos,};
-  CoolSB_SetScrollInfo(hwndDlg,SB_VERT,&si,TRUE);
+  if (!g_fullmode_item)
+  {
+    if (g_vwnd_scrollpos > wh - r.bottom && wh > r.bottom) 
+    {
+      g_vwnd_scrollpos=wh - r.bottom;
+      OrganizeWindow(hwndDlg);
+    }
+
+    SCROLLINFO si={sizeof(si),SIF_PAGE|SIF_POS|SIF_RANGE,0,wh, r.bottom, g_vwnd_scrollpos,};
+    CoolSB_SetScrollInfo(hwndDlg,SB_VERT,&si,TRUE);
+  }
+  else
+  {
+    SCROLLINFO si={sizeof(si),SIF_PAGE|SIF_POS|SIF_RANGE,0,0,0, 0,};
+    CoolSB_SetScrollInfo(hwndDlg,SB_VERT,&si,TRUE);
+  }
   InvalidateRect(hwndDlg,NULL,FALSE);
 }
 
@@ -180,8 +185,16 @@ void AddImage(const char *fn)
  
 }
 
+
 WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+#ifdef _WIN32
+  if (Scroll_Message && uMsg == Scroll_Message)
+  {
+    uMsg=WM_MOUSEWHEEL;
+    wParam<<=16; 
+  }
+#endif
   switch (uMsg)
   {
     case WM_INITDIALOG:
@@ -297,6 +310,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 *p=0;
               }            
               config_writestr("cwd",path.Get());
+              lstrcpyn(cwd,path.Get(),sizeof(cwd));
 
               if (!temp[strlen(temp)+1]) AddImage(temp);
               else
@@ -392,44 +406,67 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         g_hwnd_painter.PaintEnd();
       }
     return 0;
-    case WM_VSCROLL:
-    {
-      SCROLLINFO si = { sizeof(SCROLLINFO), SIF_POS|SIF_PAGE|SIF_RANGE|SIF_TRACKPOS, 0 };
-      CoolSB_GetScrollInfo(hwndDlg, SB_VERT, &si);
-      int opos = si.nPos;
-      switch (LOWORD(wParam))
+    case WM_MOUSEWHEEL:
+      if (!g_fullmode_item)
       {
-        case SB_THUMBTRACK:        
-          si.nPos = si.nTrackPos;//HIWORD(wParam);
-        break;
-        case SB_LINEUP:
-          si.nPos -= 30;
-        break;
-        case SB_LINEDOWN:
-          si.nPos += 30;
-        break;
-        case SB_PAGEUP:
-          si.nPos -= si.nPage;
-        break;
-        case SB_PAGEDOWN:
-          si.nPos += si.nPage;
-        break;
-        case SB_TOP:
-          si.nPos = 0;
-        break;
-        case SB_BOTTOM:
-          si.nPos = si.nMax-si.nPage;
-        break;
-      }
-      if (si.nPos < 0) si.nPos = 0;
-      else if (si.nPos > si.nMax-si.nPage) si.nPos = si.nMax-si.nPage;
-      if (si.nPos != opos)
-      {
-        g_vwnd_scrollpos=si.nPos;
+        int l=(short)HIWORD(wParam);
+        SCROLLINFO si = { sizeof(SCROLLINFO), SIF_POS|SIF_PAGE|SIF_RANGE|SIF_TRACKPOS, 0 };
+        CoolSB_GetScrollInfo(hwndDlg, SB_VERT, &si);
+        int opos = si.nPos;
+        si.nPos -= (l * (int)si.nPage)/400;
+        if (si.nPos > si.nMax-(int)si.nPage) si.nPos = si.nMax-(int)si.nPage;
+        if (si.nPos < 0) si.nPos = 0;
+        if (si.nPos != opos)
+        {
+          g_vwnd_scrollpos=si.nPos;
 
-        UpdateMainWindowWithSizeChanged();
+          UpdateMainWindowWithSizeChanged();
+        }
       }
-    }
+      else
+      {
+        // todo some fullmode thing?
+      }
+    return -1;
+    case WM_VSCROLL:
+      if (!g_fullmode_item)
+      {
+        SCROLLINFO si = { sizeof(SCROLLINFO), SIF_POS|SIF_PAGE|SIF_RANGE|SIF_TRACKPOS, 0 };
+        CoolSB_GetScrollInfo(hwndDlg, SB_VERT, &si);
+        int opos = si.nPos;
+        switch (LOWORD(wParam))
+        {
+          case SB_THUMBTRACK:        
+            si.nPos = si.nTrackPos;//HIWORD(wParam);
+          break;
+          case SB_LINEUP:
+            si.nPos -= 30;
+          break;
+          case SB_LINEDOWN:
+            si.nPos += 30;
+          break;
+          case SB_PAGEUP:
+            si.nPos -= (int)si.nPage;
+          break;
+          case SB_PAGEDOWN:
+            si.nPos += (int)si.nPage;
+          break;
+          case SB_TOP:
+            si.nPos = 0;
+          break;
+          case SB_BOTTOM:
+            si.nPos = si.nMax-(int)si.nPage;
+          break;
+        }
+        if (si.nPos > si.nMax-(int)si.nPage) si.nPos = si.nMax-(int)si.nPage;
+        if (si.nPos < 0) si.nPos = 0;
+        if (si.nPos != opos)
+        {
+          g_vwnd_scrollpos=si.nPos;
+
+          UpdateMainWindowWithSizeChanged();
+        }
+      }
     return 0;
     case WM_DROPFILES:
 

@@ -50,4 +50,10 @@ int config_readint(const char *what, int def);
 void config_writestr(const char *what, const char *value);
 void config_writeint(const char *what, int value);
 
+
+#ifndef WM_MOUSEWHEEL
+#define WM_MOUSEWHEEL 0x20a
+#endif
+extern UINT Scroll_Message;
+
 #endif

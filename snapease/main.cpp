@@ -7,11 +7,13 @@
 WDL_String g_ini_file;
 char g_exepath[4096];
 HINSTANCE g_hInst;
+UINT Scroll_Message;
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdParam, int nShowCmd)
 {
   g_hInst=hInstance;
   InitCommonControls();
+  Scroll_Message = RegisterWindowMessage("MSWHEEL_ROLLMSG");
   WDL_VWnd_regHelperClass("SNAPeaseVwndHost");
 
   {

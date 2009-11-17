@@ -349,6 +349,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     int xoffs = (destw-w)/2;
 
 
+    // todo: cache scaled/rotated version in global cache if srcimage == m_fullimage
     if (!rot)
       LICE_ScaledBlit(drawbm,srcimage,r.left+xoffs + 2,r.top+yoffs + 2,w,h,0,0,srcw,srch,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
     else
