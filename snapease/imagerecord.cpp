@@ -345,6 +345,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     if (m_bw)
     {
       LICE_ProcessRect(drawbm,r.left+xoffs+2,r.top+yoffs+2,w,h,makeBWFunc,NULL);
+      //LICE_FillRect(drawbm,r.left+xoffs+2,r.top+yoffs+2,w,h,LICE_RGBA(128,0,128,255),1.0f,LICE_BLIT_MODE_HSVADJ);
     }
   }
   g_imagerecord_font.SetTextColor(LICE_RGBA(255,255,255,0));
