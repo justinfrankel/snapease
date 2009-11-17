@@ -27,6 +27,13 @@ public:
 
   int m_state;
   LICE_IBitmap *m_preview_image;
+
+  static int sortByFN(const void *a, const void *b)
+  {
+    ImageRecord *r1 = *(ImageRecord**)a;
+    ImageRecord *r2 = *(ImageRecord**)b;
+    return stricmp(r1->m_fn.Get(),r2->m_fn.Get());
+  }
 };
 
 

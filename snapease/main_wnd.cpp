@@ -215,14 +215,27 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
                 if (temp[0] && p[-2]==PREF_DIRCH) p[-2]=0;
 
+                WDL_PtrList<ImageRecord> newimages;
                 while (*p)
                 {
                   path.Set(temp);
                   path.Append(PREF_DIRSTR);
                   path.Append(p);
                   p+=strlen(p)+1;
-                  AddImage(path.Get());
+                  newimages.Add(new ImageRecord(path.Get()));
                 }
+                if (newimages.GetSize()>1) qsort(newimages.GetList(),newimages.GetSize(),sizeof(ImageRecord *),ImageRecord::sortByFN);
+
+                g_images_mutex.Enter();
+                int x;
+                for(x=0;x<newimages.GetSize();x++)
+                {
+                  ImageRecord *w = newimages.Get(x);
+                  g_vwnd.AddChild(w);
+                  g_images.Add(w);
+                }
+                g_images_mutex.Leave();
+  
               }
 
               free(temp);
@@ -308,6 +321,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_DROPFILES:
 
       {
+        WDL_PtrList<ImageRecord> newimages;
         HDROP hDrop = (HDROP) wParam;
         int x;
         int n=DragQueryFile(hDrop,-1,NULL,0);
@@ -339,7 +353,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     }
                     else if (LICE_ImageIsSupported(tmp.Get()))
                     {
-                      AddImage(tmp.Get());
+                      newimages.Add(new ImageRecord(tmp.Get()));
                     }
                   }
 
@@ -364,12 +378,24 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             else // image
             {
-              AddImage(buf);
+              newimages.Add(new ImageRecord(buf));
             }
           }
         }
+
         DragFinish(hDrop);
-        if (n)
+
+        if (newimages.GetSize()>1) qsort(newimages.GetList(),newimages.GetSize(),sizeof(ImageRecord *),ImageRecord::sortByFN);
+
+        g_images_mutex.Enter();
+        for(x=0;x<newimages.GetSize();x++)
+        {
+          ImageRecord *w = newimages.Get(x);
+          g_vwnd.AddChild(w);
+          g_images.Add(w);
+        }
+        g_images_mutex.Leave();
+        if (newimages.GetSize())
           UpdateMainWindowWithSizeChanged();
       }
 
