@@ -268,13 +268,13 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return 0;
     case WM_VSCROLL:
     {
-      SCROLLINFO si = { sizeof(SCROLLINFO), SIF_POS|SIF_PAGE|SIF_RANGE, 0 };
+      SCROLLINFO si = { sizeof(SCROLLINFO), SIF_POS|SIF_PAGE|SIF_RANGE|SIF_TRACKPOS, 0 };
       CoolSB_GetScrollInfo(hwndDlg, SB_VERT, &si);
       int opos = si.nPos;
       switch (LOWORD(wParam))
       {
         case SB_THUMBTRACK:        
-          si.nPos = HIWORD(wParam);
+          si.nPos = si.nTrackPos;//HIWORD(wParam);
         break;
         case SB_LINEUP:
           si.nPos -= 30;
