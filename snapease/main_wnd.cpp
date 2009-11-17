@@ -104,11 +104,43 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       g_vwnd.SetRealParent(hwndDlg);
       
       UpdateMainWindowWithSizeChanged();
-      ShowWindow(hwndDlg,SW_SHOW);
+
+      {
+        RECT r={config_readint("wndx",15),config_readint("wndy",15),};
+
+        r.right = r.left + config_readint("wndw",0);
+        r.bottom = r.top + config_readint("wndh",0);
+       
+        if (r.bottom != r.top && r.right != r.left)
+          SetWindowPos(hwndDlg,NULL,r.left,r.top,r.right-r.left,r.bottom-r.top,SWP_NOZORDER|SWP_NOACTIVATE);         
+      }
+
+#ifdef _WIN32
+      if (config_readint("wndmax",0))
+        ShowWindow(hwndDlg,SW_SHOWMAXIMIZED);
+      else
+#endif
+        ShowWindow(hwndDlg,SW_SHOW);
 
       SetTimer(hwndDlg,1,100,NULL);
     return 0;
     case WM_DESTROY:
+
+      {
+        RECT r;
+        GetWindowRect(hwndDlg,&r);
+
+#ifdef _WIN32
+        WINDOWPLACEMENT wp={sizeof(wp),};
+        if (GetWindowPlacement(hwndDlg,&wp)) r=wp.rcNormalPosition;
+        config_writeint("wndmax",wp.showCmd == SW_SHOWMAXIMIZED);
+#endif
+        config_writeint("wndx",r.left);
+        config_writeint("wndy",r.top);
+        config_writeint("wndw",r.right-r.left);
+        config_writeint("wndh",abs(r.bottom-r.top));
+
+      }
 
       g_images_mutex.Enter();
       g_images.Empty(); // does not free -- g_vwnd owns all images!
@@ -142,7 +174,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           {
             static char cwd[4096];
 
-            if (!cwd[0]) GetPrivateProfileString("snapease","cwd","",cwd,sizeof(cwd),g_ini_file.Get());
+            if (!cwd[0]) config_readstr("cwd",cwd,sizeof(cwd));
             if (!cwd[0]) GetCurrentDirectory(sizeof(cwd),cwd);
 
             char *extlist=LICE_GetImageExtensionList();
@@ -174,7 +206,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 while (p > path.Get() && *p != '\\' && *p != '/') p--;
                 *p=0;
               }            
-              WritePrivateProfileString("snapease","cwd",path.Get(),g_ini_file.Get());
+              config_writestr("cwd",path.Get());
 
               if (!temp[strlen(temp)+1]) AddImage(temp);
               else

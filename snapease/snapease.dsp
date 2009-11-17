@@ -859,6 +859,10 @@ SOURCE=..\jmde\coolsb\coolscroll.cpp
 # End Group
 # Begin Source File
 
+SOURCE=.\config.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\decode_thread.cpp
 # End Source File
 # Begin Source File

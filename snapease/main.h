@@ -41,4 +41,9 @@ extern WDL_PtrList<ImageRecord> g_images;
 extern WDL_Mutex g_images_mutex;
 
 
+void config_readstr(const char *what, char *out, int outsz);
+int config_readint(const char *what, int def);
+void config_writestr(const char *what, const char *value);
+void config_writeint(const char *what, int value);
+
 #endif
