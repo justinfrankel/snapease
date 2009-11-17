@@ -28,6 +28,7 @@ public:
   int m_state;
   LICE_IBitmap *m_preview_image;
 
+  bool m_bw;
   char m_rot; // 90deg steps (0..3)
 
   static int sortByFN(const void *a, const void *b)

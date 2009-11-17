@@ -13,6 +13,7 @@ enum
   BUTTONID_CLOSE=BUTTONID_BASE,
   BUTTONID_ROTCW,
   BUTTONID_ROTCCW,
+  BUTTONID_BW,
   BUTTONID_END
 };
 #define NUM_BUTTONS (BUTTONID_END-BUTTONID_BASE)
@@ -27,15 +28,44 @@ static int GetButtonSize(int idx)
     case BUTTONID_CLOSE: return 10;
     case BUTTONID_ROTCCW:
     case BUTTONID_ROTCW: return 16;
+    case BUTTONID_BW: return 16;
   }
   return 16;
 }
 
-static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx)
+static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state=0)
 {
   int sz = GetButtonSize(idx);
   switch (idx)
   {
+    case BUTTONID_BW:
+      {
+        static WDL_VirtualIconButton_SkinConfig img_[2];
+        WDL_VirtualIconButton_SkinConfig *img = &img_[!!state];
+
+        if (!img->image)
+        {
+          img->image = new LICE_MemBitmap(sz*3,sz);
+          LICE_Clear(img->image,LICE_RGBA(0,0,0,64));
+          int x;
+          for(x=0;x<3;x++)
+          {
+            if (x==2)
+              LICE_FillRect(img->image,sz*x,0,sz-1,sz-1,LICE_RGBA(0,64,64,128),1.0f,LICE_BLIT_MODE_COPY);
+            if (state)
+              LICE_FillRect(img->image,sz*x,0,sz-1,sz-1,LICE_RGBA(0,128,192,255),0.65f,LICE_BLIT_MODE_COPY);
+
+            LICE_DrawRect(img->image,sz*x,0,sz-1,sz-1,LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY);
+
+            int col = x==2 ? LICE_RGBA(255,255,255,128) :LICE_RGBA(255,255,255,128);
+            LICE_DrawText(img->image,sz*x+sz/2-8/2,sz/2-8/2,"G",col,1.0f,LICE_BLIT_MODE_COPY);
+
+          }
+        }
+
+        return img;
+      }
+    return 0;
     case BUTTONID_ROTCCW:
     case BUTTONID_ROTCW:
       {
@@ -104,6 +134,7 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx)
 
 ImageRecord::ImageRecord(const char *fn)
 {
+  m_bw=false;
   m_rot=0;
   m_state=IR_STATE_NEEDLOAD;
   m_preview_image=NULL;
@@ -127,7 +158,9 @@ ImageRecord::ImageRecord(const char *fn)
   {
     WDL_VirtualIconButton *b = new WDL_VirtualIconButton;
     b->SetID(x+BUTTONID_BASE);
-    b->SetIcon(GetButtonIcon(x+BUTTONID_BASE));
+    char st=0;
+    if (x+BUTTONID_BASE == BUTTONID_BW) st = m_bw;
+    b->SetIcon(GetButtonIcon(x+BUTTONID_BASE,st));
     AddChild(b);
   }
 }
@@ -143,6 +176,14 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
   {
     switch (src->GetID())
     {
+      case BUTTONID_BW:
+        {
+          m_bw=!m_bw;
+          ((WDL_VirtualIconButton *)src)->SetIcon(GetButtonIcon(src->GetID(),!!m_bw));
+        }
+        RequestRedraw(NULL);
+      break;
+
       case BUTTONID_ROTCCW:
       case BUTTONID_ROTCW:
 
@@ -202,6 +243,13 @@ void ImageRecord::SetPosition(const RECT *r)
   }
 
   WDL_VWnd::SetPosition(r);
+}
+
+static void makeBWFunc(LICE_pixel *p, void *parm)
+{
+  LICE_pixel pix = *p;
+  int v = (LICE_GETR(pix) + LICE_GETG(pix) + LICE_GETB(pix))/3;
+  *p = LICE_RGBA(v,v,v,255);
 }
 
 void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect)
@@ -292,6 +340,11 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
               dsdx, dtdx,
               dsdy, dtdy,
               0,0,false,1.0f,LICE_BLIT_MODE_COPY);
+
+    }
+    if (m_bw)
+    {
+      LICE_ProcessRect(drawbm,r.left+xoffs+2,r.top+yoffs+2,w,h,makeBWFunc,NULL);
     }
   }
   g_imagerecord_font.SetTextColor(LICE_RGBA(255,255,255,0));
