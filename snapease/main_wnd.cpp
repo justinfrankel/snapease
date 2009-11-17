@@ -97,7 +97,9 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_INITDIALOG:
 
       g_vwnd_scrollpos=0;
+#ifndef _WIN32 // need to fix some coolsb top level window bugs
       InitializeCoolSB(hwndDlg);
+#endif
       g_hwnd = hwndDlg;
       g_vwnd.SetRealParent(hwndDlg);
       
@@ -114,7 +116,9 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       g_vwnd.RemoveAllChildren(true);
 
+#ifndef _WIN32
       UninitializeCoolSB(hwndDlg);
+#endif
       PostQuitMessage(0);
     return 0;
     case WM_TIMER:
@@ -201,7 +205,10 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return 0;
     case WM_SIZE:
 
-      UpdateMainWindowWithSizeChanged();
+      if (wParam != SIZE_MINIMIZED)
+      {
+        UpdateMainWindowWithSizeChanged();
+      }
 
     return 0;
     case WM_LBUTTONDOWN:
