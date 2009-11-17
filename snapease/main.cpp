@@ -32,6 +32,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
     if (RegQueryValueEx(k,"AppData",0,&t,(unsigned char *)buf,&b) == ERROR_SUCCESS && t == REG_SZ)
     {
       g_ini_file.Set(buf);
+      g_ini_file.Append("\\snapease");
+      CreateDirectory(g_ini_file.Get(),NULL);
       g_ini_file.Append("\\snapease.ini");
     }
     RegCloseKey(k);
