@@ -1,3 +1,25 @@
+/*
+
+  Todo: 
+    load/save set
+    browse sets? (tabs for sets along top ?)
+    disk-based thumbnail cache? sqlite?
+    adjust crop per item
+    click to view item?
+    rename item labels (tab between them too)
+    export set
+      disk folder | onlineetc
+      format (png,jpeg) (button to estimate size?)
+      limit width, height
+      other stuff
+
+
+    slideshows etc?
+    confirm to remove item from set?
+
+
+*/
+
 #include "main.h"
 
 #include "../WDL/ptrlist.h"
@@ -27,7 +49,7 @@ int OrganizeWindow(HWND hwndDlg)
 
   int border_size_x = 8, border_size_y=8;
 
-  int preview_w = r.right-border_size_x;
+  int preview_w = (r.right-border_size_x);
 
   if (preview_w > 256) preview_w = 256;
   if (preview_w < 32) preview_w = 32;

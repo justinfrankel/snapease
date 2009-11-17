@@ -4,7 +4,7 @@
 
 #include "../WDL/lice/lice.h"
 
-#define DESIRED_PREVIEW_CACHEDIM 192
+#define DESIRED_PREVIEW_CACHEDIM 256
 
 bool g_DecodeDidSomething;
 bool g_DecodeThreadQuit;
