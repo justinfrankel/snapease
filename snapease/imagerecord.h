@@ -28,6 +28,8 @@ public:
   int m_state;
   LICE_IBitmap *m_preview_image;
 
+  char m_rot; // 90deg steps (0..3)
+
   static int sortByFN(const void *a, const void *b)
   {
     ImageRecord *r1 = *(ImageRecord**)a;

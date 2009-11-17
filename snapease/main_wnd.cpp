@@ -263,11 +263,17 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
     return 0;
     case WM_MOUSEMOVE:
-      g_vwnd.OnMouseMove(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
+      if (GetCapture()==hwndDlg)
+      {
+        g_vwnd.OnMouseMove(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
+      }
     return 0;
     case WM_LBUTTONUP:
-      g_vwnd.OnMouseUp(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
-      ReleaseCapture();
+      if (GetCapture()==hwndDlg)
+      {
+        g_vwnd.OnMouseUp(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
+        ReleaseCapture();
+      }
     return 0;
     case WM_PAINT:
       {
