@@ -3,6 +3,7 @@
 
 #ifdef _WIN32
   #include <windows.h>
+  #include <windowsx.h>
 #else
   #include "../WDL/swell/swell.h"
 #endif
@@ -10,14 +11,29 @@
 #include "../WDL/wdltypes.h"
 #include "../WDL/wingui/virtwnd.h"
 #include "../WDL/mutex.h"
+#include "../WDL/wdlstring.h"
+
+#ifdef _WIN32
+
+#define PREF_DIRCH '\\'
+#define PREF_DIRSTR "\\"
+
+#else
+#define PREF_DIRCH '/'
+#define PREF_DIRSTR "/"
+
+#endif
 
 extern HINSTANCE g_hInst;
+extern WDL_String g_ini_file;
+extern char g_exepath[4096];
 
 WDL_DLGRET MainWindowProc(HWND, UINT, WPARAM, LPARAM);
 
 extern bool g_DecodeThreadQuit, g_DecodeDidSomething;
 DWORD WINAPI DecodeThreadProc(LPVOID v);
 
+void UpdateMainWindowWithSizeChanged();
 
 #include "imagerecord.h"
 

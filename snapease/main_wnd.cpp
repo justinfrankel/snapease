@@ -2,8 +2,11 @@
 
 #include "../WDL/ptrlist.h"
 #include "../WDL/lice/lice.h"
+#include "../WDL/dirscan.h"
 
 #include "../jmde/coolsb/coolscroll.h"
+
+#include "resource.h"
 
 WDL_PtrList<ImageRecord> g_images;
 WDL_Mutex g_images_mutex;
@@ -54,8 +57,10 @@ int OrganizeWindow(HWND hwndDlg)
 
   return maxPos;
 }
-void DoWindowSizeScrollUpdate(HWND hwndDlg)
+
+void UpdateMainWindowWithSizeChanged()
 {
+  HWND hwndDlg=g_hwnd;
   RECT r;
   GetClientRect(hwndDlg,&r);
   int wh = OrganizeWindow(hwndDlg);
@@ -75,6 +80,16 @@ void DoWindowSizeScrollUpdate(HWND hwndDlg)
   InvalidateRect(hwndDlg,NULL,FALSE);
 }
 
+void AddImage(const char *fn)
+{
+  ImageRecord *w = new ImageRecord(fn);
+  g_vwnd.AddChild(w);
+  g_images_mutex.Enter();
+  g_images.Add(w);
+  g_images_mutex.Leave();
+ 
+}
+
 WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   switch (uMsg)
@@ -86,7 +101,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       g_hwnd = hwndDlg;
       g_vwnd.SetRealParent(hwndDlg);
       
-      DoWindowSizeScrollUpdate(hwndDlg);
+      UpdateMainWindowWithSizeChanged();
       ShowWindow(hwndDlg,SW_SHOW);
 
       SetTimer(hwndDlg,1,100,NULL);
@@ -95,8 +110,9 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       g_images_mutex.Enter();
       g_images.Empty(); // does not free -- g_vwnd owns all images!
-      g_vwnd.RemoveAllChildren(true);
       g_images_mutex.Leave();
+
+      g_vwnd.RemoveAllChildren(true);
 
       UninitializeCoolSB(hwndDlg);
       PostQuitMessage(0);
@@ -117,15 +133,91 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case IDCANCEL:
           DestroyWindow(hwndDlg);
         break;
+        case ID_IMPORT:
+
+          {
+            static char cwd[4096];
+
+            if (!cwd[0]) GetPrivateProfileString("snapease","cwd","",cwd,sizeof(cwd),g_ini_file.Get());
+            if (!cwd[0]) GetCurrentDirectory(sizeof(cwd),cwd);
+
+            char *extlist=LICE_GetImageExtensionList();
+
+          #ifdef _WIN32
+            int temp_size=256*1024;
+            char *temp=(char *)calloc(temp_size,1);
+            OPENFILENAME l={sizeof(l),};
+            l.hwndOwner = hwndDlg;
+            l.lpstrFilter = (char*)extlist;
+            l.lpstrFile = temp;
+            l.nMaxFile = temp_size-1;
+            l.lpstrTitle = "Load images:";
+            l.lpstrDefExt = "jpg";
+            l.lpstrInitialDir = cwd;
+            l.Flags = OFN_HIDEREADONLY|OFN_EXPLORER|OFN_FILEMUSTEXIST|OFN_ALLOWMULTISELECT|OFN_NOCHANGEDIR;
+            if (GetOpenFileName(&l))          
+          #else
+            char *temp=BrowseForFiles("Load image resource:", dir, fn, false, extlist);
+            if (temp)
+          #endif     
+            {
+              WDL_String path;
+              path.Set(temp); 
+              if (!temp[strlen(temp)+1]) // if single file, remove filename portion
+              {
+                char *p=path.Get();
+                while (*p) p++;
+                while (p > path.Get() && *p != '\\' && *p != '/') p--;
+                *p=0;
+              }            
+              WritePrivateProfileString("snapease","cwd",path.Get(),g_ini_file.Get());
+
+              if (!temp[strlen(temp)+1]) AddImage(temp);
+              else
+              {
+                char *p = temp+strlen(temp)+1;
+
+                if (temp[0] && p[-2]==PREF_DIRCH) p[-2]=0;
+
+                while (*p)
+                {
+                  path.Set(temp);
+                  path.Append(PREF_DIRSTR);
+                  path.Append(p);
+                  p+=strlen(p)+1;
+                  AddImage(path.Get());
+                }
+              }
+
+              free(temp);
+
+              UpdateMainWindowWithSizeChanged();
+            }
+        
+          }
+
+        break;
       }
     return 0;
     case WM_SIZE:
 
-      DoWindowSizeScrollUpdate(hwndDlg);
+      UpdateMainWindowWithSizeChanged();
 
     return 0;
+    case WM_LBUTTONDOWN:
+      if (g_vwnd.OnMouseDown(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam)))
+      {
+        SetCapture(hwndDlg);
+      }
+    return 0;
+    case WM_MOUSEMOVE:
+      g_vwnd.OnMouseMove(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
+    return 0;
+    case WM_LBUTTONUP:
+      g_vwnd.OnMouseUp(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
+      ReleaseCapture();
+    return 0;
     case WM_PAINT:
-
       {
         RECT r;
         GetClientRect(hwndDlg,&r);
@@ -133,9 +225,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         g_hwnd_painter.PaintBegin(hwndDlg,RGB(0,0,0));
         g_hwnd_painter.PaintVirtWnd(&g_vwnd);
         g_hwnd_painter.PaintEnd();
-
       }
-
     return 0;
     case WM_VSCROLL:
     {
@@ -172,7 +262,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       {
         g_vwnd_scrollpos=si.nPos;
 
-        DoWindowSizeScrollUpdate(hwndDlg);
+        UpdateMainWindowWithSizeChanged();
       }
     }
     return 0;
@@ -190,17 +280,58 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           DragQueryFile(hDrop,x,buf,sizeof(buf));
           if (buf[0])
           {
-            ImageRecord *w = new ImageRecord(buf);
+            if (!LICE_ImageIsSupported(buf))
+            {
+              WDL_String tmp;
+              WDL_DirScan ds;
+              if (!ds.First(buf))
+              {
+                WDL_PtrList<WDL_String> dirstack;
+                for (;;)
+                {
+                  if (ds.GetCurrentFN()[0] != '.')
+                  {
+                    ds.GetCurrentFullFN(&tmp);
+                    if (ds.GetCurrentIsDirectory())
+                    {
+                      WDL_String *s = new WDL_String;
+                      s->Set(tmp.Get());
+                      dirstack.Add(s);
+                    }
+                    else if (LICE_ImageIsSupported(tmp.Get()))
+                    {
+                      AddImage(tmp.Get());
+                    }
+                  }
 
-            g_images_mutex.Enter();
-            g_images.Add(w);
-            g_vwnd.AddChild(w);
-            g_images_mutex.Leave();
+                  if (!ds.Next()) continue;
+
+                  bool didNew = false;
+
+                  while (dirstack.GetSize() && !didNew)
+                  {
+                    WDL_String *s = dirstack.Get(0);
+                    dirstack.Delete(0);
+
+                    didNew = !ds.First(s->Get());
+
+                    delete s;
+                  }
+                  
+                  if (!didNew) break;
+                }
+              
+              }
+            }
+            else // image
+            {
+              AddImage(buf);
+            }
           }
         }
         DragFinish(hDrop);
         if (n)
-          DoWindowSizeScrollUpdate(hwndDlg);
+          UpdateMainWindowWithSizeChanged();
       }
 
     return 0;

@@ -28,14 +28,15 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx)
           int x;
           for(x=0;x<3;x++)
           {
-            if (x==1)
-              LICE_FillRect(img.image,BUTTON_SIZE*x,0,BUTTON_SIZE-1,BUTTON_SIZE-1,LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY);
-            else
-              LICE_DrawRect(img.image,BUTTON_SIZE*x,0,BUTTON_SIZE-1,BUTTON_SIZE-1,LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY);
+            if (x==2)
+              LICE_FillRect(img.image,BUTTON_SIZE*x,0,BUTTON_SIZE-1,BUTTON_SIZE-1,LICE_RGBA(255,64,64,128),1.0f,LICE_BLIT_MODE_COPY);
+
+            LICE_DrawRect(img.image,BUTTON_SIZE*x,0,BUTTON_SIZE-1,BUTTON_SIZE-1,LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY);
 
             int edg  = 3;
-            LICE_Line(img.image,BUTTON_SIZE*x + edg, edg, BUTTON_SIZE*x + BUTTON_SIZE - edg - 1, BUTTON_SIZE - edg -1,x==1 ? LICE_RGBA(0,0,0,128) :LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY,TRUE);
-            LICE_Line(img.image,BUTTON_SIZE*x + edg, BUTTON_SIZE - edg - 1, BUTTON_SIZE*x + BUTTON_SIZE - edg - 1, edg,x==1 ? LICE_RGBA(0,0,0,128) :LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY,TRUE);
+            int col = x==2 ? LICE_RGBA(255,255,255,128) :LICE_RGBA(255,255,255,128);
+            LICE_Line(img.image,BUTTON_SIZE*x + edg, edg, BUTTON_SIZE*x + BUTTON_SIZE - edg - 1, BUTTON_SIZE - edg -1,col,1.0f,LICE_BLIT_MODE_COPY,TRUE);
+            LICE_Line(img.image,BUTTON_SIZE*x + edg, BUTTON_SIZE - edg - 1, BUTTON_SIZE*x + BUTTON_SIZE - edg - 1, edg,col,1.0f,LICE_BLIT_MODE_COPY,TRUE);
 
           }
         }
@@ -87,6 +88,19 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
     switch (src->GetID())
     {
       case BUTTONID_CLOSE:
+        {
+          WDL_VWnd *par = GetParent();
+          if (par)
+          {
+            g_images_mutex.Enter();
+            g_images.Delete(g_images.Find(this));
+            g_images_mutex.Leave();
+
+            par->RemoveChild(this,true);
+            // do nothing after this, "this" not valid anymore!
+            UpdateMainWindowWithSizeChanged();
+          }
+        }
 
       break;
     }   
