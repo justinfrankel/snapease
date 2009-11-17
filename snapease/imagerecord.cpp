@@ -311,36 +311,95 @@ static void makeBWFunc(LICE_pixel *p, void *parm)
 }
 
 
+
+void ImageRecord::SetCropRectFromScreen(int w, int h, const RECT *cr)
+{
+  if (w<1) w=1;
+  if (h<1) h=1;
+
+  int sw=m_srcimage_w;
+  int sh=m_srcimage_h;
+  RECT tr;
+
+  switch (m_rot & 3)
+  {
+    case 0:
+      tr.left = (cr->left * (double)sw) / w + 0.5;
+      tr.right = (cr->right * (double)sw) / w + 0.5;
+      tr.top = (cr->top * (double)sh) / h + 0.5;
+      tr.bottom = (cr->bottom * (double)sh) /h + 0.5;
+    break;
+    case 1: // 90cw
+      tr.left = (cr->top * (double)sw) / h + 0.5;
+      tr.right = (cr->bottom * (double)sw) / h + 0.5;
+      tr.top = sh - (cr->right * (double)sh) / w + 0.5;
+      tr.bottom = sh - (cr->left * (double)sh) / w + 0.5;
+    break;
+    case 2:
+      tr.left = (sw - (cr->right * (double)sw) / w) + 0.5;
+      tr.right = (sw - (cr->left * (double)sw) / w) + 0.5;
+      tr.top = (sh - (cr->bottom * (double)sh) / h) + 0.5;
+      tr.bottom = (sh -  (cr->top * (double)sh) /h) + 0.5;
+    break;
+    case 3: // 90ccw
+      tr.left = sw - (cr->bottom * (double)sw) / h + 0.5;
+      tr.right = sw - (cr->top * (double)sw) / h + 0.5;
+      tr.top = (cr->left * (double)sh) / w + 0.5;
+      tr.bottom = (cr->right * (double)sh) / w + 0.5;
+    break;
+  }
+
+  if (tr.left<0) tr.left=0; else if (tr.left > sw) tr.left = sw;
+  if (tr.right<0) tr.right=0; else if (tr.right > sw) tr.right = sw;
+  if (tr.top<0) tr.top=0; else if (tr.top > sh) tr.top = sh;
+  if (tr.bottom<0) tr.bottom=0; else if (tr.bottom > sh) tr.bottom = sh;
+
+  m_croprect = tr;
+}
+
+
 void ImageRecord::GetCropRectForScreen(int w, int h, RECT *cr)
 {
+  RECT inrect = m_croprect;
+  if (inrect.left >= inrect.right)
+  {
+    inrect.right = m_srcimage_w;
+    if (inrect.left >= inrect.right) inrect.left=0;
+  }
+  if (inrect.top >= inrect.bottom)
+  {
+    inrect.bottom =m_srcimage_h;
+    if (inrect.top >= inrect.bottom) inrect.top=0;
+  }
+
   // rotate
   int sw=max(m_srcimage_w,1);
   int sh=max(m_srcimage_h,1);
   switch  (m_rot&3)
   {
     case 0: 
-      cr->left = (m_croprect.left * w) / sw;
-      cr->top = (m_croprect.top * h) / sh;
-      cr->right = (m_croprect.right * w) / sw;
-      cr->bottom = (m_croprect.bottom * h) / sh;      
+      cr->left = (inrect.left * (double)w) / sw + 0.5;
+      cr->top = (inrect.top * (double)h) / sh + 0.5;
+      cr->right = (inrect.right * (double)w) / sw + 0.5;
+      cr->bottom = (inrect.bottom * (double)h) / sh + 0.5;      
     break;
     case 1: // 90cw
-      cr->left = w - 1 - (m_croprect.bottom * w) / sh;
-      cr->right = w - 1 - (m_croprect.top * w) / sh;
-      cr->top = (m_croprect.left * h) / sw;
-      cr->bottom = (m_croprect.right * h) / sw;
+      cr->left = w - (inrect.bottom * (double)w) / sh + 0.5;
+      cr->right = w - (inrect.top * (double)w) / sh + 0.5;
+      cr->top = (inrect.left * (double)h) / sw + 0.5;
+      cr->bottom = (inrect.right * (double)h) / sw + 0.5;
     break;
     case 2: // 180
-      cr->left = w - 1 - (m_croprect.right * w) / sw;
-      cr->top = h - 1 - (m_croprect.bottom * h) / sh;
-      cr->right = w - 1 - (m_croprect.left * w) / sw;
-      cr->bottom = h - 1 - (m_croprect.top * h) / sh;      
+      cr->left = (w - (inrect.right * (double)w) / sw) + 0.5;
+      cr->top = (h - (inrect.bottom * (double)h) / sh) + 0.5;
+      cr->right = (w - (inrect.left * (double)w) / sw) + 0.5;
+      cr->bottom = (h - (inrect.top * (double)h) / sh) + 0.5;      
     break;
     case 3: // 90ccw
-      cr->left = (m_croprect.top * w) / sh;
-      cr->right = (m_croprect.bottom * w) / sh;
-      cr->top = h - 1 - (m_croprect.right * h) / sw;
-      cr->bottom = h -1 - (m_croprect.left * h) / sw;
+      cr->left = (inrect.top * (double)w) / sh + 0.5;
+      cr->right = (inrect.bottom * (double)w) / sh + 0.5;
+      cr->top = h - (inrect.right * (double)h) / sw + 0.5;
+      cr->bottom = h - (inrect.left * (double)h) / sw + 0.5;
     break;
 
   }
@@ -354,6 +413,113 @@ void ImageRecord::GetCropRectForScreen(int w, int h, RECT *cr)
   if (cr->top<0) cr->top=0; else if (cr->top > h) cr->top = h;
   if (cr->bottom<0) cr->bottom=0; else if (cr->bottom > h) cr->bottom = h;
 }
+
+
+enum
+{
+  LOCAL_CAP_NIL=-1000,
+  LOCAL_CAP_CROP,
+  LOCAL_CAP_CROPMOVE,
+
+};
+int ImageRecord::OnMouseDown(int xpos, int ypos)
+{
+  int a = WDL_VWnd::OnMouseDown(xpos,ypos);
+  if (!a && m_crop_active)
+  {
+    m_crop_capmode = 0;
+    int f=0;
+    if (ypos >= m_last_crop_drawrect.top-2 && ypos <= m_last_crop_drawrect.bottom+2)
+    {
+      if (xpos >= m_last_crop_drawrect.left-2 && xpos <= m_last_crop_drawrect.left+2) m_crop_capmode|=1;
+      else if (xpos >= m_last_crop_drawrect.right-2 && xpos <= m_last_crop_drawrect.right+2) m_crop_capmode|=4;
+      else f|=1;
+    }
+    if (xpos >= m_last_crop_drawrect.left-2 && xpos <= m_last_crop_drawrect.right+2)
+    {
+      if (ypos >= m_last_crop_drawrect.top-2 && ypos <= m_last_crop_drawrect.top+2) m_crop_capmode|=2;
+      else if (ypos >= m_last_crop_drawrect.bottom-2 && ypos <= m_last_crop_drawrect.bottom+2) m_crop_capmode|=8;
+      else f|=2;
+    }
+
+    if (f==3)  m_crop_capmode=0xf;
+    m_crop_capmode_lastpos.x = xpos - ((m_crop_capmode & 1) ? m_last_crop_drawrect.left : m_last_crop_drawrect.right);
+    m_crop_capmode_lastpos.y = ypos - ((m_crop_capmode & 2) ? m_last_crop_drawrect.top : m_last_crop_drawrect.bottom);
+    
+    if (m_crop_capmode)
+    {
+      m_captureidx = LOCAL_CAP_CROP;
+      return 1;
+    }
+    // hit test
+  }
+  return a;
+}
+
+void ImageRecord::OnMouseMove(int xpos, int ypos)
+{
+  switch (m_captureidx)
+  {
+    case LOCAL_CAP_NIL:
+    return;
+    case LOCAL_CAP_CROP:
+      if (m_crop_capmode)
+      {
+        RECT r;
+        GetCropRectForScreen(m_last_drawrect.right-m_last_drawrect.left,m_last_drawrect.bottom-m_last_drawrect.top,&r);
+
+        RECT or = m_croprect;
+
+        if (m_crop_capmode==0xf) // move all
+        {
+          int dx = (xpos - m_crop_capmode_lastpos.x) - r.left  - m_last_drawrect.left;
+          if (r.left+dx<0) dx=-r.left;
+          else if (r.right+dx>m_last_drawrect.right-m_last_drawrect.left) dx = m_last_drawrect.right-m_last_drawrect.left - r.right;
+
+          int dy = (ypos - m_crop_capmode_lastpos.y) - r.top - m_last_drawrect.top;
+          if (r.top+dy<0) dy=-r.top;
+          else if (r.bottom+dy>m_last_drawrect.bottom-m_last_drawrect.top) dy = m_last_drawrect.bottom-m_last_drawrect.top- r.bottom;
+
+          r.left += dx;
+          r.top += dy;
+          r.right += dx;
+          r.bottom += dy;
+        }
+        else
+        {
+          if (m_crop_capmode&1) r.left = xpos - m_crop_capmode_lastpos.x - m_last_drawrect.left;
+          if (m_crop_capmode&4) r.right = xpos - m_crop_capmode_lastpos.x - m_last_drawrect.left;
+          if (m_crop_capmode&2) r.top = ypos - m_crop_capmode_lastpos.y - m_last_drawrect.top;
+          if (m_crop_capmode&8) r.bottom = ypos - m_crop_capmode_lastpos.y - m_last_drawrect.top;
+        }
+        SetCropRectFromScreen(m_last_drawrect.right-m_last_drawrect.left,m_last_drawrect.bottom-m_last_drawrect.top,&r);
+
+        if (memcmp(&or,&m_croprect,sizeof(RECT))) RequestRedraw(NULL);
+      }
+    return;
+  }
+
+  WDL_VWnd::OnMouseMove(xpos,ypos);
+}
+
+void ImageRecord::OnMouseUp(int xpos, int ypos)
+{
+  m_captureidx= -1;
+  switch (m_captureidx)
+  {
+    case LOCAL_CAP_NIL:
+      m_captureidx= -1;
+    return;
+    case LOCAL_CAP_CROP:
+
+      // todo: notify that edit finished?
+      m_captureidx= -1;
+
+    return; 
+  }
+  WDL_VWnd::OnMouseUp(xpos,ypos);
+}
+
 
 
 void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect)
@@ -434,6 +600,12 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     int yoffs = (desth-h)/2 + r.top + 2;
     int xoffs = (destw-w)/2 + r.left + 2;
 
+    m_last_drawrect.left=xoffs - r.top;
+    m_last_drawrect.top = yoffs - r.left;
+    m_last_drawrect.right = m_last_drawrect.left + w;
+    m_last_drawrect.bottom = m_last_drawrect.top + h;
+
+
     // todo: cache scaled/rotated version in global cache if srcimage == m_fullimage?
 
     if (!rot)
@@ -482,24 +654,19 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
         m_croprect.right=400;
         m_croprect.bottom=400;
 #endif
-      RECT cr = m_croprect;
-      if (cr.right > cr.left && cr.bottom > cr.top)
-      {
-        GetCropRectForScreen(w,h,&cr);
+      RECT cr;
+      GetCropRectForScreen(w,h,&cr);
 
-        cr.left += xoffs;
-        cr.right += xoffs;
-        cr.bottom += yoffs;
-        cr.top += yoffs;
-      }
+      cr.left += xoffs;
+      cr.right += xoffs;
+      cr.bottom += yoffs;
+      cr.top += yoffs;
 
-      if (cr.right <= cr.left || cr.bottom <= cr.top)
-      {
-        cr.left=xoffs;
-        cr.top=yoffs;
-        cr.right = cr.left+w;
-        cr.bottom = cr.top + h;
-      }
+      m_last_crop_drawrect = cr;
+      m_last_crop_drawrect.top -= r.top;
+      m_last_crop_drawrect.bottom -= r.top;
+      m_last_crop_drawrect.left -= r.left;
+      m_last_crop_drawrect.right -= r.left;
 
       float al = 0.85f;
       LICE_pixel col = 0;
