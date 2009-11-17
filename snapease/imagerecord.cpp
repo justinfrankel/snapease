@@ -13,8 +13,8 @@ enum
   BUTTONID_CLOSE=BUTTONID_BASE,
   BUTTONID_ROTCW,
   BUTTONID_ROTCCW,
-  BUTTONID_BW,
   BUTTONID_CROP,
+  BUTTONID_BW,
   BUTTONID_END
 };
 
@@ -22,6 +22,8 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state=0);
 
 ImageRecord::ImageRecord(const char *fn)
 {
+  m_fullimage_rendercached=0;
+  m_fullimage_rendercached_valid=0;
   m_crop_active=false;
   memset(&m_croprect,0,sizeof(m_croprect));
   m_fullimage=0;
@@ -66,6 +68,7 @@ ImageRecord::~ImageRecord()
 {
   delete m_preview_image;
   delete m_fullimage;
+  delete m_fullimage_rendercached;
 }
 
 
@@ -229,12 +232,14 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
     {
       case BUTTONID_CROP:
         m_crop_active=!m_crop_active;
+        m_fullimage_rendercached_valid=false;
         ((WDL_VirtualIconButton *)src)->SetIcon(GetButtonIcon(src->GetID(),!!m_crop_active));
         RequestRedraw(NULL);
       break;
 
       case BUTTONID_BW:
         m_bw=!m_bw;
+        m_fullimage_rendercached_valid=false;
         ((WDL_VirtualIconButton *)src)->SetIcon(GetButtonIcon(src->GetID(),!!m_bw));
         RequestRedraw(NULL);
       break;
@@ -243,6 +248,7 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
       case BUTTONID_ROTCW:
 
         m_rot= (m_rot+ (src->GetID() == BUTTONID_ROTCCW ? -1 : 1 ))&3;
+        m_fullimage_rendercached_valid=false;
 
         RequestRedraw(NULL);
 
@@ -598,7 +604,8 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
   r.bottom += origin_y;
   LICE_DrawRect(drawbm,r.left,r.top,r.right-r.left,r.bottom-r.top,LICE_RGBA(32,32,32,32),1.0f,LICE_BLIT_MODE_COPY);
 
-  LICE_IBitmap *srcimage = (m_fullimage &&!m_want_fullimage) ? m_fullimage : m_preview_image;
+  bool usedFullImage=(m_fullimage &&!m_want_fullimage) ;
+  LICE_IBitmap *srcimage = usedFullImage ? m_fullimage : m_preview_image;
   if (srcimage)
   {
     int cropw=0,croph=0,cropl=0,cropt=0;
@@ -657,52 +664,71 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
 
     // todo: cache scaled/rotated version in global cache if srcimage == m_fullimage?
 
-    if (!rot)
-      LICE_ScaledBlit(drawbm,srcimage,xoffs,yoffs,w,h,0,0,srcw,srch,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
+    if (usedFullImage &&
+        m_fullimage_rendercached && m_fullimage_rendercached_valid && 
+        m_fullimage_rendercached->getWidth() == w && m_fullimage_rendercached->getHeight() == h)
+    {
+      LICE_Blit(drawbm,m_fullimage_rendercached,xoffs,yoffs,0,0,w,h,1.0f,LICE_BLIT_MODE_COPY);
+    }
     else
     {
-
-      double dsdx=0, dsdy=0,dtdx=0,dtdy=0;
-
-      int sx = rot != 1 ? srcimage->getWidth() - 1 : 0;
-      int sy = rot != 3 ? srcimage->getHeight() - 1 : 0;
-
-      if (rot!=2)
+      m_fullimage_rendercached_valid=false;
+      if (!rot)
+        LICE_ScaledBlit(drawbm,srcimage,xoffs,yoffs,w,h,0,0,srcw,srch,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
+      else
       {
-        dtdx = srcimage->getHeight() / (double) w;
-        dsdy = srcimage->getWidth() / (double) h;
-        if (rot==1) dtdx=-dtdx;
-        else dsdy=-dsdy;
+
+        double dsdx=0, dsdy=0,dtdx=0,dtdy=0;
+
+        int sx = rot != 1 ? srcimage->getWidth() - 1 : 0;
+        int sy = rot != 3 ? srcimage->getHeight() - 1 : 0;
+
+        if (rot!=2)
+        {
+          dtdx = srcimage->getHeight() / (double) w;
+          dsdy = srcimage->getWidth() / (double) h;
+          if (rot==1) dtdx=-dtdx;
+          else dsdy=-dsdy;
+        }
+        else // flip
+        {
+          dsdx=-srcimage->getWidth() / (double) w;
+          dtdy=-srcimage->getHeight() / (double) h;
+        }
+
+        LICE_DeltaBlit(drawbm,srcimage,xoffs,yoffs,w,h,
+                  sx,sy, // start x,y
+              srcimage->getWidth(),srcimage->getHeight(),
+                dsdx, dtdx,
+                dsdy, dtdy,
+                0,0,false,1.0f,LICE_BLIT_MODE_COPY);
+
       }
-      else // flip
+      if (m_bw)
       {
-        dsdx=-srcimage->getWidth() / (double) w;
-        dtdy=-srcimage->getHeight() / (double) h;
+        LICE_ProcessRect(drawbm,xoffs,yoffs,w,h,makeBWFunc,NULL);
+        //LICE_FillRect(drawbm,xoffs,yoffs,w,h,LICE_RGBA(128,0,128,255),1.0f,LICE_BLIT_MODE_HSVADJ);
       }
 
-      LICE_DeltaBlit(drawbm,srcimage,xoffs,yoffs,w,h,
-                sx,sy, // start x,y
-            srcimage->getWidth(),srcimage->getHeight(),
-              dsdx, dtdx,
-              dsdy, dtdy,
-              0,0,false,1.0f,LICE_BLIT_MODE_COPY);
+      if (usedFullImage)
+      {
+        if (!m_fullimage_rendercached) m_fullimage_rendercached=new LICE_MemBitmap;
+        m_fullimage_rendercached->resize(w,h);
+        LICE_Blit(m_fullimage_rendercached,drawbm,0,0,xoffs,yoffs,w,h,1.0f,LICE_BLIT_MODE_COPY);
+        m_fullimage_rendercached_valid=true;
+      }
+      else
+      {
+        delete m_fullimage_rendercached;
+        m_fullimage_rendercached=0;
+      }
 
-    }
-    if (m_bw)
-    {
-      LICE_ProcessRect(drawbm,xoffs,yoffs,w,h,makeBWFunc,NULL);
-      //LICE_FillRect(drawbm,xoffs,yoffs,w,h,LICE_RGBA(128,0,128,255),1.0f,LICE_BLIT_MODE_HSVADJ);
     }
 
 
     if (m_crop_active)
     {
-#if 0
-        m_croprect.left=100;
-        m_croprect.top=100;
-        m_croprect.right=400;
-        m_croprect.bottom=400;
-#endif
+
       RECT cr;
       GetCropRectForScreen(w,h,&cr);
 

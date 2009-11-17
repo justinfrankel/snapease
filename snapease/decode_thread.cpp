@@ -86,6 +86,7 @@ DWORD WINAPI DecodeThreadProc(LPVOID v)
           g_fullmode_item->m_srcimage_w = bmOut->getWidth();
           g_fullmode_item->m_srcimage_h = bmOut->getHeight();
           g_fullmode_item->m_fullimage = bmOut;
+          g_fullmode_item->m_fullimage_rendercached_valid=false;
           bmOut=NULL;
         }
         g_DecodeDidSomething=true;

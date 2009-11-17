@@ -43,6 +43,9 @@ public:
   bool m_want_fullimage;
   LICE_IBitmap *m_fullimage;
 
+  LICE_IBitmap *m_fullimage_rendercached;
+  bool m_fullimage_rendercached_valid;
+
 
   bool m_bw;
   char m_rot; // 90deg steps (0..3)
