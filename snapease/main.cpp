@@ -78,9 +78,27 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
       continue;
     }
 
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+    if (EditImageProcessMessage(&msg)) continue;
 
+    if (IsDialogMessage(g_hwnd,&msg)) continue;
+
+    HWND hWndParent=NULL;
+    HWND temphwnd = msg.hwnd;
+    do
+    { 
+      if (GetClassLong(temphwnd, GCW_ATOM) == (INT)32770) 
+      {
+        hWndParent=temphwnd;
+        if (!(GetWindowLong(temphwnd,GWL_STYLE)&WS_CHILD)) break; // not a child, exit 
+      }
+    }
+    while (temphwnd = GetParent(temphwnd));
+    
+    if (hWndParent && IsDialogMessage(hWndParent,&msg)) continue;
+
+		TranslateMessage(&msg);
+   	DispatchMessage(&msg);
+ 
   }
   g_DecodeThreadQuit = true;
   for(x=0;x<sizeof(hThread)/sizeof(hThread[0]);x++)

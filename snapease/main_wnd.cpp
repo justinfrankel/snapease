@@ -265,6 +265,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_TIMER:
       if (wParam==1)
       {
+        EditImageRunTimer();
         if (g_DecodeDidSomething)
         {
           g_DecodeDidSomething=false;
@@ -400,6 +401,8 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
     return 0;
     case WM_LBUTTONDOWN:
+      EditImageLabelEnd();
+      SetFocus(hwndDlg);
       if (g_vwnd.OnMouseDown(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam)))
       {
         SetCapture(hwndDlg);

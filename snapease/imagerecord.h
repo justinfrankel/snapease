@@ -26,6 +26,7 @@ public:
   void GetCropRectForScreen(int w, int h, RECT *cr); // scales + rotates m_croprect for output to w,h
   bool SetCropRectFromScreen(int w, int h, const RECT *cr); // return true on update
 
+  void SetDefaultTitle();
   ///
 
   WDL_String m_fn;
@@ -57,6 +58,8 @@ public:
   RECT m_last_crop_drawrect; // set by drawing, read by UI code
   int m_crop_capmode; // 1=left,2=top,4=right,8=bottom, only certain combinations will be used, obviously
   POINT m_crop_capmode_lastpos; // offsets from actual pt
+
+  RECT m_lastlbl_rect; // last rect of text label (for editing)
 
   static int sortByFN(const void *a, const void *b)
   {

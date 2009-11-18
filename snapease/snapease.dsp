@@ -876,6 +876,10 @@ SOURCE=.\imagerecord.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\label_edit.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\main.cpp
 # End Source File
 # Begin Source File

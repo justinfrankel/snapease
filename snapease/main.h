@@ -29,6 +29,7 @@ class ImageRecord;
 extern HINSTANCE g_hInst;
 extern WDL_String g_ini_file;
 extern char g_exepath[4096];
+extern HWND g_hwnd;
 
 WDL_DLGRET MainWindowProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -50,6 +51,11 @@ int config_readint(const char *what, int def);
 void config_writestr(const char *what, const char *value);
 void config_writeint(const char *what, int value);
 
+
+bool EditImageProcessMessage(MSG *msg);
+void EditImageRunTimer();
+void EditImageLabel(ImageRecord *rec);
+void EditImageLabelEnd(bool ignoreData=false);
 
 #ifndef WM_MOUSEWHEEL
 #define WM_MOUSEWHEEL 0x20a

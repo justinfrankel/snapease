@@ -22,10 +22,15 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state=0);
 
 ImageRecord::ImageRecord(const char *fn)
 {
+  memset(&m_lastlbl_rect,0,sizeof(m_lastlbl_rect));
+  memset(&m_last_drawrect,0,sizeof(m_last_drawrect));
+  memset(&m_last_crop_drawrect,0,sizeof(m_last_crop_drawrect));
+  memset(&m_crop_capmode_lastpos,0,sizeof(m_crop_capmode_lastpos));
+  memset(&m_croprect,0,sizeof(m_croprect));
+
   m_fullimage_rendercached=0;
   m_fullimage_rendercached_valid=0;
   m_crop_active=false;
-  memset(&m_croprect,0,sizeof(m_croprect));
   m_fullimage=0;
   m_want_fullimage=0;
   m_bw=false;
@@ -34,18 +39,7 @@ ImageRecord::ImageRecord(const char *fn)
   m_preview_image=NULL;
   m_srcimage_w=m_srcimage_h=0;
   m_fn.Set(fn);
-  {
-    const char *p = fn;
-    while (*p) p++;
-    while (p >= fn && *p != '\\' && *p != '/') p--;
-    m_outname.Set(++p);
-  }
-  {
-    char *p = m_outname.Get();
-    while (*p) p++;
-    while (p >= m_outname.Get() && *p != '.') p--;
-    if (p > m_outname.Get()) *p=0;
-  }
+  SetDefaultTitle();
 
   // add our button children
   int x;
@@ -66,13 +60,29 @@ ImageRecord::ImageRecord(const char *fn)
 
 ImageRecord::~ImageRecord()
 {
+  EditImageLabelEnd();
+
   delete m_preview_image;
   delete m_fullimage;
   delete m_fullimage_rendercached;
 }
 
 
-
+void ImageRecord::SetDefaultTitle()
+{
+  {
+    const char *p = m_fn.Get();
+    while (*p) p++;
+    while (p >= m_fn.Get() && *p != '\\' && *p != '/') p--;
+    m_outname.Set(++p);
+  }
+  {
+    char *p = m_outname.Get();
+    while (*p) p++;
+    while (p >= m_outname.Get() && *p != '.') p--;
+    if (p > m_outname.Get()) *p=0;
+  }
+}
 
 
 
@@ -482,6 +492,16 @@ bool ImageRecord::UpdateCursor(int xpos, int ypos)
 int ImageRecord::OnMouseDown(int xpos, int ypos)
 {
   int a = WDL_VWnd::OnMouseDown(xpos,ypos);
+  if (!a)
+  {
+    POINT p ={xpos,ypos};
+    if (PtInRect(&m_lastlbl_rect,p))
+    {
+      EditImageLabel(this);
+      
+      return 1;
+    }
+  }
   if (!a && m_crop_active)
   {
     m_crop_capmode = 0;
@@ -789,7 +809,26 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
   }
 
   g_imagerecord_font.SetCombineMode(LICE_BLIT_MODE_COPY,0.5f);
-  g_imagerecord_font.DrawText(drawbm,m_outname.Get(),-1,&r,DT_BOTTOM|DT_CENTER|DT_SINGLELINE);
+
+  RECT tr={0,};
+  g_imagerecord_font.DrawText(drawbm,m_outname.Get(),-1,&tr,DT_CALCRECT|DT_SINGLELINE);
+
+  if (tr.right-tr.left<8) tr.right=tr.left+8;
+  if (tr.right-tr.left > r.right-r.left) tr.right=r.left + (r.right-r.left);
+  tr.top = r.bottom - (tr.bottom) - 2;
+  tr.bottom = r.bottom - 2;
+  int xp = (r.right+r.left)/2 - (tr.right-tr.left)/2;
+  tr.left += xp;
+  tr.right += xp;
+
+  g_imagerecord_font.DrawText(drawbm,m_outname.Get(),-1,&tr,DT_CENTER|DT_SINGLELINE);
+
+  tr.left-=origin_x + m_position.left;
+  tr.right-=origin_x + m_position.left;
+  tr.top-=origin_y + m_position.top;
+  tr.bottom-=origin_y + m_position.top;
+
+  m_lastlbl_rect = tr;
 
   WDL_VWnd::OnPaint(drawbm,origin_x,origin_y,cliprect);
 }
