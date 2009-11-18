@@ -187,11 +187,22 @@ bool RemoveFullItemView(bool refresh)
 }
 
 
-void SetMainScrollPosition(int pos)
+void SetMainScrollPosition(float pos, int relative=0) // relative=1 for lines, 2 for pages
 {
+  if (relative)
+  {
+    SCROLLINFO si = { sizeof(SCROLLINFO), SIF_POS|SIF_PAGE|SIF_RANGE|SIF_TRACKPOS, 0 };
+    CoolSB_GetScrollInfo(g_hwnd, SB_VERT, &si);
+
+    if (relative == 2) pos *= (int)si.nPage;
+    pos += si.nPos;
+
+    if (pos > si.nMax-(int)si.nPage) pos = si.nMax-(int)si.nPage;
+    if (pos < 0) pos = 0;
+  }
   if (pos != g_vwnd_scrollpos)
   {
-    g_vwnd_scrollpos=pos;
+    g_vwnd_scrollpos=(int)(pos+0.5);
 
     UpdateMainWindowWithSizeChanged();
   }
@@ -486,12 +497,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       if (!g_fullmode_item)
       {
         int l=(short)HIWORD(wParam);
-        SCROLLINFO si = { sizeof(SCROLLINFO), SIF_POS|SIF_PAGE|SIF_RANGE|SIF_TRACKPOS, 0 };
-        CoolSB_GetScrollInfo(hwndDlg, SB_VERT, &si);
-        si.nPos -= (l * (int)si.nPage)/400;
-        if (si.nPos > si.nMax-(int)si.nPage) si.nPos = si.nMax-(int)si.nPage;
-        if (si.nPos < 0) si.nPos = 0;
-        SetMainScrollPosition(si.nPos);
+        SetMainScrollPosition(-l/400.0,2);
       }
       else
       {
@@ -506,7 +512,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         switch (LOWORD(wParam))
         {
           case SB_THUMBTRACK:        
-            si.nPos = si.nTrackPos;//HIWORD(wParam);
+            si.nPos = si.nTrackPos;
           break;
           case SB_LINEUP:
             si.nPos -= 30;
@@ -620,7 +626,47 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 }
 
 
+int MainProcessMessage(MSG *msg)
+{
+  int a = EditImageProcessMessage(msg);
+  if (a) return a;;
 
+  if (msg->hwnd == g_hwnd||IsChild(g_hwnd,msg->hwnd))
+  {
+    if (msg->message == WM_KEYDOWN||msg->message==WM_CHAR)
+    {
+      if (g_fullmode_item)
+      {
+        if (msg->wParam == VK_ESCAPE)
+        {
+          RemoveFullItemView(true);
+          return 1;
+        }
+
+        if (msg->wParam == VK_NEXT || msg->wParam == VK_PRIOR)
+        {
+          int a = g_images.Find(g_fullmode_item);
+          if (a>=0)
+          {
+            a += (msg->wParam == VK_PRIOR) ? -1 : 1;
+            if (g_images.Get(a)) EnsureImageRecVisible(g_images.Get(a));
+          }
+        }
+      }
+      else
+      {
+        if (msg->wParam == VK_NEXT || msg->wParam == VK_PRIOR)
+        {
+          SetMainScrollPosition(msg->wParam == VK_NEXT ? 0.5 : -0.5, 2);
+        }
+      }
+
+    }
+  }
+
+
+  return 0;
+}
 
 
 // an app should implement these
@@ -650,3 +696,4 @@ void *GetIconThemePointer(const char *name)
 extern "C" {
 int GSC_mainwnd(int p) { return GetSysColor(p); }
 };
+

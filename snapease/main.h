@@ -52,6 +52,7 @@ int config_readint(const char *what, int def);
 void config_writestr(const char *what, const char *value);
 void config_writeint(const char *what, int value);
 
+int MainProcessMessage(MSG *msg);
 
 int EditImageProcessMessage(MSG *msg); // >0=eat, <0 =own but default processing
 void EditImageRunTimer();
