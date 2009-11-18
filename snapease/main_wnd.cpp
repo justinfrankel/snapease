@@ -14,12 +14,15 @@
       limit width, height
       other stuff
 
+  clone button
 
     slideshows etc?
     confirm to remove item from set?
 
 
 */
+
+#define VERSTRING "0.01"
 
 #include "main.h"
 
@@ -276,6 +279,12 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_COMMAND:
       switch (LOWORD(wParam))
       {
+        case ID_ABOUT:
+          MessageBox(hwndDlg,"SnapEase v" VERSTRING "\r\n"
+            "Copyright (C) 2009, Cockos Incorporated",
+            "About SnapEase",
+              MB_OK);
+        break;
         case IDCANCEL:
           DestroyWindow(hwndDlg);
         break;
