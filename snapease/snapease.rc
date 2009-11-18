@@ -83,7 +83,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Export images...",           ID_EXPORT
         MENUITEM SEPARATOR
-        MENUITEM "&Quit",                       IDCANCEL
+        MENUITEM "&Quit",                       ID_QUIT
     END
     POPUP "&Help", HELP
     BEGIN

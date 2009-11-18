@@ -80,6 +80,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
 
     if (EditImageProcessMessage(&msg)) continue;
 
+
+    if (msg.hwnd == g_hwnd||IsChild(g_hwnd,msg.hwnd))
+    {
+      if (msg.message == WM_KEYDOWN||msg.message==WM_CHAR)
+      {
+        if (g_fullmode_item && msg.wParam == VK_ESCAPE)
+        {
+          RemoveFullItemView(true);
+          continue;
+        }
+      }
+    }
+
     if (IsDialogMessage(g_hwnd,&msg)) continue;
 
     HWND hWndParent=NULL;

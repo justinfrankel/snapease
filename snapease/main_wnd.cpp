@@ -4,9 +4,8 @@
     load/save set
     browse sets? (tabs for sets along top ?)
     disk-based thumbnail cache? sqlite?
-    rename item labels (tab between them too)
     
-      keys: l/r to navigate items, esc to exit single item viewing
+    keys: l/r to navigate items, esc to exit single item viewing, generic shortcuts too
 
     export set
       disk folder | onlineetc
@@ -14,7 +13,9 @@
       limit width, height
       other stuff
 
-  clone button
+  clone button on item
+
+  tab to nav between renaming items (autoscroll or switch g_fullmode_item, if necessary)
 
     slideshows etc?
     confirm to remove item from set?
@@ -276,6 +277,9 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
       }
     return 0;
+    case WM_CLOSE:
+      DestroyWindow(hwndDlg);
+    break;
     case WM_COMMAND:
       switch (LOWORD(wParam))
       {
@@ -285,7 +289,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             "About SnapEase",
               MB_OK);
         break;
-        case IDCANCEL:
+        case ID_QUIT:
           DestroyWindow(hwndDlg);
         break;
         case ID_IMPORT:
