@@ -54,7 +54,7 @@ static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *w
   return false;
 }
 
-DWORD WINAPI DecodeThreadProc(LPVOID v)
+static DWORD WINAPI DecodeThreadProc(LPVOID v)
 {
   LICE_MemBitmap bm;
   WDL_String curfn;
@@ -149,4 +149,43 @@ DWORD WINAPI DecodeThreadProc(LPVOID v)
   delete bmOut;
 
   return 0;
+}
+
+
+static HANDLE hThread[4]={0,};
+
+void DecodeThread_Init()
+{
+  g_DecodeThreadQuit=false;
+
+
+  int numCPU = 1; // todo: smp option?
+
+  if (numCPU>sizeof(hThread)/sizeof(hThread[0])) numCPU=sizeof(hThread)/sizeof(hThread[0]);
+
+  int x;
+  for(x=0;x<numCPU;x++)
+  {
+    DWORD tid;
+    if (!hThread[x])
+    {
+      hThread[x] = CreateThread(NULL,0,DecodeThreadProc,0,NULL,&tid);
+      SetThreadPriority(hThread[x],THREAD_PRIORITY_BELOW_NORMAL);
+    }
+  } 
+}
+
+void DecodeThread_Quit()
+{
+  int x;
+  g_DecodeThreadQuit = true;
+  for(x=0;x<sizeof(hThread)/sizeof(hThread[0]);x++)
+  {
+    if (hThread[x])
+    {
+      WaitForSingleObject(hThread[x],INFINITE);
+      CloseHandle(hThread[x]);
+      hThread[x]=0;
+    }
+  }
 }

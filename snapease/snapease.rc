@@ -75,15 +75,17 @@ IDR_MENU1 MENU DISCARDABLE
 BEGIN
     POPUP "&File"
     BEGIN
-        MENUITEM "&Add images...",              ID_IMPORT
+        MENUITEM "Add &images...\tA, Insert",   ID_IMPORT
         MENUITEM SEPARATOR
-        MENUITEM "&New image list",             ID_REMOVE_ALL
-        MENUITEM "&Open image list...",         ID_LOAD
-        MENUITEM "&Save image list...",         ID_SAVE
+        MENUITEM "&New image list\tCtrl+N",     ID_NEWLIST
+        MENUITEM "&Open image list...\tCtrl+O", ID_LOAD
+        MENUITEM "Add image &list...\tCtrl+Shift+O", ID_LOAD_ADD
+        MENUITEM "&Save image list\tCtrl+S",    ID_SAVE
+        MENUITEM "Save image list &as...\tCtrl+Shift+S", ID_SAVEAS
         MENUITEM SEPARATOR
-        MENUITEM "&Export images...",           ID_EXPORT
+        MENUITEM "&Export images...\tCtrl+E",   ID_EXPORT
         MENUITEM SEPARATOR
-        MENUITEM "&Quit",                       ID_QUIT
+        MENUITEM "&Quit\tCtrl+Q",               ID_QUIT
     END
     POPUP "&Help", HELP
     BEGIN

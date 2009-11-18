@@ -5,8 +5,10 @@
 #endif
 
 WDL_String g_ini_file;
+WDL_String g_list_path;
 char g_exepath[4096];
 HINSTANCE g_hInst;
+
 UINT Scroll_Message;
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdParam, int nShowCmd)
@@ -35,8 +37,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
     {
       g_ini_file.Set(buf);
       g_ini_file.Append("\\snapease");
+      g_list_path.Set(g_ini_file.Get());
+
       CreateDirectory(g_ini_file.Get(),NULL);
       g_ini_file.Append("\\snapease.ini");
+      
+      g_list_path.Append("\\lists");
+      CreateDirectory(g_list_path.Get(),NULL);
+
     }
     RegCloseKey(k);
   }
@@ -45,21 +53,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
 
   CreateDialog(g_hInst,MAKEINTRESOURCE(IDD_MAIN),GetDesktopWindow(),MainWindowProc);
 
-  g_DecodeThreadQuit=false;
-
-
-  int numCPU = 1; // todo: smp option?
-
-  HANDLE hThread[4]={0,};
-  if (numCPU>sizeof(hThread)/sizeof(hThread[0])) numCPU=sizeof(hThread)/sizeof(hThread[0]);
-
-  int x;
-  for(x=0;x<numCPU;x++)
-  {
-    DWORD tid;
-    hThread[x] = CreateThread(NULL,0,DecodeThreadProc,0,NULL,&tid);
-    SetThreadPriority(hThread[x],THREAD_PRIORITY_BELOW_NORMAL);
-  }
+  DecodeThread_Init();
 
   for(;;)
 	{	      
@@ -101,16 +95,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
    	DispatchMessage(&msg);
  
   }
-  g_DecodeThreadQuit = true;
-  for(x=0;x<sizeof(hThread)/sizeof(hThread[0]);x++)
-  {
-    if (hThread[x])
-    {
-      WaitForSingleObject(hThread[x],INFINITE);
-      CloseHandle(hThread[x]);
-      hThread[x]=0;
-    }
-  }
+  DecodeThread_Quit();
   return 0;
 }
 

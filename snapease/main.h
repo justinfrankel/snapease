@@ -28,13 +28,18 @@ class ImageRecord;
 
 extern HINSTANCE g_hInst;
 extern WDL_String g_ini_file;
+extern WDL_String g_list_path;
 extern char g_exepath[4096];
 extern HWND g_hwnd;
 
+
+
 WDL_DLGRET MainWindowProc(HWND, UINT, WPARAM, LPARAM);
 
-extern bool g_DecodeThreadQuit, g_DecodeDidSomething;
-DWORD WINAPI DecodeThreadProc(LPVOID v);
+
+extern bool g_DecodeDidSomething;
+void DecodeThread_Init();
+void DecodeThread_Quit();
 
 void UpdateMainWindowWithSizeChanged();
 bool RemoveFullItemView(bool refresh=true); // if in full view, removes full view (and returns true)
@@ -58,6 +63,17 @@ int EditImageProcessMessage(MSG *msg); // >0=eat, <0 =own but default processing
 void EditImageRunTimer();
 void EditImageLabel(ImageRecord *rec);
 void EditImageLabelEnd(bool ignoreData=false);
+
+void SetImageListIsDirty(bool isDirty=true);
+void UpdateCaption();
+
+extern bool g_imagelist_fn_dirty; // need save
+extern WDL_String g_imagelist_fn;
+
+void LoadImageList(bool addToCurrent);
+bool SaveImageList(bool forceSaveAs);
+bool SavePromptForClose(const char *promptmsg);
+void ClearImageList();
 
 #ifndef WM_MOUSEWHEEL
 #define WM_MOUSEWHEEL 0x20a

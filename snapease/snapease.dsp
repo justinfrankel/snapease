@@ -849,6 +849,14 @@ SOURCE=..\WDL\wingui\wndsize.cpp
 SOURCE=..\WDL\wingui\wndsize.h
 # End Source File
 # End Group
+# Begin Source File
+
+SOURCE=..\WDL\projectcontext.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\WDL\projectcontext.h
+# End Source File
 # End Group
 # Begin Group "coolsb"
 
@@ -880,11 +888,23 @@ SOURCE=.\label_edit.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\loadsave.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\main.cpp
 # End Source File
 # Begin Source File
 
 SOURCE=.\main_wnd.cpp
+# End Source File
+# End Group
+# Begin Group "Resource Files"
+
+# PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
+# Begin Source File
+
+SOURCE=.\snapease.rc
 # End Source File
 # End Group
 # Begin Group "Header Files"
@@ -897,14 +917,6 @@ SOURCE=.\imagerecord.h
 # Begin Source File
 
 SOURCE=.\main.h
-# End Source File
-# End Group
-# Begin Group "Resource Files"
-
-# PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
-# Begin Source File
-
-SOURCE=.\snapease.rc
 # End Source File
 # End Group
 # End Target

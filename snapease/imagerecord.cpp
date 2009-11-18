@@ -245,6 +245,7 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
         m_fullimage_rendercached_valid=false;
         ((WDL_VirtualIconButton *)src)->SetIcon(GetButtonIcon(src->GetID(),!!m_crop_active));
         RequestRedraw(NULL);
+        SetImageListIsDirty();
       break;
 
       case BUTTONID_BW:
@@ -252,6 +253,7 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
         m_fullimage_rendercached_valid=false;
         ((WDL_VirtualIconButton *)src)->SetIcon(GetButtonIcon(src->GetID(),!!m_bw));
         RequestRedraw(NULL);
+        SetImageListIsDirty();
       break;
 
       case BUTTONID_ROTCCW:
@@ -262,6 +264,7 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
 
         RequestRedraw(NULL);
 
+        SetImageListIsDirty();
       break;
       case BUTTONID_CLOSE:
         {
@@ -277,6 +280,8 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
               par->RemoveChild(this,true);
               // do nothing after this, "this" not valid anymore!
               UpdateMainWindowWithSizeChanged();
+
+              SetImageListIsDirty();
             }
           }
         }
@@ -569,7 +574,10 @@ void ImageRecord::OnMouseMove(int xpos, int ypos)
           if (m_crop_capmode&8) r.bottom = ypos - m_crop_capmode_lastpos.y - m_last_drawrect.top;
         }
         if (SetCropRectFromScreen(m_last_drawrect.right-m_last_drawrect.left,m_last_drawrect.bottom-m_last_drawrect.top,&r))
+        {
           RequestRedraw(NULL);
+          SetImageListIsDirty();
+        }
       }
     return;
   }

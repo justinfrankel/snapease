@@ -42,6 +42,19 @@ HWND g_hwnd;
 WDL_VWnd_Painter g_hwnd_painter;
 WDL_VWnd g_vwnd; // owns all children windows
 
+void ClearImageList()
+{
+  int x;
+  WDL_PtrList<ImageRecord> r = g_images;
+  g_images_mutex.Enter();
+  g_images.Empty(); // does not free -- g_vwnd owns all images!
+  g_images_mutex.Leave();
+
+  for(x=0;x<r.GetSize();x++)
+    g_vwnd.RemoveChild(r.Get(x),true);
+}
+
+
 ImageRecord *g_fullmode_item;
 
 int g_vwnd_scrollpos;
@@ -168,6 +181,7 @@ bool RemoveFullItemView(bool refresh)
   if (g_fullmode_item)
   {
     g_images_mutex.Enter();
+    ImageRecord *r = g_fullmode_item;
     if (g_images.Find(g_fullmode_item)>=0)
     {
       LICE_IBitmap *old = g_fullmode_item->m_fullimage;
@@ -180,7 +194,11 @@ bool RemoveFullItemView(bool refresh)
     }
     g_fullmode_item=0;
     g_images_mutex.Leave();
-    if (refresh) UpdateMainWindowWithSizeChanged();
+    if (refresh) 
+    {
+      UpdateMainWindowWithSizeChanged();
+      if (g_images.Find(r)>=0) EnsureImageRecVisible(r);
+    }
     return true;
   }
   return false;
@@ -241,6 +259,8 @@ void AddImage(const char *fn)
   g_images.Add(w);
   g_images_mutex.Leave();
  
+  SetImageListIsDirty(true);
+  if (g_fullmode_item) EnsureImageRecVisible(w);
 }
 
 
@@ -327,8 +347,28 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
     return 0;
     case WM_CLOSE:
+      SendMessage(hwndDlg,WM_COMMAND,ID_QUIT,0);
+    break;
+    case WM_INITMENUPOPUP:
+      {
+        HMENU hm=(HMENU)wParam;
+        EnableMenuItem(hm,ID_SAVE,MF_BYCOMMAND|(g_imagelist_fn.Get()[0]? MF_ENABLED:MF_GRAYED));
+        EnableMenuItem(hm,ID_EXPORT,MF_BYCOMMAND|(g_images.GetSize()? MF_ENABLED:MF_GRAYED));
+      }
+    break;
+#ifdef _WIN32
+    case WM_ENDSESSION:
       DestroyWindow(hwndDlg);
     break;
+    case WM_QUERYENDSESSION:
+
+      if (SavePromptForClose("Save image list before shutting down?"))
+        SetWindowLongPtr(hwndDlg,DWLP_MSGRESULT,TRUE);
+      else 
+        SetWindowLongPtr(hwndDlg,DWLP_MSGRESULT,0);
+
+    return TRUE;
+#endif
     case WM_COMMAND:
       switch (LOWORD(wParam))
       {
@@ -338,8 +378,37 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             "About SnapEase",
               MB_OK);
         break;
+        case ID_LOAD_ADD:
+        case ID_LOAD:
+          if (LOWORD(wParam) == ID_LOAD_ADD || SavePromptForClose("Save image list before loading?"))
+          {
+            LoadImageList(LOWORD(wParam) == ID_LOAD_ADD);
+          }
+        break;
+          
+        case ID_SAVE:
+          SaveImageList(false);
+        break;
+        case ID_SAVEAS:
+          SaveImageList(true);
+        break;
         case ID_QUIT:
-          DestroyWindow(hwndDlg);
+          if (SavePromptForClose("Save image list before exit?"))
+          {
+            DestroyWindow(hwndDlg);
+          }
+        break;
+        case ID_NEWLIST:
+          if (SavePromptForClose("Save image list before creating new list?"))
+          {
+            ClearImageList();
+            g_imagelist_fn.Set("");
+            g_imagelist_fn_dirty=false;
+
+            UpdateMainWindowWithSizeChanged();
+
+            UpdateCaption();
+          }
         break;
         case ID_IMPORT:
 
@@ -359,13 +428,13 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             l.lpstrFilter = (char*)extlist;
             l.lpstrFile = temp;
             l.nMaxFile = temp_size-1;
-            l.lpstrTitle = "Load images:";
+            l.lpstrTitle = "Add images:";
             l.lpstrDefExt = "jpg";
             l.lpstrInitialDir = cwd;
             l.Flags = OFN_HIDEREADONLY|OFN_EXPLORER|OFN_FILEMUSTEXIST|OFN_ALLOWMULTISELECT|OFN_NOCHANGEDIR;
             if (GetOpenFileName(&l))          
           #else
-            char *temp=BrowseForFiles("Load image resource:", dir, fn, false, extlist);
+            char *temp=BrowseForFiles("Add images:", dir, fn, false, extlist);
             if (temp)
           #endif     
             {
@@ -381,7 +450,11 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
               config_writestr("cwd",path.Get());
               lstrcpyn(cwd,path.Get(),sizeof(cwd));
 
-              if (!temp[strlen(temp)+1]) AddImage(temp);
+              if (!temp[strlen(temp)+1])
+              {
+                AddImage(temp);
+                UpdateMainWindowWithSizeChanged();
+              }
               else
               {
                 char *p = temp+strlen(temp)+1;
@@ -409,11 +482,11 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 }
                 g_images_mutex.Leave();
   
+                if (g_fullmode_item && newimages.Get(0)) EnsureImageRecVisible(newimages.Get(0));
+                else if (newimages.GetSize()) UpdateMainWindowWithSizeChanged();
               }
-
               free(temp);
 
-              UpdateMainWindowWithSizeChanged();
             }
         
           }
@@ -615,8 +688,13 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           g_images.Add(w);
         }
         g_images_mutex.Leave();
-        if (newimages.GetSize())
-          UpdateMainWindowWithSizeChanged();
+
+        if (g_fullmode_item && newimages.Get(0)) EnsureImageRecVisible(newimages.Get(0));
+        else
+        {
+          if (newimages.GetSize())
+            UpdateMainWindowWithSizeChanged();
+        }
       }
 
     return 0;
@@ -635,6 +713,38 @@ int MainProcessMessage(MSG *msg)
   {
     if (msg->message == WM_KEYDOWN||msg->message==WM_CHAR)
     {
+      // todo: kbd table etc? :)
+      if (msg->wParam == 'A' || (msg->wParam == VK_INSERT && msg->message == WM_KEYDOWN))
+      {
+        if (!(GetAsyncKeyState(VK_CONTROL)&0x8000) && 
+            !(GetAsyncKeyState(VK_MENU)&0x8000) &&
+            !(GetAsyncKeyState(VK_SHIFT)&0x8000))
+        {
+          SendMessage(g_hwnd,WM_COMMAND,ID_IMPORT,0);
+          return 1;
+        }
+      }
+      else if (msg->wParam == 'Q')
+      {
+        if ((GetAsyncKeyState(VK_CONTROL)&0x8000) && 
+            !(GetAsyncKeyState(VK_MENU)&0x8000) &&
+            !(GetAsyncKeyState(VK_SHIFT)&0x8000))
+        {
+          SendMessage(g_hwnd,WM_COMMAND,ID_QUIT,0);
+          return 1;
+        }
+      }
+      else if (msg->wParam == 'N')
+      {
+        if ((GetAsyncKeyState(VK_CONTROL)&0x8000) && 
+            !(GetAsyncKeyState(VK_MENU)&0x8000) &&
+            !(GetAsyncKeyState(VK_SHIFT)&0x8000))
+        {
+          SendMessage(g_hwnd,WM_COMMAND,ID_NEWLIST,0);
+          return 1;
+        }
+      }
+
       if (g_fullmode_item)
       {
         if (msg->wParam == VK_ESCAPE)
