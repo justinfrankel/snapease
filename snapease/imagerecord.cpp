@@ -656,8 +656,8 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     int yoffs = (desth-h)/2 + r.top + 2;
     int xoffs = (destw-w)/2 + r.left + 2;
 
-    m_last_drawrect.left=xoffs - r.top;
-    m_last_drawrect.top = yoffs - r.left;
+    m_last_drawrect.left=xoffs - r.left;
+    m_last_drawrect.top = yoffs - r.top;
     m_last_drawrect.right = m_last_drawrect.left + w;
     m_last_drawrect.bottom = m_last_drawrect.top + h;
 

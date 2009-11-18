@@ -4,9 +4,10 @@
     load/save set
     browse sets? (tabs for sets along top ?)
     disk-based thumbnail cache? sqlite?
-    adjust crop per item
-    click to view item?
     rename item labels (tab between them too)
+    
+      keys: l/r to navigate items, esc to exit single item viewing
+
     export set
       disk folder | onlineetc
       format (png,jpeg) (button to estimate size?)
