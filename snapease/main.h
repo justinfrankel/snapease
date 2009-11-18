@@ -39,6 +39,7 @@ DWORD WINAPI DecodeThreadProc(LPVOID v);
 void UpdateMainWindowWithSizeChanged();
 bool RemoveFullItemView(bool refresh=true); // if in full view, removes full view (and returns true)
 void OpenFullItemView(ImageRecord *w);
+void EnsureImageRecVisible(ImageRecord *rec);
 
 #include "imagerecord.h"
 
@@ -52,7 +53,7 @@ void config_writestr(const char *what, const char *value);
 void config_writeint(const char *what, int value);
 
 
-bool EditImageProcessMessage(MSG *msg);
+int EditImageProcessMessage(MSG *msg); // >0=eat, <0 =own but default processing
 void EditImageRunTimer();
 void EditImageLabel(ImageRecord *rec);
 void EditImageLabelEnd(bool ignoreData=false);

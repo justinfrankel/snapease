@@ -3,7 +3,7 @@
 static HWND s_wnd;
 static ImageRecord *s_rec;
 
-bool EditImageProcessMessage(MSG *msg)
+int EditImageProcessMessage(MSG *msg)
 {
   if (s_wnd && (msg->hwnd == s_wnd || IsChild(s_wnd,msg->hwnd)))
   {
@@ -12,11 +12,24 @@ bool EditImageProcessMessage(MSG *msg)
       if (msg->wParam == VK_RETURN||msg->wParam==VK_ESCAPE)
       {
         EditImageLabelEnd(msg->wParam==VK_ESCAPE);
-        return true;
+        return 1;
+      }
+      else if (msg->wParam == VK_TAB)
+      {
+        int a = g_images.Find(s_rec);
+        if (a>=0)
+        {
+          a += (GetAsyncKeyState(VK_SHIFT)&0x8000) ? -1 : 1;
+
+          if (g_images.Get(a)) EditImageLabel(g_images.Get(a));
+        }
+
+        return 1;
       }
     }
+    return -1;
   }
-  return false;
+  return 0;
 }
 
 void EditImageRunTimer()
@@ -32,6 +45,13 @@ void EditImageRunTimer()
 void EditImageLabel(ImageRecord *rec)
 {
   EditImageLabelEnd();
+
+  if (!rec) return;
+
+  EnsureImageRecVisible(rec);
+
+  UpdateWindow(g_hwnd); // make sure our rect is valid
+
   s_rec=rec;
 
   RECT r;

@@ -78,17 +78,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
       continue;
     }
 
-    if (EditImageProcessMessage(&msg)) continue;
+    vvv = EditImageProcessMessage(&msg);
+    if (vvv>0) continue;
 
-
-    if (msg.hwnd == g_hwnd||IsChild(g_hwnd,msg.hwnd))
+    if (!vvv)
     {
-      if (msg.message == WM_KEYDOWN||msg.message==WM_CHAR)
+      if (msg.hwnd == g_hwnd||IsChild(g_hwnd,msg.hwnd))
       {
-        if (g_fullmode_item && msg.wParam == VK_ESCAPE)
+        if (msg.message == WM_KEYDOWN||msg.message==WM_CHAR)
         {
-          RemoveFullItemView(true);
-          continue;
+          if (g_fullmode_item && msg.wParam == VK_ESCAPE)
+          {
+            RemoveFullItemView(true);
+            continue;
+          }
         }
       }
     }

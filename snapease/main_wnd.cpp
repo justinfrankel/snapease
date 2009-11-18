@@ -117,6 +117,8 @@ int OrganizeWindow(HWND hwndDlg)
 
 void UpdateMainWindowWithSizeChanged()
 {
+  EditImageLabelEnd();
+
   HWND hwndDlg=g_hwnd;
   RECT r;
   GetClientRect(hwndDlg,&r);
@@ -185,6 +187,41 @@ bool RemoveFullItemView(bool refresh)
 }
 
 
+void SetMainScrollPosition(int pos)
+{
+  if (pos != g_vwnd_scrollpos)
+  {
+    g_vwnd_scrollpos=pos;
+
+    UpdateMainWindowWithSizeChanged();
+  }
+}
+
+void EnsureImageRecVisible(ImageRecord *rec)
+{
+  if (g_fullmode_item) 
+  {
+    if (rec!=g_fullmode_item)
+      OpenFullItemView(rec);
+  }
+  else
+  {
+    RECT cr,r;
+    GetClientRect(g_hwnd,&r);
+    rec->GetPosition(&cr);
+
+    int pos = g_vwnd_scrollpos;
+    if (cr.bottom > r.bottom) pos += cr.bottom-r.bottom;
+    else if (cr.top < r.top) pos -= r.top-cr.top;
+
+    if (pos<0)pos=0;
+    SetMainScrollPosition(pos);
+    
+    // do any necessary scrolling
+  }
+}
+
+
 void AddImage(const char *fn)
 {
   ImageRecord *w = new ImageRecord(fn);
@@ -194,6 +231,7 @@ void AddImage(const char *fn)
   g_images_mutex.Leave();
  
 }
+
 
 
 WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -450,16 +488,10 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         int l=(short)HIWORD(wParam);
         SCROLLINFO si = { sizeof(SCROLLINFO), SIF_POS|SIF_PAGE|SIF_RANGE|SIF_TRACKPOS, 0 };
         CoolSB_GetScrollInfo(hwndDlg, SB_VERT, &si);
-        int opos = si.nPos;
         si.nPos -= (l * (int)si.nPage)/400;
         if (si.nPos > si.nMax-(int)si.nPage) si.nPos = si.nMax-(int)si.nPage;
         if (si.nPos < 0) si.nPos = 0;
-        if (si.nPos != opos)
-        {
-          g_vwnd_scrollpos=si.nPos;
-
-          UpdateMainWindowWithSizeChanged();
-        }
+        SetMainScrollPosition(si.nPos);
       }
       else
       {
@@ -471,7 +503,6 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       {
         SCROLLINFO si = { sizeof(SCROLLINFO), SIF_POS|SIF_PAGE|SIF_RANGE|SIF_TRACKPOS, 0 };
         CoolSB_GetScrollInfo(hwndDlg, SB_VERT, &si);
-        int opos = si.nPos;
         switch (LOWORD(wParam))
         {
           case SB_THUMBTRACK:        
@@ -498,12 +529,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         if (si.nPos > si.nMax-(int)si.nPage) si.nPos = si.nMax-(int)si.nPage;
         if (si.nPos < 0) si.nPos = 0;
-        if (si.nPos != opos)
-        {
-          g_vwnd_scrollpos=si.nPos;
-
-          UpdateMainWindowWithSizeChanged();
-        }
+        SetMainScrollPosition(si.nPos);
       }
     return 0;
     case WM_DROPFILES:
