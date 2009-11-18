@@ -42,6 +42,8 @@ HWND g_hwnd;
 WDL_VWnd_Painter g_hwnd_painter;
 WDL_VWnd g_vwnd; // owns all children windows
 
+int g_firstvisible_startitem;
+
 void ClearImageList()
 {
   int x;
@@ -79,6 +81,7 @@ int OrganizeWindow(HWND hwndDlg)
   int xpos=border_size_x/2, ypos=border_size_y/2;
   int x;
   bool hadFullItem=false;
+  bool hadVis=false;
   for (x = 0; x < g_images.GetSize(); x ++)
   {
     ImageRecord *rec = g_images.Get(x);
@@ -96,6 +99,8 @@ int OrganizeWindow(HWND hwndDlg)
           hadFullItem=true;
           RECT rr={12,12,r.right-12,r.bottom-12};
           rec->SetPosition(&rr);
+
+          g_firstvisible_startitem = max(0,x-5); 
         }
         else
         {
@@ -106,6 +111,11 @@ int OrganizeWindow(HWND hwndDlg)
           }   
 
           RECT rr = {xpos,ypos - g_vwnd_scrollpos,xpos+preview_w,ypos+preview_h - g_vwnd_scrollpos};
+          if (!hadVis && rr.bottom >=0 )
+          {
+            hadVis=true;
+            g_firstvisible_startitem=x;
+          }
           rec->SetPosition(&rr);
         }
       }
@@ -250,14 +260,19 @@ void EnsureImageRecVisible(ImageRecord *rec)
   }
 }
 
+void AddImageRec(ImageRecord *rec)
+{
+  g_vwnd.AddChild(rec);
+  g_images_mutex.Enter();
+  g_images.Add(rec);
+  g_images_mutex.Leave();
+}
 
 void AddImage(const char *fn)
 {
   ImageRecord *w = new ImageRecord(fn);
-  g_vwnd.AddChild(w);
-  g_images_mutex.Enter();
-  g_images.Add(w);
-  g_images_mutex.Leave();
+
+  AddImageRec(w);
  
   SetImageListIsDirty(true);
   if (g_fullmode_item) EnsureImageRecVisible(w);
@@ -626,7 +641,15 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           DragQueryFile(hDrop,x,buf,sizeof(buf));
           if (buf[0])
           {
-            if (!LICE_ImageIsSupported(buf))
+            const char *listext = ".snapeaselist";
+            if (strlen(buf)>strlen(listext) &&
+                !stricmp(buf+strlen(buf)-strlen(listext),listext))
+            {
+              bool addTo = n!=1 || (GetAsyncKeyState(VK_CONTROL)&0x8000);
+              if (addTo ||SavePromptForClose("Save current project before loading new image list?"))
+                importImageListFromFile(buf,addTo);
+            }
+            else if (!LICE_ImageIsSupported(buf))
             {
               WDL_String tmp;
               WDL_DirScan ds;
@@ -741,6 +764,24 @@ int MainProcessMessage(MSG *msg)
             !(GetAsyncKeyState(VK_SHIFT)&0x8000))
         {
           SendMessage(g_hwnd,WM_COMMAND,ID_NEWLIST,0);
+          return 1;
+        }
+      }
+      else if (msg->wParam == 'O')
+      {
+        if ((GetAsyncKeyState(VK_CONTROL)&0x8000) && 
+            !(GetAsyncKeyState(VK_MENU)&0x8000))
+        {
+          SendMessage(g_hwnd,WM_COMMAND,(GetAsyncKeyState(VK_SHIFT)&0x8000) ? ID_LOAD_ADD : ID_LOAD,0);
+          return 1;
+        }
+      }
+      else if (msg->wParam == 'S')
+      {
+        if ((GetAsyncKeyState(VK_CONTROL)&0x8000) && 
+            !(GetAsyncKeyState(VK_MENU)&0x8000))
+        {
+          SendMessage(g_hwnd,WM_COMMAND,(GetAsyncKeyState(VK_SHIFT)&0x8000) ? ID_SAVEAS : ID_SAVE,0);
           return 1;
         }
       }

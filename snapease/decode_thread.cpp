@@ -60,11 +60,18 @@ static DWORD WINAPI DecodeThreadProc(LPVOID v)
   WDL_String curfn;
   LICE_IBitmap *bmOut=NULL;
 
-  int scanpos=0;
+  int last_visstart=g_firstvisible_startitem;
+  int scanpos=g_firstvisible_startitem;
   while (!g_DecodeThreadQuit)
   {
     int sleepAmt=1;
     g_images_mutex.Enter();
+
+    if (last_visstart != g_firstvisible_startitem)
+    {
+      last_visstart=g_firstvisible_startitem;
+      scanpos=0;
+    }
 
     if (g_fullmode_item && g_images.Find(g_fullmode_item)>=0) // prioritize any full image loads
     {
@@ -93,13 +100,34 @@ static DWORD WINAPI DecodeThreadProc(LPVOID v)
       }
     }
 
-    ImageRecord *rec = g_images.Get(scanpos++);
-    if (!rec) 
+    if (scanpos>=g_images.GetSize())
     {
       scanpos=0;
-      sleepAmt = 30;
+      sleepAmt=30;
     }
-    else
+
+
+    int center = last_visstart;
+    if (center<0) center=0;
+    else if (center>g_images.GetSize()) center=g_images.GetSize();
+
+    if (1)
+    {
+      if ((scanpos&3)==3) // every 4th, go backwards
+        center -= (scanpos+1)/4;
+      else
+        center += scanpos - (scanpos+1)/4;
+    }
+    else center+=scanpos;
+    
+    if (center<0) center+=g_images.GetSize();
+    if (center >= g_images.GetSize()) center-=g_images.GetSize();
+
+    scanpos++;
+
+    ImageRecord *rec = g_images.Get(center);
+
+    if (rec) 
     {
       if (rec->m_state == IR_STATE_NEEDLOAD)
       {

@@ -801,10 +801,10 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     switch (m_state)
     {
       case IR_STATE_NEEDLOAD:
-        str="loading soon";
+        str="loading";
       break;
       case IR_STATE_DECODING:
-        str="decoding now";
+        str="decoding";
       break;
     }
 

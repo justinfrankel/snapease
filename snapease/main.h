@@ -46,11 +46,17 @@ bool RemoveFullItemView(bool refresh=true); // if in full view, removes full vie
 void OpenFullItemView(ImageRecord *w);
 void EnsureImageRecVisible(ImageRecord *rec);
 
+bool saveImageListToFile(const char *fn);
+bool importImageListFromFile(const char *fn, bool addToCurrent);
+
+
 #include "imagerecord.h"
 
 extern WDL_PtrList<ImageRecord> g_images;
 extern WDL_Mutex g_images_mutex;
 extern ImageRecord *g_fullmode_item;
+
+extern int g_firstvisible_startitem;
 
 void config_readstr(const char *what, char *out, int outsz);
 int config_readint(const char *what, int def);
@@ -66,6 +72,8 @@ void EditImageLabelEnd(bool ignoreData=false);
 
 void SetImageListIsDirty(bool isDirty=true);
 void UpdateCaption();
+
+void AddImageRec(ImageRecord *rec);
 
 extern bool g_imagelist_fn_dirty; // need save
 extern WDL_String g_imagelist_fn;

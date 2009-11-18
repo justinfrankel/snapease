@@ -37,16 +37,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
     {
       g_ini_file.Set(buf);
       g_ini_file.Append("\\snapease");
-      g_list_path.Set(g_ini_file.Get());
 
       CreateDirectory(g_ini_file.Get(),NULL);
       g_ini_file.Append("\\snapease.ini");
       
-      g_list_path.Append("\\lists");
-      CreateDirectory(g_list_path.Get(),NULL);
 
     }
     RegCloseKey(k);
+  }
+
+  {
+    g_list_path.Set(g_ini_file.Get());
+    char *p=g_list_path.Get();
+    while (*p) p++;
+    while (p > g_list_path.Get() && *p != '\\' && *p != '/') p--;
+    *p=0;
+
+    g_list_path.Append("\\lists");
+    CreateDirectory(g_list_path.Get(),NULL);
   }
 
       
