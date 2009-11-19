@@ -425,6 +425,9 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             UpdateCaption();
           }
         break;
+        case ID_EXPORT:
+          DoExportDialog(hwndDlg);
+        break;
         case ID_IMPORT:
 
           {
@@ -767,7 +770,16 @@ int MainProcessMessage(MSG *msg)
           return 1;
         }
       }
-      else if (msg->wParam == 'O')
+      else if (msg->wParam == 'E')
+      {
+        if ((GetAsyncKeyState(VK_CONTROL)&0x8000) && 
+            !(GetAsyncKeyState(VK_MENU)&0x8000) &&
+            !(GetAsyncKeyState(VK_SHIFT)&0x8000))
+        {
+          SendMessage(g_hwnd,WM_COMMAND,ID_EXPORT,0);
+          return 1;
+        }
+      }      else if (msg->wParam == 'O')
       {
         if ((GetAsyncKeyState(VK_CONTROL)&0x8000) && 
             !(GetAsyncKeyState(VK_MENU)&0x8000))

@@ -880,6 +880,10 @@ SOURCE=.\decode_thread.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\export.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\imagerecord.cpp
 # End Source File
 # Begin Source File

@@ -49,6 +49,7 @@ void EnsureImageRecVisible(ImageRecord *rec);
 bool saveImageListToFile(const char *fn);
 bool importImageListFromFile(const char *fn, bool addToCurrent);
 
+void DoExportDialog(HWND hwndDlg);
 
 #include "imagerecord.h"
 
