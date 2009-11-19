@@ -22,6 +22,7 @@ public:
   //////
 
 
+  void SetIsFullscreen(bool isFS);
 
   void GetCropRectForScreen(int w, int h, RECT *cr); // scales + rotates m_croprect for output to w,h
   bool SetCropRectFromScreen(int w, int h, const RECT *cr); // return true on update
@@ -47,6 +48,7 @@ public:
   LICE_IBitmap *m_fullimage_rendercached;
   bool m_fullimage_rendercached_valid;
 
+  bool m_is_fs;
 
   bool m_bw;
   char m_rot; // 90deg steps (0..3)

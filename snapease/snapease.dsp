@@ -908,6 +908,46 @@ SOURCE=.\main_wnd.cpp
 # PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
 # Begin Source File
 
+SOURCE=.\images\bw_off.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\images\bw_on.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\images\crop_off.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\images\crop_on.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\images\full_off.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\images\full_on.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\images\remove.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\images\rot_left.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\images\rot_right.png
+# End Source File
+# Begin Source File
+
+SOURCE=.\images\snapease.ico
+# End Source File
+# Begin Source File
+
 SOURCE=.\snapease.rc
 # End Source File
 # End Group

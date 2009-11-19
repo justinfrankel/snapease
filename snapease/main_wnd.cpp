@@ -97,6 +97,8 @@ int OrganizeWindow(HWND hwndDlg)
         if (g_fullmode_item)
         {
           hadFullItem=true;
+          rec->SetIsFullscreen(true);
+
           RECT rr={12,12,r.right-12,r.bottom-12};
           rec->SetPosition(&rr);
 
@@ -104,6 +106,8 @@ int OrganizeWindow(HWND hwndDlg)
         }
         else
         {
+          rec->SetIsFullscreen(false);
+
           if (xpos + preview_w > r.right)
           {
             xpos=border_size_x/2;
@@ -292,7 +296,10 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   switch (uMsg)
   {
     case WM_INITDIALOG:
-
+#ifdef _WIN32
+      SetClassLongPtr(hwndDlg,GCLP_HICON,(INT_PTR)LoadImage(g_hInst,MAKEINTRESOURCE(IDI_ICON1),IMAGE_ICON,32,32,LR_SHARED));
+      SetClassLongPtr(hwndDlg,GCLP_HICONSM,(INT_PTR)LoadImage(g_hInst,MAKEINTRESOURCE(IDI_ICON1),IMAGE_ICON,16,16,LR_SHARED));
+#endif
       g_vwnd_scrollpos=0;
 #ifndef _WIN32 // need to fix some coolsb top level window bugs
       InitializeCoolSB(hwndDlg);

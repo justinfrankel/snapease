@@ -6,11 +6,15 @@
 
 #include "imagerecord.h"
 
+
+#include "resource.h"
+
 enum
 {
 
   BUTTONID_BASE=1000,
-  BUTTONID_CLOSE=BUTTONID_BASE,
+  BUTTONID_REMOVE=BUTTONID_BASE,
+  BUTTONID_FULLSCREEN,
   BUTTONID_ROTCW,
   BUTTONID_ROTCCW,
   BUTTONID_CROP,
@@ -28,6 +32,7 @@ ImageRecord::ImageRecord(const char *fn)
   memset(&m_crop_capmode_lastpos,0,sizeof(m_crop_capmode_lastpos));
   memset(&m_croprect,0,sizeof(m_croprect));
 
+  m_is_fs=false;
   m_fullimage_rendercached=0;
   m_fullimage_rendercached_valid=0;
   m_crop_active=false;
@@ -52,11 +57,13 @@ ImageRecord::ImageRecord(const char *fn)
     {
       case BUTTONID_BW: st = m_bw; break;
       case BUTTONID_CROP: st = m_crop_active; break;
+      case BUTTONID_FULLSCREEN: st = m_is_fs; break;
     }
     b->SetIcon(GetButtonIcon(x,st));
     AddChild(b);
   }
 }
+
 
 ImageRecord::~ImageRecord()
 {
@@ -65,6 +72,19 @@ ImageRecord::~ImageRecord()
   delete m_preview_image;
   delete m_fullimage;
   delete m_fullimage_rendercached;
+}
+
+void ImageRecord::SetIsFullscreen(bool isFS)
+{
+  if (isFS != m_is_fs)
+  {
+    m_is_fs = isFS;
+    WDL_VirtualIconButton *c = (WDL_VirtualIconButton *)GetChildByID(BUTTONID_FULLSCREEN);
+    if (c) c->SetIcon(GetButtonIcon(BUTTONID_FULLSCREEN,!!m_is_fs));
+
+    c = (WDL_VirtualIconButton *)GetChildByID(BUTTONID_REMOVE);
+    if (c) c->SetVisible(!m_is_fs);
+  }
 }
 
 
@@ -88,22 +108,16 @@ void ImageRecord::SetDefaultTitle()
 
 LICE_CachedFont g_imagerecord_font;
 
-static int GetButtonSize(int idx)
+
+#define BUTTON_SIZE 16
+
+static LICE_IBitmap *LoadThemeElement(int idx, const char *name)
 {
-  switch (idx)
-  {
-    case BUTTONID_CLOSE: return 10;
-    case BUTTONID_ROTCCW:
-    case BUTTONID_ROTCW: 
-    case BUTTONID_CROP: return 16;
-    case BUTTONID_BW: return 20;
-  }
-  return 16;
+  return LICE_LoadPNGFromResource(g_hInst,idx,NULL);
 }
 
 static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state)
 {
-  int sz = GetButtonSize(idx);
   switch (idx)
   {
     case BUTTONID_BW:
@@ -113,22 +127,8 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state)
 
         if (!img->image)
         {
-          img->image = new LICE_MemBitmap(sz*3,sz);
-          LICE_Clear(img->image,LICE_RGBA(0,0,0,64));
-          int x;
-          for(x=0;x<3;x++)
-          {
-            if (x==2)
-              LICE_FillRect(img->image,sz*x,0,sz-1,sz-1,LICE_RGBA(0,64,64,128),1.0f,LICE_BLIT_MODE_COPY);
-            if (state)
-              LICE_FillRect(img->image,sz*x,0,sz-1,sz-1,LICE_RGBA(0,128,192,255),0.65f,LICE_BLIT_MODE_COPY);
-
-            LICE_DrawRect(img->image,sz*x,0,sz-1,sz-1,LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY);
-
-            int col = x==2 ? LICE_RGBA(255,255,255,128) :LICE_RGBA(255,255,255,128);
-            LICE_DrawText(img->image,sz*x+sz/2-16/2,sz/2-8/2,"BW",col,1.0f,LICE_BLIT_MODE_COPY);
-
-          }
+          img->image = LoadThemeElement(state ? IDR_BWON:IDR_BWOFF,state?"bw_on":"bw_off");
+          if (img->image) WDL_VirtualIconButton_PreprocessSkinConfig(img);
         }
 
         return img;
@@ -138,34 +138,12 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state)
     case BUTTONID_ROTCW:
       {
         static WDL_VirtualIconButton_SkinConfig img_[2];
-        WDL_VirtualIconButton_SkinConfig *img = &img_[idx==BUTTONID_ROTCCW];
+        WDL_VirtualIconButton_SkinConfig *img = &img_[idx==BUTTONID_ROTCW];
 
         if (!img->image)
         {
-          img->image = new LICE_MemBitmap(sz*3,sz);
-          LICE_Clear(img->image,LICE_RGBA(0,0,0,64));
-          int x;
-          for(x=0;x<3;x++)
-          {
-            if (x==2)
-              LICE_FillRect(img->image,sz*x,0,sz-1,sz-1,LICE_RGBA(0,64,64,128),1.0f,LICE_BLIT_MODE_COPY);
-
-            LICE_DrawRect(img->image,sz*x,0,sz-1,sz-1,LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY);
-
-            int col = x==2 ? LICE_RGBA(255,255,255,128) :LICE_RGBA(255,255,255,128);
-            LICE_Arc(img->image,sz*x + sz/2,sz/2,sz/2-4,
-              idx==BUTTONID_ROTCCW?-2.0:-2.5,
-              idx==BUTTONID_ROTCCW?2.5:2.0,col,1.0f,LICE_BLIT_MODE_COPY,true);
-
-            int x1 = (idx==BUTTONID_ROTCCW) ? sz*x + 3 : sz*(x+1) - 3;
-            int arsz=5;
-            LICE_Line(img->image,x1, sz/2 + 1, 
-                                 x1, sz/2 + 1 - arsz,
-                                 col,1.0f,LICE_BLIT_MODE_COPY,true);
-            LICE_Line(img->image,x1, sz/2 + 1, 
-                                 x1 + (idx==BUTTONID_ROTCCW ? arsz : -arsz), sz/2 + 1,
-                                 col,1.0f,LICE_BLIT_MODE_COPY,true);
-          }
+          img->image = LoadThemeElement(idx==BUTTONID_ROTCW ? IDR_ROTR:IDR_ROTL,idx==BUTTONID_ROTCW?"rot_right":"rot_left");
+          if (img->image) WDL_VirtualIconButton_PreprocessSkinConfig(img);
         }
 
         return img;
@@ -175,56 +153,42 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state)
       {
         static WDL_VirtualIconButton_SkinConfig img_[2];
         WDL_VirtualIconButton_SkinConfig *img = &img_[!!state];
-        if (!img->image) 
+
+        if (!img->image)
         {
-          img->image = new LICE_MemBitmap(sz*3,sz);
-          LICE_Clear(img->image,LICE_RGBA(0,0,0,64));
-          int x;
-          for(x=0;x<3;x++)
-          {
-            if (x==2)
-              LICE_FillRect(img->image,sz*x,0,sz-1,sz-1,LICE_RGBA(64,250,64,128),1.0f,LICE_BLIT_MODE_COPY);
-            if (state)
-              LICE_FillRect(img->image,sz*x,0,sz-1,sz-1,LICE_RGBA(0,255,0,255),0.5f,LICE_BLIT_MODE_COPY);
-
-            LICE_DrawRect(img->image,sz*x,0,sz-1,sz-1,LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY);
-
-            int edg  = 3;
-            int col = x==2 ? LICE_RGBA(255,255,255,128) :LICE_RGBA(255,255,255,128);
-            LICE_Line(img->image,sz*x + sz/2 - edg, edg, sz*x + sz/2 - edg, sz - edg -1,col,1.0f,LICE_BLIT_MODE_COPY,TRUE);
-            LICE_Line(img->image,sz*x + sz/2 + edg - 1, edg, sz*x + sz/2 + edg -1, sz - edg -1,col,1.0f,LICE_BLIT_MODE_COPY,TRUE);
-
-            LICE_Line(img->image,sz*x + edg, sz/2 - edg, sz*x + sz  -1 -edg, sz/2 - edg,col,1.0f,LICE_BLIT_MODE_COPY,TRUE);
-            LICE_Line(img->image,sz*x + edg, sz/2 + edg - 1, sz*x + sz  -1 -edg, sz/2 + edg - 1,col,1.0f,LICE_BLIT_MODE_COPY,TRUE);
-
-          }
+          img->image = LoadThemeElement(state ? IDR_CROPON:IDR_CROPOFF,state?"crop_on":"crop_off");
+          if (img->image) WDL_VirtualIconButton_PreprocessSkinConfig(img);
         }
+
         return img;
       }
     break;
-    case BUTTONID_CLOSE:
+    case BUTTONID_FULLSCREEN:
       {
-        static WDL_VirtualIconButton_SkinConfig img;
-        if (!img.image)
+        static WDL_VirtualIconButton_SkinConfig img_[2];
+        WDL_VirtualIconButton_SkinConfig *img = &img_[!!state];
+
+        if (!img->image)
         {
-          img.image = new LICE_MemBitmap(sz*3,sz);
-          LICE_Clear(img.image,LICE_RGBA(0,0,0,64));
-          int x;
-          for(x=0;x<3;x++)
-          {
-            if (x==2)
-              LICE_FillRect(img.image,sz*x,0,sz-1,sz-1,LICE_RGBA(255,64,64,128),1.0f,LICE_BLIT_MODE_COPY);
-
-            LICE_DrawRect(img.image,sz*x,0,sz-1,sz-1,LICE_RGBA(255,255,255,128),1.0f,LICE_BLIT_MODE_COPY);
-
-            int edg  = 3;
-            int col = x==2 ? LICE_RGBA(255,255,255,128) :LICE_RGBA(255,255,255,128);
-            LICE_Line(img.image,sz*x + edg, edg, sz*x + sz - edg - 1, sz - edg -1,col,1.0f,LICE_BLIT_MODE_COPY,TRUE);
-            LICE_Line(img.image,sz*x + edg, sz - edg - 1, sz*x + sz - edg - 1, edg,col,1.0f,LICE_BLIT_MODE_COPY,TRUE);
-
-          }
+          img->image = LoadThemeElement(state ? IDR_FULLON:IDR_FULLOFF,state?"full_on":"full_off");
+          if (img->image) WDL_VirtualIconButton_PreprocessSkinConfig(img);
         }
-        return &img;
+
+        return img;
+      }
+    break;
+    case BUTTONID_REMOVE:
+      {
+        static WDL_VirtualIconButton_SkinConfig img_[1];
+        WDL_VirtualIconButton_SkinConfig *img = &img_[0];
+
+        if (!img->image)
+        {
+          img->image = LoadThemeElement(IDR_REMOVE,"remove");
+          if (img->image) WDL_VirtualIconButton_PreprocessSkinConfig(img);
+        }
+
+        return img;
       }
     break;
   }
@@ -266,7 +230,15 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
 
         SetImageListIsDirty();
       break;
-      case BUTTONID_CLOSE:
+      case BUTTONID_FULLSCREEN:
+        {
+          if (!RemoveFullItemView())
+          {
+            OpenFullItemView(this);
+          }
+        }
+      break;
+      case BUTTONID_REMOVE:
         {
           WDL_VWnd *par = GetParent();
           if (par)
@@ -304,14 +276,15 @@ void ImageRecord::SetPosition(const RECT *r)
     int toppos = 2;
     for (x = BUTTONID_BASE; x < BUTTONID_END; x ++)
     {
+      if (m_is_fs && x==BUTTONID_REMOVE) continue;
       WDL_VWnd *b = GetChildByID(x);
       if (b)
       {
-        int sz= GetButtonSize(x);
+        int sz= BUTTON_SIZE;
         RECT tr={rightpos - sz, toppos, rightpos, toppos+sz};
         b->SetPosition(&tr);
         rightpos -= sz + 4;
-        if (x == BUTTONID_CLOSE) rightpos -= 15;
+        if (x == BUTTONID_FULLSCREEN  || x == BUTTONID_REMOVE) rightpos -= 8;
         if (rightpos < 0)
         {
           rightpos = (r->right-r->left) - 2;

@@ -16,7 +16,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
   g_hInst=hInstance;
   InitCommonControls();
   Scroll_Message = RegisterWindowMessage("MSWHEEL_ROLLMSG");
-  WDL_VWnd_regHelperClass("SNAPeaseVwndHost");
+
+  const char *mainClassName = "SNAPeaseVwndHost";
+  WDL_VWnd_regHelperClass(mainClassName);
+
 
   {
     GetModuleFileName(g_hInst,g_exepath,sizeof(g_exepath));

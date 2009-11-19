@@ -154,6 +154,30 @@ BEGIN
 END
 #endif    // APSTUDIO_INVOKED
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON1               ICON    DISCARDABLE     "images\\snapease.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// PNG
+//
+
+IDR_BWOFF               PNG     DISCARDABLE     "images\\bw_off.png"
+IDR_BWON                PNG     DISCARDABLE     "images\\bw_on.png"
+IDR_CROPOFF             PNG     DISCARDABLE     "images\\crop_off.png"
+IDR_CROPON              PNG     DISCARDABLE     "images\\crop_on.png"
+IDR_FULLOFF             PNG     DISCARDABLE     "images\\full_off.png"
+IDR_FULLON              PNG     DISCARDABLE     "images\\full_on.png"
+IDR_REMOVE              PNG     DISCARDABLE     "images\\remove.png"
+IDR_ROTL                PNG     DISCARDABLE     "images\\rot_left.png"
+IDR_ROTR                PNG     DISCARDABLE     "images\\rot_right.png"
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
 
