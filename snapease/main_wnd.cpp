@@ -119,7 +119,7 @@ int OrganizeWindow(HWND hwndDlg)
           }   
 
           RECT rr = {xpos,ypos - g_vwnd_scrollpos,xpos+preview_w,ypos+preview_h - g_vwnd_scrollpos};
-          if (!hadVis && rr.bottom >=0 )
+          if (!hadVis && rr.top + (rr.bottom-rr.top)*2/3 >=0 )
           {
             hadVis=true;
             g_firstvisible_startitem=x;

@@ -38,7 +38,6 @@ BEGIN
     "\0"
 END
 
-
 3 TEXTINCLUDE DISCARDABLE 
 BEGIN
     "#ifdef _WIN64\r\n"
@@ -48,7 +47,6 @@ BEGIN
     "#endif\r\n"
     "\0"
 END
-
 
 #endif    // APSTUDIO_INVOKED
 
@@ -65,7 +63,7 @@ EXSTYLE WS_EX_ACCEPTFILES | WS_EX_CONTROLPARENT
 CAPTION "SnapEase"
 MENU IDR_MENU1
 CLASS "SNAPeaseVwndHost"
-FONT 8, "MS Sans Serif", 0, 0, 0x1
+FONT 8, "MS Sans Serif"
 BEGIN
     LTEXT           "this needs to be here",IDC_STATIC,3,5,67,8,NOT 
                     WS_VISIBLE
@@ -187,7 +185,6 @@ IDR_ROTR                PNG     DISCARDABLE     "images\\rot_right.png"
 IDR_SPLASH              PNG     DISCARDABLE     "images\\snapease.png"
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
-
 
 
 

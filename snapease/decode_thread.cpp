@@ -105,7 +105,7 @@ static DWORD WINAPI DecodeThreadProc(LPVOID v)
       }
     }
 
-    if (scanpos>=g_images.GetSize())
+    if (scanpos>=g_images.GetSize()*2)
     {
       scanpos=0;
       sleepAmt=30;
@@ -125,8 +125,7 @@ static DWORD WINAPI DecodeThreadProc(LPVOID v)
     }
     else center+=scanpos;
     
-    if (center<0) center+=g_images.GetSize();
-    if (center >= g_images.GetSize()) center-=g_images.GetSize();
+//    if (center >= g_images.GetSize()) center-=g_images.GetSize();
 
     scanpos++;
 

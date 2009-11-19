@@ -634,6 +634,8 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
   LICE_DrawRect(drawbm,r.left,r.top,r.right-r.left,r.bottom-r.top,LICE_RGBA(32,32,32,32),1.0f,LICE_BLIT_MODE_COPY);
 
   bool usedFullImage=(m_fullimage &&!m_want_fullimage) ;
+
+//  WDL_MutexLock tmp(usedFullImage ? &g_images_mutex : NULL);
   LICE_IBitmap *srcimage = usedFullImage ? m_fullimage : m_preview_image;
   if (srcimage)
   {
