@@ -9,6 +9,7 @@ public:
   ImageRecord(const char *srcfn);
   ~ImageRecord();
 
+  ImageRecord *Duplicate();
   ////// WDL_VWnd impl
 
   virtual void OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect);
@@ -40,23 +41,25 @@ public:
 #define IR_STATE_LOADED 2
 #define IR_STATE_ERROR 3
 
+  bool m_bw;
+  char m_rot; // 90deg steps (0..3)
+  bool m_crop_active;
+
+  RECT m_croprect;
+
+
+  // state
   int m_state;
-  LICE_IBitmap *m_preview_image;
   int m_srcimage_w, m_srcimage_h;
+
+  LICE_IBitmap *m_preview_image;
 
   bool m_want_fullimage;
   LICE_IBitmap *m_fullimage;
 
   LICE_IBitmap *m_fullimage_rendercached;
   bool m_fullimage_rendercached_valid;
-
   bool m_is_fs;
-
-  bool m_bw;
-  char m_rot; // 90deg steps (0..3)
-  bool m_crop_active;
-
-  RECT m_croprect;
 
   RECT m_last_drawrect; // set by drawing
   RECT m_last_crop_drawrect; // set by drawing, read by UI code

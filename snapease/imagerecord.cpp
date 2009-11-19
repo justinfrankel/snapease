@@ -20,6 +20,8 @@ enum
   BUTTONID_CROP,
   BUTTONID_BW,
 
+  BUTTONID_CLONE,
+
 
   BUTTONID_REMOVE, // goes on upper right
 
@@ -91,6 +93,27 @@ ImageRecord::~ImageRecord()
   delete m_fullimage_rendercached;
 }
 
+ImageRecord *ImageRecord ::Duplicate()
+{
+  ImageRecord  *rec = new ImageRecord(m_fn.Get());
+  rec->m_outname.Set(m_outname.Get());
+  if (m_state==IR_STATE_LOADED && m_preview_image)
+  {
+    rec->m_state=m_state;   
+    LICE_Copy(rec->m_preview_image = new LICE_MemBitmap,m_preview_image);
+  }
+  rec->m_srcimage_w=m_srcimage_w;
+  rec->m_srcimage_h=m_srcimage_h;
+  rec->m_bw=m_bw;
+  rec->m_rot=m_rot;
+  rec->m_crop_active=m_crop_active;
+  rec->m_croprect=m_croprect;
+
+  rec->UpdateButtonStates();
+  return rec;
+
+}
+
 void ImageRecord::SetIsFullscreen(bool isFS)
 {
   if (isFS != m_is_fs)
@@ -155,6 +178,9 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state)
 {
   switch (idx)
   {
+    case BUTTONID_CLONE:
+      // todo!
+      return NULL;
     case BUTTONID_BW:
       {
         static WDL_VirtualIconButton_SkinConfig img_[2];
@@ -247,6 +273,19 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
         SetImageListIsDirty();
       break;
 
+      case BUTTONID_CLONE:
+        {
+          ImageRecord *rec = Duplicate();
+          int idx=g_images.Find(this);
+          AddImageRec(rec,idx<0?-1:idx+1);
+
+          SetImageListIsDirty(true);
+
+          UpdateMainWindowWithSizeChanged();
+          EnsureImageRecVisible(rec);
+        }
+
+      break;
       case BUTTONID_BW:
         m_bw=!m_bw;
         m_fullimage_rendercached_valid=false;
@@ -484,6 +523,9 @@ bool ImageRecord::GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutS
       return true;
       case BUTTONID_CROP:
         lstrcpyn(bufOut,m_crop_active ? "Leave crop mode" : "Enter crop mode",bufOutSz);
+      return true;
+      case BUTTONID_CLONE:
+        lstrcpyn(bufOut,"Duplicate this image",bufOutSz);
       return true;
       case BUTTONID_BW:
         lstrcpyn(bufOut,m_bw ? "Remove black & white" : "Set black & white",bufOutSz);

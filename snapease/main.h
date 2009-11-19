@@ -79,7 +79,7 @@ void EditImageLabelEnd(bool ignoreData=false);
 void SetImageListIsDirty(bool isDirty=true);
 void UpdateCaption();
 
-void AddImageRec(ImageRecord *rec);
+void AddImageRec(ImageRecord *rec, int idx=-1);
 
 extern bool g_imagelist_fn_dirty; // need save
 extern WDL_String g_imagelist_fn;

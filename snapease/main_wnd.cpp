@@ -350,11 +350,12 @@ void EnsureImageRecVisible(ImageRecord *rec)
   }
 }
 
-void AddImageRec(ImageRecord *rec)
+void AddImageRec(ImageRecord *rec, int idx)
 {
   g_vwnd.AddChild(rec);
   g_images_mutex.Enter();
-  g_images.Add(rec);
+  if (idx<0) g_images.Add(rec);
+  else g_images.Insert(idx,rec);
   g_images_mutex.Leave();
 }
 
