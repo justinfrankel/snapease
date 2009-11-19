@@ -29,6 +29,8 @@ public:
   void GetCropRectForScreen(int w, int h, RECT *cr); // scales + rotates m_croprect for output to w,h
   bool SetCropRectFromScreen(int w, int h, const RECT *cr); // return true on update
 
+  void GetSizeInfoString(char *buf, int bufsz); // WxH or WxH cropped to WxH
+
   void SetDefaultTitle();
   void UpdateButtonStates();
   ///

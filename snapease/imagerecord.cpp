@@ -481,7 +481,16 @@ bool ImageRecord::GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutS
         lstrcpyn(bufOut,"Rotate image clockwise",bufOutSz);
       return true;
       case BUTTONID_CROP:
-        lstrcpyn(bufOut,m_crop_active ? "Leave crop mode" : "Enter crop mode",bufOutSz);
+        {
+          WDL_String s;
+          s.Set(m_crop_active ? "Leave crop mode" : "Crop");
+          char buf[512];
+          GetSizeInfoString(buf,sizeof(buf));
+          s.Append(" [image: ");
+          s.Append(buf);
+          s.Append("]");
+          lstrcpyn(bufOut,s.Get(),bufOutSz);
+        }
       return true;
       case BUTTONID_CLONE:
         lstrcpyn(bufOut,"Duplicate this image",bufOutSz);
@@ -500,8 +509,9 @@ bool ImageRecord::GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutS
     if (PtInRect(&m_lastlbl_rect,p))
     {
       WDL_String tmp;
-      tmp.SetFormatted(256,"Image #%d/%d",g_images.Find(this)+1,g_images.GetSize());
-      tmp.Append(", source filename: ");
+      char buf[512];
+      GetSizeInfoString(buf,sizeof(buf));
+      tmp.SetFormatted(1024,"Image #%d/%d [%s], source filename:",g_images.Find(this)+1,g_images.GetSize(),buf);
       tmp.Append(m_fn.Get());
       lstrcpyn(bufOut,tmp.Get(),bufOutSz);
       return true;
@@ -958,4 +968,26 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
   m_lastlbl_rect = tr;
 
   WDL_VWnd::OnPaint(drawbm,origin_x,origin_y,cliprect);
+}
+
+void ImageRecord::GetSizeInfoString(char *buf, int bufsz) // WxH or WxH cropped to WxH
+{
+  char str[1024];
+  int w=m_croprect.right-m_croprect.left;
+  int h=m_croprect.bottom-m_croprect.top;
+  int srcw=m_srcimage_w;
+  int srch=m_srcimage_h;
+  if (w<1) w=srcw;
+  if (h<1) h=srch;
+
+  if (m_rot&1)
+  {
+    int a=w; w=h; h=a;
+    a=srcw; srcw=srch; srch=a;
+  }
+
+  sprintf(str,"%dx%d",srcw,srch);
+  if (w!=srcw||h!=srch) sprintf(str+strlen(str)," cropped to %dx%d",w,h);
+
+  lstrcpyn(buf,str,bufsz);
 }

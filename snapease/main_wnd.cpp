@@ -439,7 +439,7 @@ static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
         if (!g_aboutwindow_open)
         {
           tmpfont.DrawText(bm,
-              "(...drag files here if you like...)"
+              "(...drag image files here, if you like...)"
               ,-1,&tr,DT_CENTER|DT_TOP);
 
         }
