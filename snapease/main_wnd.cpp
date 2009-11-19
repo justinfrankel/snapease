@@ -26,6 +26,7 @@
 #define VERSTRING "0.01"
 
 #include "main.h"
+#include <math.h>
 
 #include "../WDL/ptrlist.h"
 #include "../WDL/lice/lice.h"
@@ -286,6 +287,7 @@ void AddImage(const char *fn)
 
 WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+  static RECT lastSplashRect;
 #ifdef _WIN32
   if (Scroll_Message && uMsg == Scroll_Message)
   {
@@ -326,7 +328,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 #endif
         ShowWindow(hwndDlg,SW_SHOW);
 
-      SetTimer(hwndDlg,1,100,NULL);
+      SetTimer(hwndDlg,1,30,NULL);
     return 0;
     case WM_DESTROY:
 
@@ -360,6 +362,9 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_TIMER:
       if (wParam==1)
       {
+        if (!g_images.GetSize())
+          InvalidateRect(hwndDlg,&lastSplashRect,FALSE);
+
         EditImageRunTimer();
         if (g_DecodeDidSomething)
         {
@@ -588,6 +593,44 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         g_vwnd.SetPosition(&r);
         g_hwnd_painter.PaintBegin(hwndDlg,RGB(0,0,0));
         g_hwnd_painter.PaintVirtWnd(&g_vwnd);
+
+        if (!g_images.GetSize())
+        {
+          static LICE_IBitmap *splash=  NULL;
+          if (!splash)
+            splash = LoadThemeElement(IDR_SPLASH,"snapease");
+          if (splash)
+          {
+            int xo=0,yo=0;
+            LICE_IBitmap *bm = g_hwnd_painter.GetBuffer(&xo,&yo);
+
+            lastSplashRect.left = r.right/2 - splash->getWidth()/2;
+            lastSplashRect.top = r.bottom/2 - splash->getHeight()/2;
+            lastSplashRect.right = lastSplashRect.left + splash->getWidth();
+            lastSplashRect.bottom = lastSplashRect.top + splash->getHeight();
+
+            xo += lastSplashRect.left;
+            yo += lastSplashRect.top;
+            if (bm) 
+            {
+              float xsc = 1.0/splash->getWidth();
+              float ysc = 1.0/splash->getHeight();
+
+              static float a[9]={0,};
+              int x;
+              static double t;
+              
+              t += ((rand()+GetTickCount()/10000)%100)/1000.0;
+              for(x=0;x<9;x++)
+                a[x]=a[x]*0.9 + 0.1 * ((0.5+sin(t*(0.2*x+0.2)))*0.3 - ((x/3)&1)*0.2);
+              
+              LICE_GradRect(bm,xo,yo,splash->getWidth(),splash->getHeight(),a[6],a[7],a[8],1,   a[0]*xsc,a[1]*xsc,a[2]*xsc,0*xsc,a[3]*ysc,a[4]*ysc,a[5]*ysc,0*ysc,LICE_BLIT_MODE_COPY);
+
+              LICE_Blit(bm,splash,xo, yo,NULL,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_USE_ALPHA);
+            }
+          }
+        }
+
         g_hwnd_painter.PaintEnd();
       }
     return 0;

@@ -46,6 +46,8 @@ bool RemoveFullItemView(bool refresh=true); // if in full view, removes full vie
 void OpenFullItemView(ImageRecord *w);
 void EnsureImageRecVisible(ImageRecord *rec);
 
+LICE_IBitmap *LoadThemeElement(int idx, const char *name);
+
 bool saveImageListToFile(const char *fn);
 bool importImageListFromFile(const char *fn, bool addToCurrent);
 

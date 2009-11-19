@@ -963,5 +963,9 @@ SOURCE=.\imagerecord.h
 SOURCE=.\main.h
 # End Source File
 # End Group
+# Begin Source File
+
+SOURCE=.\images\snapease.png
+# End Source File
 # End Target
 # End Project

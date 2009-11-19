@@ -115,7 +115,7 @@ LICE_CachedFont g_imagerecord_font;
 
 #define BUTTON_SIZE 16
 
-static LICE_IBitmap *LoadThemeElement(int idx, const char *name)
+LICE_IBitmap *LoadThemeElement(int idx, const char *name)
 {
   LICE_IBitmap *bm = LICE_LoadPNGFromResource(g_hInst,idx,NULL);
   return bm;
