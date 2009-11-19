@@ -38,11 +38,17 @@ BEGIN
     "\0"
 END
 
+
 3 TEXTINCLUDE DISCARDABLE 
 BEGIN
-    "\r\n"
+    "#ifdef _WIN64\r\n"
+    "1                       24      DISCARDABLE     ""manifest-x64.xml""\r\n"
+    "#else\r\n"
+    "1                       24      DISCARDABLE     ""manifest.xml""\r\n"
+    "#endif\r\n"
     "\0"
 END
+
 
 #endif    // APSTUDIO_INVOKED
 
@@ -184,12 +190,17 @@ IDR_SPLASH              PNG     DISCARDABLE     "images\\snapease.png"
 
 
 
+
 #ifndef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
 //
 // Generated from the TEXTINCLUDE 3 resource.
 //
-
+#ifdef _WIN64
+1                       24      DISCARDABLE     "manifest-x64.xml"
+#else
+1                       24      DISCARDABLE     "manifest.xml"
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED

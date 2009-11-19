@@ -284,9 +284,6 @@ bool SaveImageList(bool forceSaveAs)
 {
   if (forceSaveAs || !g_imagelist_fn.Get()[0])
   {
-    char cwd[4096];
-    GetCurrentDirectory(sizeof(cwd),cwd);
-
     char temp[1024];
     lstrcpyn(temp,g_imagelist_fn.Get(),sizeof(temp));
     

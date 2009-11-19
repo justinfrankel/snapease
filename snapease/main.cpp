@@ -58,6 +58,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
 
     g_list_path.Append("\\lists");
     CreateDirectory(g_list_path.Get(),NULL);
+    
   }
 
       
