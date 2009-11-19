@@ -9,17 +9,22 @@
 bool g_DecodeDidSomething;
 bool g_DecodeThreadQuit;
 
+
+#ifdef _WIN32
+//#define USE_SEH
+#endif
+
 static bool LoadFullBitmap(LICE_IBitmap *bmOut, const char *fn)
 {
   bool success=false;
-#ifdef _WIN32
+#ifdef USE_SEH
   __try
   {
 #endif
 
     if (LICE_LoadImage(fn,bmOut,false)) success=true;
 
-#ifdef _WIN32
+#ifdef USE_SEH
   }
   __except(EXCEPTION_EXECUTE_HANDLER)
   {
