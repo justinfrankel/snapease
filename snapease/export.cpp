@@ -51,6 +51,9 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
   switch (uMsg)
   {
     case WM_INITDIALOG:
+      WDL_UTF8_HookComboBox(GetDlgItem(hwndDlg,IDC_COMBO1));
+      WDL_UTF8_HookComboBox(GetDlgItem(hwndDlg,IDC_COMBO2));
+
       if (config_readint("export_constrainsize",1))
         CheckDlgButton(hwndDlg,IDC_CHECK1,BST_CHECKED);
       if (config_readint("export_overwrite",1))

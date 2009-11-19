@@ -13,6 +13,8 @@
 #include "../WDL/mutex.h"
 #include "../WDL/wdlstring.h"
 
+#include "../WDL/win32_utf8.h"
+
 #ifdef _WIN32
 
 #define PREF_DIRCH '\\'
