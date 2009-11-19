@@ -31,6 +31,7 @@
 #include "../WDL/ptrlist.h"
 #include "../WDL/lice/lice.h"
 #include "../WDL/dirscan.h"
+#include "../WDL/lice/lice_text.h"
 
 #include "../jmde/coolsb/coolscroll.h"
 
@@ -44,6 +45,8 @@ WDL_VWnd_Painter g_hwnd_painter;
 WDL_VWnd g_vwnd; // owns all children windows
 
 int g_firstvisible_startitem;
+
+bool g_aboutwindow_open;
 
 void ClearImageList()
 {
@@ -145,6 +148,8 @@ int OrganizeWindow(HWND hwndDlg)
 
 void UpdateMainWindowWithSizeChanged()
 {
+  g_aboutwindow_open=false;
+
   EditImageLabelEnd();
 
   HWND hwndDlg=g_hwnd;
@@ -362,7 +367,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_TIMER:
       if (wParam==1)
       {
-        if (!g_images.GetSize())
+        if (!g_images.GetSize()||g_aboutwindow_open)
           InvalidateRect(hwndDlg,&lastSplashRect,FALSE);
 
         EditImageRunTimer();
@@ -397,13 +402,17 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return TRUE;
 #endif
     case WM_COMMAND:
+      if (g_aboutwindow_open && LOWORD(wParam) != ID_ABOUT) 
+      {
+        g_aboutwindow_open=false;
+        InvalidateRect(hwndDlg,NULL,FALSE);
+      }
+
       switch (LOWORD(wParam))
       {
         case ID_ABOUT:
-          MessageBox(hwndDlg,"SnapEase v" VERSTRING "\r\n"
-            "Copyright (C) 2009, Cockos Incorporated",
-            "About SnapEase",
-              MB_OK);
+          g_aboutwindow_open=!g_aboutwindow_open;
+          InvalidateRect(hwndDlg,NULL,FALSE);
         break;
         case ID_LOAD_ADD:
         case ID_LOAD:
@@ -566,6 +575,12 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
     return 0;
     case WM_LBUTTONDOWN:
+      if (g_aboutwindow_open)
+      {
+        g_aboutwindow_open=false;
+        InvalidateRect(hwndDlg,NULL,FALSE);
+        return 0;
+      }
       EditImageLabelEnd();
       SetFocus(hwndDlg);
       if (g_vwnd.OnMouseDown(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam)))
@@ -592,9 +607,9 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         GetClientRect(hwndDlg,&r);
         g_vwnd.SetPosition(&r);
         g_hwnd_painter.PaintBegin(hwndDlg,RGB(0,0,0));
-        g_hwnd_painter.PaintVirtWnd(&g_vwnd);
+        if (!g_aboutwindow_open) g_hwnd_painter.PaintVirtWnd(&g_vwnd);
 
-        if (!g_images.GetSize())
+        if (!g_images.GetSize()||g_aboutwindow_open)
         {
           static LICE_IBitmap *splash=  NULL;
           if (!splash)
@@ -605,7 +620,8 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             LICE_IBitmap *bm = g_hwnd_painter.GetBuffer(&xo,&yo);
 
             lastSplashRect.left = r.right/2 - splash->getWidth()/2;
-            lastSplashRect.top = r.bottom/2 - splash->getHeight()/2;
+            lastSplashRect.top = r.bottom/2 - splash->getHeight()/2 - splash->getHeight()/4;
+            if (lastSplashRect.top<0)lastSplashRect.top=0;
             lastSplashRect.right = lastSplashRect.left + splash->getWidth();
             lastSplashRect.bottom = lastSplashRect.top + splash->getHeight();
 
@@ -627,6 +643,49 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
               LICE_GradRect(bm,xo,yo,splash->getWidth(),splash->getHeight(),a[6],a[7],a[8],1,   a[0]*xsc,a[1]*xsc,a[2]*xsc,0*xsc,a[3]*ysc,a[4]*ysc,a[5]*ysc,0*ysc,LICE_BLIT_MODE_COPY);
 
               LICE_Blit(bm,splash,xo, yo,NULL,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_USE_ALPHA);
+
+              //if (g_aboutwindow_open)
+              {
+                static LICE_CachedFont tmpfont;
+                if (!tmpfont.GetHFont())
+                {
+                  bool doOutLine = true;
+                  LOGFONT lf = 
+                  {
+                      14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+                        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,DEFAULT_PITCH,
+	                  #ifdef _WIN32
+                      "MS Shell Dlg"
+	                  #else
+	                  "Arial"
+	                  #endif
+                  };
+
+                  tmpfont.SetFromHFont(CreateFontIndirect(&lf),LICE_FONT_FLAG_OWNS_HFONT);                 
+                }
+                tmpfont.SetBkMode(TRANSPARENT);
+                tmpfont.SetTextColor(LICE_RGBA(255,255,255,255));
+
+                RECT tr={xo - lastSplashRect.left,yo+splash->getHeight()+5,xo - lastSplashRect.left + r.right,yo+r.bottom};
+                int h = tmpfont.DrawText(bm,
+                      "Version " VERSTRING " - "
+                      "Copyright (C) 2009, Cockos Incorporated",-1,&tr,DT_CENTER|DT_TOP);
+
+                tr.top += h + 32;
+
+                if (!g_aboutwindow_open)
+                {
+                  tmpfont.DrawText(bm,
+                      "(...drag files here if you like...)"
+                      ,-1,&tr,DT_CENTER|DT_TOP);
+
+                }
+                else
+                {
+                  // credits etc
+                }
+
+              }
             }
           }
         }
