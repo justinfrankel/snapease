@@ -176,84 +176,42 @@ LICE_IBitmap *LoadThemeElement(int idx, const char *name)
 
 static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state)
 {
-  switch (idx)
+  static WDL_VirtualIconButton_SkinConfig img_[BUTTONID_END-BUTTONID_BASE][2];
+  static const char *names_[BUTTONID_END-BUTTONID_BASE][2];
+  static int resids_[BUTTONID_END-BUTTONID_BASE][2];
+  static bool init;
+  if (!init)
   {
-    case BUTTONID_CLONE:
-      // todo!
-      return NULL;
-    case BUTTONID_BW:
-      {
-        static WDL_VirtualIconButton_SkinConfig img_[2];
-        WDL_VirtualIconButton_SkinConfig *img = &img_[!!state];
+#define ASSIGN(x,st,name,resid) { names_[(x) - BUTTONID_BASE][st] = (name); resids_[(x) - BUTTONID_BASE][st]=(resid); }
+    ASSIGN(BUTTONID_FULLSCREEN,0,"full_off",IDR_FULLOFF);
+    ASSIGN(BUTTONID_FULLSCREEN,1,"full_on",IDR_FULLON);
 
-        if (!img->image)
-        {
-          img->image = LoadThemeElement(state ? IDR_BWON:IDR_BWOFF,state?"bw_on":"bw_off");
-          if (img->image) WDL_VirtualIconButton_PreprocessSkinConfig(img);
-        }
+    ASSIGN(BUTTONID_BW,0,"bw_off",IDR_BWOFF);
+    ASSIGN(BUTTONID_BW,1,"bw_on",IDR_BWON);
 
-        return img;
-      }
-    return 0;
-    case BUTTONID_ROTCCW:
-    case BUTTONID_ROTCW:
-      {
-        static WDL_VirtualIconButton_SkinConfig img_[2];
-        WDL_VirtualIconButton_SkinConfig *img = &img_[idx==BUTTONID_ROTCW];
+    ASSIGN(BUTTONID_CROP,0,"crop_off",IDR_CROPOFF);
+    ASSIGN(BUTTONID_CROP,1,"crop_on",IDR_CROPON);
+    
 
-        if (!img->image)
-        {
-          img->image = LoadThemeElement(idx==BUTTONID_ROTCW ? IDR_ROTR:IDR_ROTL,idx==BUTTONID_ROTCW?"rot_right":"rot_left");
-          if (img->image) WDL_VirtualIconButton_PreprocessSkinConfig(img);
-        }
-
-        return img;
-      }
-    break;
-    case BUTTONID_CROP:
-      {
-        static WDL_VirtualIconButton_SkinConfig img_[2];
-        WDL_VirtualIconButton_SkinConfig *img = &img_[!!state];
-
-        if (!img->image)
-        {
-          img->image = LoadThemeElement(state ? IDR_CROPON:IDR_CROPOFF,state?"crop_on":"crop_off");
-          if (img->image) WDL_VirtualIconButton_PreprocessSkinConfig(img);
-        }
-
-        return img;
-      }
-    break;
-    case BUTTONID_FULLSCREEN:
-      {
-        static WDL_VirtualIconButton_SkinConfig img_[2];
-        WDL_VirtualIconButton_SkinConfig *img = &img_[!!state];
-
-        if (!img->image)
-        {
-          img->image = LoadThemeElement(state ? IDR_FULLON:IDR_FULLOFF,state?"full_on":"full_off");
-          if (img->image) WDL_VirtualIconButton_PreprocessSkinConfig(img);
-        }
-
-        return img;
-      }
-    break;
-    case BUTTONID_REMOVE:
-      {
-        static WDL_VirtualIconButton_SkinConfig img_[1];
-        WDL_VirtualIconButton_SkinConfig *img = &img_[0];
-
-        if (!img->image)
-        {
-          img->image = LoadThemeElement(IDR_REMOVE,"remove");
-          if (img->image) WDL_VirtualIconButton_PreprocessSkinConfig(img);
-        }
-
-        return img;
-      }
-    break;
+    ASSIGN(BUTTONID_CLONE,0,"clone",IDR_CLONE);
+    ASSIGN(BUTTONID_ROTCW,0,"rot_right",IDR_ROTR);
+    ASSIGN(BUTTONID_ROTCCW,0,"rot_left",IDR_ROTL);
+    ASSIGN(BUTTONID_REMOVE,0,"remove",IDR_REMOVE);
+#undef ASSIGN
+    init=true;
   }
-  return NULL;
+  if (idx< BUTTONID_BASE || idx >= BUTTONID_END) return NULL;
+
+  WDL_VirtualIconButton_SkinConfig *img = &img_[idx-BUTTONID_BASE][!!state];
+  if (!img->image)
+  {
+    if (!names_[idx-BUTTONID_BASE][!!state] || !resids_[idx-BUTTONID_BASE][!!state]) return 0;
+
+    img->image = LoadThemeElement(resids_[idx-BUTTONID_BASE][!!state],names_[idx-BUTTONID_BASE][!!state]);
+    if (img->image) WDL_VirtualIconButton_PreprocessSkinConfig(img);
+  }
+
+  return img->image ? img : NULL;
 }
 
 
@@ -367,7 +325,7 @@ void ImageRecord::SetPosition(const RECT *r)
           }
           RECT tr={xpos, toppos, xpos+BUTTON_SIZE, toppos+BUTTON_SIZE};
           b->SetPosition(&tr);
-          if (x == BUTTONID_FULLSCREEN) xpos += 8;
+          if (x == BUTTONID_FULLSCREEN||x==BUTTONID_BW) xpos += 8;
           xpos += BUTTON_SIZE+2;
         }
       }

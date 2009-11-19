@@ -183,6 +183,7 @@ IDR_REMOVE              PNG     DISCARDABLE     "images\\remove.png"
 IDR_ROTL                PNG     DISCARDABLE     "images\\rot_left.png"
 IDR_ROTR                PNG     DISCARDABLE     "images\\rot_right.png"
 IDR_SPLASH              PNG     DISCARDABLE     "images\\snapease.png"
+IDR_CLONE               PNG     DISCARDABLE     "images\\clone.png"
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
 

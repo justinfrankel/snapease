@@ -973,6 +973,10 @@ SOURCE=.\main.h
 # End Group
 # Begin Source File
 
+SOURCE=.\images\clone.png
+# End Source File
+# Begin Source File
+
 SOURCE=.\images\snapease.png
 # End Source File
 # End Target
