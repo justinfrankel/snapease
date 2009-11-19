@@ -13,12 +13,16 @@ enum
 {
 
   BUTTONID_BASE=1000,
-  BUTTONID_REMOVE=BUTTONID_BASE,
-  BUTTONID_FULLSCREEN,
-  BUTTONID_ROTCW,
+  
+  BUTTONID_FULLSCREEN=BUTTONID_BASE, // upper left
   BUTTONID_ROTCCW,
+  BUTTONID_ROTCW,
   BUTTONID_CROP,
   BUTTONID_BW,
+
+
+  BUTTONID_REMOVE, // goes on upper right
+
   BUTTONID_END
 };
 
@@ -290,23 +294,29 @@ void ImageRecord::SetPosition(const RECT *r)
   {
     // reposition images on size change
     int x;
-    int rightpos = (r->right-r->left) - 2;
+    int xpos = 6;
     int toppos = 2;
     for (x = BUTTONID_BASE; x < BUTTONID_END; x ++)
     {
-      if (m_is_fs && x==BUTTONID_REMOVE) continue;
       WDL_VWnd *b = GetChildByID(x);
       if (b)
       {
-        int sz= BUTTON_SIZE;
-        RECT tr={rightpos - sz, toppos, rightpos, toppos+sz};
-        b->SetPosition(&tr);
-        rightpos -= sz + 4;
-        if (x == BUTTONID_FULLSCREEN  || x == BUTTONID_REMOVE) rightpos -= 8;
-        if (rightpos < 0)
+        if (x==BUTTONID_REMOVE) 
         {
-          rightpos = (r->right-r->left) - 2;
-          toppos += sz+4;
+          RECT tr={r->right-r->left - 4 - BUTTON_SIZE, 2, r->right-r->left - 4 , toppos+BUTTON_SIZE};
+          b->SetPosition(&tr);
+        }
+        else
+        {
+          if (xpos>6 && xpos+BUTTON_SIZE >= r->right-r->left - 4 - BUTTON_SIZE-4)
+          {
+            xpos = 2;
+            toppos += BUTTON_SIZE+2;
+          }
+          RECT tr={xpos, toppos, xpos+BUTTON_SIZE, toppos+BUTTON_SIZE};
+          b->SetPosition(&tr);
+          if (x == BUTTONID_FULLSCREEN) xpos += 8;
+          xpos += BUTTON_SIZE+2;
         }
       }
     }
