@@ -148,6 +148,7 @@ bool importImageListFromFile(const char *fn, bool addToCurrent)
             rec->m_croprect.right = lp.gettoken_int(8);
             rec->m_croprect.bottom = lp.gettoken_int(9);
 
+            rec->UpdateButtonStates();
 
             AddImageRec(rec);
 

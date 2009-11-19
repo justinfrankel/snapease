@@ -56,18 +56,31 @@ ImageRecord::ImageRecord(const char *fn)
   {
     WDL_VirtualIconButton *b = new WDL_VirtualIconButton;
     b->SetID(x);
-    char st=0;
-    switch (x)
-    {
-      case BUTTONID_BW: st = m_bw; break;
-      case BUTTONID_CROP: st = m_crop_active; break;
-      case BUTTONID_FULLSCREEN: st = m_is_fs; break;
-    }
-    b->SetIcon(GetButtonIcon(x,st));
     AddChild(b);
   }
+
+  UpdateButtonStates();
 }
 
+void ImageRecord::UpdateButtonStates()
+{
+  int x;
+  for(x=BUTTONID_BASE;x<BUTTONID_END;x++)
+  {
+    WDL_VirtualIconButton *b = (WDL_VirtualIconButton*)GetChildByID(x);
+    if (b)
+    {
+      char st=0;
+      switch (x)
+      {
+        case BUTTONID_BW: st = m_bw; break;
+        case BUTTONID_CROP: st = m_crop_active; break;
+        case BUTTONID_FULLSCREEN: st = m_is_fs; break;
+      }
+      b->SetIcon(GetButtonIcon(x,st));
+    }
+  }
+}
 
 ImageRecord::~ImageRecord()
 {

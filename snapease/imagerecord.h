@@ -28,6 +28,7 @@ public:
   bool SetCropRectFromScreen(int w, int h, const RECT *cr); // return true on update
 
   void SetDefaultTitle();
+  void UpdateButtonStates();
   ///
 
   WDL_String m_fn;
