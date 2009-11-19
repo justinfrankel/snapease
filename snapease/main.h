@@ -40,6 +40,7 @@ WDL_DLGRET MainWindowProc(HWND, UINT, WPARAM, LPARAM);
 extern bool g_DecodeDidSomething;
 void DecodeThread_Init();
 void DecodeThread_Quit();
+void DecodeThread_RunTimer();
 
 void UpdateMainWindowWithSizeChanged();
 bool RemoveFullItemView(bool refresh=true); // if in full view, removes full view (and returns true)

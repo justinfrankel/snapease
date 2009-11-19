@@ -367,6 +367,8 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_TIMER:
       if (wParam==1)
       {
+        DecodeThread_RunTimer();
+
         if (!g_images.GetSize()||g_aboutwindow_open)
           InvalidateRect(hwndDlg,&lastSplashRect,FALSE);
 
