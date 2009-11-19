@@ -565,7 +565,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         POINT p;
         GetCursorPos(&p);
         ScreenToClient(hwndDlg,&p);
-        if (g_vwnd.UpdateCursor(p.x,p.y))
+        if (g_vwnd.UpdateCursor(p.x,p.y)>0)
         {
           return TRUE;
         }

@@ -17,7 +17,7 @@ public:
   virtual int OnMouseDown(int xpos, int ypos);
   virtual void OnMouseMove(int xpos, int ypos);
   virtual void OnMouseUp(int xpos, int ypos);
-  virtual bool UpdateCursor(int xpos, int ypos);
+  virtual int UpdateCursor(int xpos, int ypos);
 
   //////
 

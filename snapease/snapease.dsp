@@ -857,6 +857,14 @@ SOURCE=..\WDL\projectcontext.cpp
 
 SOURCE=..\WDL\projectcontext.h
 # End Source File
+# Begin Source File
+
+SOURCE=..\WDL\win32_utf8.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\WDL\win32_utf8.h
+# End Source File
 # End Group
 # Begin Group "coolsb"
 

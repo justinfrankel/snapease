@@ -462,11 +462,14 @@ enum
 
 };
 
-bool ImageRecord::UpdateCursor(int xpos, int ypos)
+int ImageRecord::UpdateCursor(int xpos, int ypos)
 {
-  if (WDL_VWnd::UpdateCursor(xpos,ypos)) return true;
+  int r = WDL_VWnd::UpdateCursor(xpos,ypos);
 
-  if (VirtWndFromPoint(xpos,ypos,0)) return false; // dont update cursor if in a child wnd
+  if (r) return r; // pass on child requests
+
+  if (VirtWndFromPoint(xpos,ypos,0)) return -1; // force default cursor for any children
+
 
   if (m_crop_active)
   {
@@ -487,7 +490,7 @@ bool ImageRecord::UpdateCursor(int xpos, int ypos)
     if (f==3) 
     {
       SetCursor(LoadCursor(NULL,MAKEINTRESOURCE(IDC_SIZEALL)));
-      return true;
+      return 1;
     }
     if (cm&5) // left or right
     {
@@ -496,16 +499,16 @@ bool ImageRecord::UpdateCursor(int xpos, int ypos)
       if (cm&10) idx = ((cm&1)^!!(cm&2)) ? IDC_SIZENESW : IDC_SIZENWSE;
 
       SetCursor(LoadCursor(NULL,MAKEINTRESOURCE(idx)));
-      return true;
+      return 1;
     }   
     if (cm&10)
     {
       SetCursor(LoadCursor(NULL,MAKEINTRESOURCE(IDC_SIZENS)));
-      return true;
+      return 1;
     }
   }
 
-  return false;
+  return -1;
 }
 
 int ImageRecord::OnMouseDown(int xpos, int ypos)
