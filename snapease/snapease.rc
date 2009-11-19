@@ -103,6 +103,8 @@ BEGIN
     CONTROL         "",IDC_RECT,"Static",SS_BLACKFRAME | NOT WS_VISIBLE,74,
                     126,257,65
     PUSHBUTTON      "Estimate output size...",IDC_BUTTON2,128,195,82,14
+    CONTROL         "Overwrite existing files",IDC_CHECK2,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,198,88,8
 END
 
 

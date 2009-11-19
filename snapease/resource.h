@@ -21,6 +21,7 @@
 #define IDC_CHECK8                      1016
 #define IDC_BUTTON2                     1017
 #define IDC_RECT                        1018
+#define IDC_CHECK2                      1019
 #define ID_IMPORT                       40001
 #define ID_ABOUT                        40002
 #define ID_NEWLIST                      40003
@@ -37,7 +38,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        104
 #define _APS_NEXT_COMMAND_VALUE         40012
-#define _APS_NEXT_CONTROL_VALUE         1019
+#define _APS_NEXT_CONTROL_VALUE         1020
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
