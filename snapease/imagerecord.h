@@ -18,6 +18,7 @@ public:
   virtual void OnMouseMove(int xpos, int ypos);
   virtual void OnMouseUp(int xpos, int ypos);
   virtual int UpdateCursor(int xpos, int ypos);
+  virtual bool GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutSz);
 
   //////
 

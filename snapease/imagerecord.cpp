@@ -462,6 +462,54 @@ enum
 
 };
 
+
+bool ImageRecord::GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutSz)
+{
+  if (WDL_VWnd::GetToolTipString(xpos,ypos,bufOut,bufOutSz)) return true;
+
+  WDL_VWnd *v = VirtWndFromPoint(xpos,ypos,0);
+  if (v)
+  {
+    int idx = v->GetID();
+    switch (idx)
+    {
+      case BUTTONID_FULLSCREEN:
+        lstrcpyn(bufOut,m_is_fs ? "Leave fullscreen" : "View image in fullscreen",bufOutSz);
+      return true;
+      case BUTTONID_ROTCCW:
+        lstrcpyn(bufOut,"Rotate image counter-clockwise",bufOutSz);
+      return true;
+      case BUTTONID_ROTCW:
+        lstrcpyn(bufOut,"Rotate image clockwise",bufOutSz);
+      return true;
+      case BUTTONID_CROP:
+        lstrcpyn(bufOut,m_crop_active ? "Leave crop mode" : "Enter crop mode",bufOutSz);
+      return true;
+      case BUTTONID_BW:
+        lstrcpyn(bufOut,m_bw ? "Remove black & white" : "Set black & white",bufOutSz);
+      return true;
+      case BUTTONID_REMOVE:
+        lstrcpyn(bufOut,"Remove image from list",bufOutSz);
+      return true;
+    }
+  }
+  else
+  {
+    POINT p ={xpos,ypos};
+    if (PtInRect(&m_lastlbl_rect,p))
+    {
+      WDL_String tmp;
+      tmp.SetFormatted(256,"Image #%d/%d",g_images.Find(this)+1,g_images.GetSize());
+      tmp.Append(", source filename: ");
+      tmp.Append(m_fn.Get());
+      lstrcpyn(bufOut,tmp.Get(),bufOutSz);
+      return true;
+    }
+  }
+
+  return false;
+}
+
 int ImageRecord::UpdateCursor(int xpos, int ypos)
 {
   int r = WDL_VWnd::UpdateCursor(xpos,ypos);

@@ -48,6 +48,13 @@ int g_firstvisible_startitem;
 
 bool g_aboutwindow_open;
 
+char g_hwnd_tooltip[256];
+POINT g_hwnd_tooltip_pt;
+
+#define GENERAL_TIMER 1
+#define TOOLTIP_TIMER 2
+#define TOOLTIP_TIMEOUT 350
+
 void ClearImageList()
 {
   int x;
@@ -58,6 +65,69 @@ void ClearImageList()
 
   for(x=0;x<r.GetSize();x++)
     g_vwnd.RemoveChild(r.Get(x),true);
+}
+
+
+// this should likely go into WDL
+void DrawTooltipForPoint(LICE_IBitmap *bm, POINT mousePt, RECT *wndr, const char *text)
+{
+  if (!bm || !text || !text[0]) return;
+
+    static LICE_CachedFont tmpfont;
+    if (!tmpfont.GetHFont())
+    {
+      bool doOutLine = true;
+      LOGFONT lf = 
+      {
+          14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,DEFAULT_PITCH,
+	      #ifdef _WIN32
+          "MS Shell Dlg"
+	      #else
+	      "Arial"
+	      #endif
+      };
+
+      tmpfont.SetFromHFont(CreateFontIndirect(&lf),LICE_FONT_FLAG_OWNS_HFONT);                 
+    }
+    tmpfont.SetBkMode(TRANSPARENT);
+    LICE_pixel col1 = LICE_RGBA(0,0,0,255);
+    LICE_pixel col2 = LICE_RGBA(255,255,192,255);
+
+    tmpfont.SetTextColor(col1);
+    RECT r={0,};
+    tmpfont.DrawText(bm,text,-1,&r,DT_CALCRECT);
+
+
+    int xo = min(max(mousePt.x,wndr->left),wndr->right);
+    int yo = min(max(mousePt.y + 24,wndr->top),wndr->bottom);
+
+    if (yo + r.bottom > wndr->bottom-4) // too close to bottom, move up if possible
+    {
+      if (mousePt.y - r.bottom - 12 >= wndr->top)
+        yo = mousePt.y - r.bottom - 12;
+      else
+        yo = wndr->bottom -4 - r.bottom;
+    }
+
+    if (xo + r.right > wndr->right - 4)
+    {
+      xo = wndr->right - 4 - r.right;
+    }
+
+
+    r.left += xo;
+    r.top += yo;
+    r.right += xo;
+    r.bottom += yo;
+    
+
+    int border = 3;
+    LICE_FillRect(bm,r.left-border,r.top-border,r.right-r.left+border*2,r.bottom-r.top+border*2,col2,1.0f,LICE_BLIT_MODE_COPY);
+    LICE_DrawRect(bm,r.left-border,r.top-border,r.right-r.left+border*2,r.bottom-r.top+border*2,col1,1.0f,LICE_BLIT_MODE_COPY);
+    
+    tmpfont.DrawText(bm,text,-1,&r,0);
+
 }
 
 
@@ -146,8 +216,18 @@ int OrganizeWindow(HWND hwndDlg)
   return maxPos;
 }
 
+void KillTooltip(bool doRefresh=false)
+{
+  KillTimer(g_hwnd,TOOLTIP_TIMER);
+  bool had=!!g_hwnd_tooltip[0];
+  g_hwnd_tooltip[0]=0;
+  if (had && doRefresh) InvalidateRect(g_hwnd,NULL,FALSE);
+}
+
 void UpdateMainWindowWithSizeChanged()
 {
+  KillTooltip();
+
   g_aboutwindow_open=false;
 
   EditImageLabelEnd();
@@ -288,11 +368,93 @@ void AddImage(const char *fn)
   if (g_fullmode_item) EnsureImageRecVisible(w);
 }
 
+static RECT g_lastSplashRect;
+
+
+static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
+{
+  static LICE_IBitmap *splash=  NULL;
+  if (!splash)
+    splash = LoadThemeElement(IDR_SPLASH,"snapease");
+  if (splash)
+  {
+    int xo=0,yo=0;
+    LICE_IBitmap *bm = painter->GetBuffer(&xo,&yo);
+
+    g_lastSplashRect.left = r.right/2 - splash->getWidth()/2;
+    g_lastSplashRect.top = r.bottom/2 - splash->getHeight()/2 - splash->getHeight()/4;
+    if (g_lastSplashRect.top<0)g_lastSplashRect.top=0;
+    g_lastSplashRect.right = g_lastSplashRect.left + splash->getWidth();
+    g_lastSplashRect.bottom = g_lastSplashRect.top + splash->getHeight();
+
+    xo += g_lastSplashRect.left;
+    yo += g_lastSplashRect.top;
+    if (bm) 
+    {
+      float xsc = 1.0/splash->getWidth();
+      float ysc = 1.0/splash->getHeight();
+
+      static float a[9]={0,};
+      int x;
+      static double t;
+      
+      t += ((rand()+GetTickCount()/10000)%100)/1000.0;
+      for(x=0;x<9;x++)
+        a[x]=a[x]*0.9 + 0.1 * ((0.5+sin(t*(0.2*x+0.2)))*0.3 - ((x/3)&1)*0.2);
+      
+      LICE_GradRect(bm,xo,yo,splash->getWidth(),splash->getHeight(),a[6],a[7],a[8],1,   a[0]*xsc,a[1]*xsc,a[2]*xsc,0*xsc,a[3]*ysc,a[4]*ysc,a[5]*ysc,0*ysc,LICE_BLIT_MODE_COPY);
+
+      LICE_Blit(bm,splash,xo, yo,NULL,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_USE_ALPHA);
+
+      //if (g_aboutwindow_open)
+      {
+        static LICE_CachedFont tmpfont;
+        if (!tmpfont.GetHFont())
+        {
+          bool doOutLine = true;
+          LOGFONT lf = 
+          {
+              14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+                OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,DEFAULT_PITCH,
+	          #ifdef _WIN32
+              "MS Shell Dlg"
+	          #else
+	          "Arial"
+	          #endif
+          };
+
+          tmpfont.SetFromHFont(CreateFontIndirect(&lf),LICE_FONT_FLAG_OWNS_HFONT);                 
+        }
+        tmpfont.SetBkMode(TRANSPARENT);
+        tmpfont.SetTextColor(LICE_RGBA(255,255,255,255));
+
+        RECT tr={xo - g_lastSplashRect.left,yo+splash->getHeight()+5,xo - g_lastSplashRect.left + r.right,yo+r.bottom};
+        int h = tmpfont.DrawText(bm,
+              "Version " VERSTRING " - "
+              "Copyright (C) 2009, Cockos Incorporated",-1,&tr,DT_CENTER|DT_TOP);
+
+        tr.top += h + 32;
+
+        if (!g_aboutwindow_open)
+        {
+          tmpfont.DrawText(bm,
+              "(...drag files here if you like...)"
+              ,-1,&tr,DT_CENTER|DT_TOP);
+
+        }
+        else
+        {
+          // credits etc
+        }
+
+      }
+    }
+  }
+}
 
 
 WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  static RECT lastSplashRect;
 #ifdef _WIN32
   if (Scroll_Message && uMsg == Scroll_Message)
   {
@@ -333,7 +495,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 #endif
         ShowWindow(hwndDlg,SW_SHOW);
 
-      SetTimer(hwndDlg,1,30,NULL);
+      SetTimer(hwndDlg,GENERAL_TIMER,30,NULL);
     return 0;
     case WM_DESTROY:
 
@@ -365,12 +527,33 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       PostQuitMessage(0);
     return 0;
     case WM_TIMER:
-      if (wParam==1)
+      if (wParam == TOOLTIP_TIMER)
+      {
+        KillTimer(hwndDlg,wParam);
+        POINT p;
+        GetCursorPos(&p);
+        ScreenToClient(hwndDlg,&p);
+
+        RECT r;
+        GetClientRect(hwndDlg,&r);
+
+        char buf[256];
+        buf[0]=0;
+        if (!PtInRect(&r,p) || !g_vwnd.GetToolTipString(p.x,p.y,buf,sizeof(buf))) buf[0]=0;
+
+        if (strcmp(buf,g_hwnd_tooltip))
+        {
+          g_hwnd_tooltip_pt = p;
+          lstrcpyn(g_hwnd_tooltip,buf,sizeof(g_hwnd_tooltip));
+          InvalidateRect(hwndDlg,NULL,FALSE);
+        }
+      }
+      else if (wParam==GENERAL_TIMER)
       {
         DecodeThread_RunTimer();
 
         if (!g_images.GetSize()||g_aboutwindow_open)
-          InvalidateRect(hwndDlg,&lastSplashRect,FALSE);
+          InvalidateRect(hwndDlg,&g_lastSplashRect,FALSE);
 
         EditImageRunTimer();
         if (g_DecodeDidSomething)
@@ -583,6 +766,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         InvalidateRect(hwndDlg,NULL,FALSE);
         return 0;
       }
+      KillTooltip(true);
       EditImageLabelEnd();
       SetFocus(hwndDlg);
       if (g_vwnd.OnMouseDown(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam)))
@@ -595,6 +779,12 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       {
         g_vwnd.OnMouseMove(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
       }
+      else
+      {
+        KillTooltip(true);
+        SetTimer(g_hwnd,TOOLTIP_TIMER,TOOLTIP_TIMEOUT,NULL);
+      }
+
     return 0;
     case WM_LBUTTONUP:
       if (GetCapture()==hwndDlg)
@@ -602,6 +792,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         g_vwnd.OnMouseUp(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
         ReleaseCapture();
       }
+      KillTooltip(true);
     return 0;
     case WM_PAINT:
       {
@@ -609,86 +800,20 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         GetClientRect(hwndDlg,&r);
         g_vwnd.SetPosition(&r);
         g_hwnd_painter.PaintBegin(hwndDlg,RGB(0,0,0));
-        if (!g_aboutwindow_open) g_hwnd_painter.PaintVirtWnd(&g_vwnd);
 
         if (!g_images.GetSize()||g_aboutwindow_open)
+          DrawAboutWindow(&g_hwnd_painter,r);
+        else
         {
-          static LICE_IBitmap *splash=  NULL;
-          if (!splash)
-            splash = LoadThemeElement(IDR_SPLASH,"snapease");
-          if (splash)
+          g_hwnd_painter.PaintVirtWnd(&g_vwnd);
+
+          if (g_hwnd_tooltip[0])
           {
             int xo=0,yo=0;
             LICE_IBitmap *bm = g_hwnd_painter.GetBuffer(&xo,&yo);
-
-            lastSplashRect.left = r.right/2 - splash->getWidth()/2;
-            lastSplashRect.top = r.bottom/2 - splash->getHeight()/2 - splash->getHeight()/4;
-            if (lastSplashRect.top<0)lastSplashRect.top=0;
-            lastSplashRect.right = lastSplashRect.left + splash->getWidth();
-            lastSplashRect.bottom = lastSplashRect.top + splash->getHeight();
-
-            xo += lastSplashRect.left;
-            yo += lastSplashRect.top;
-            if (bm) 
-            {
-              float xsc = 1.0/splash->getWidth();
-              float ysc = 1.0/splash->getHeight();
-
-              static float a[9]={0,};
-              int x;
-              static double t;
-              
-              t += ((rand()+GetTickCount()/10000)%100)/1000.0;
-              for(x=0;x<9;x++)
-                a[x]=a[x]*0.9 + 0.1 * ((0.5+sin(t*(0.2*x+0.2)))*0.3 - ((x/3)&1)*0.2);
-              
-              LICE_GradRect(bm,xo,yo,splash->getWidth(),splash->getHeight(),a[6],a[7],a[8],1,   a[0]*xsc,a[1]*xsc,a[2]*xsc,0*xsc,a[3]*ysc,a[4]*ysc,a[5]*ysc,0*ysc,LICE_BLIT_MODE_COPY);
-
-              LICE_Blit(bm,splash,xo, yo,NULL,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_USE_ALPHA);
-
-              //if (g_aboutwindow_open)
-              {
-                static LICE_CachedFont tmpfont;
-                if (!tmpfont.GetHFont())
-                {
-                  bool doOutLine = true;
-                  LOGFONT lf = 
-                  {
-                      14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
-                        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,DEFAULT_PITCH,
-	                  #ifdef _WIN32
-                      "MS Shell Dlg"
-	                  #else
-	                  "Arial"
-	                  #endif
-                  };
-
-                  tmpfont.SetFromHFont(CreateFontIndirect(&lf),LICE_FONT_FLAG_OWNS_HFONT);                 
-                }
-                tmpfont.SetBkMode(TRANSPARENT);
-                tmpfont.SetTextColor(LICE_RGBA(255,255,255,255));
-
-                RECT tr={xo - lastSplashRect.left,yo+splash->getHeight()+5,xo - lastSplashRect.left + r.right,yo+r.bottom};
-                int h = tmpfont.DrawText(bm,
-                      "Version " VERSTRING " - "
-                      "Copyright (C) 2009, Cockos Incorporated",-1,&tr,DT_CENTER|DT_TOP);
-
-                tr.top += h + 32;
-
-                if (!g_aboutwindow_open)
-                {
-                  tmpfont.DrawText(bm,
-                      "(...drag files here if you like...)"
-                      ,-1,&tr,DT_CENTER|DT_TOP);
-
-                }
-                else
-                {
-                  // credits etc
-                }
-
-              }
-            }
+            POINT p ={ g_hwnd_tooltip_pt.x + xo, g_hwnd_tooltip_pt.y + yo};
+            RECT rr = { r.left+xo,r.top+yo,r.right+xo,r.bottom+yo};
+            DrawTooltipForPoint(bm,p,&rr,g_hwnd_tooltip);
           }
         }
 
