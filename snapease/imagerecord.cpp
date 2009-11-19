@@ -113,7 +113,25 @@ LICE_CachedFont g_imagerecord_font;
 
 static LICE_IBitmap *LoadThemeElement(int idx, const char *name)
 {
-  return LICE_LoadPNGFromResource(g_hInst,idx,NULL);
+  LICE_IBitmap *bm = LICE_LoadPNGFromResource(g_hInst,idx,NULL);
+  return bm;
+
+#if 0
+  if (!bm) return 0;
+
+  LICE_MemBitmap *bm2 = new LICE_MemBitmap(bm->getWidth()+4*3,bm->getHeight()+4);
+
+  /* oops need to do this by x3
+  LICE_Clear(bm2,0);
+  LICE_DrawRect(bm2,0,0,bm2->getWidth()-1,bm2->getHeight()-1,LICE_RGBA(96,96,96,96),1.0f,LICE_BLIT_MODE_COPY);
+  LICE_Blit(bm2,bm,2,2,NULL,1.0f,LICE_BLIT_MODE_COPY);
+  LICE_FillRect(bm2,1,1,bm2->getWidth()-2,bm2->getHeight()-2,LICE_RGBA(64,64,64,255),0.25f,LICE_BLIT_MODE_COPY);
+  */
+
+  delete bm;
+
+  return bm2;
+#endif
 }
 
 static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state)

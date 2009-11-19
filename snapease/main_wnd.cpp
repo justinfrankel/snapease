@@ -805,6 +805,14 @@ int MainProcessMessage(MSG *msg)
         }
       }
 
+      if (msg->wParam == VK_HOME || msg->wParam == VK_END)
+      {
+        int a = msg->wParam == VK_HOME ? 0 : g_images.GetSize()-1;
+        if (g_images.Get(a)) EnsureImageRecVisible(g_images.Get(a));
+        return 1;
+      }
+
+
       if (g_fullmode_item)
       {
         if (msg->wParam == VK_ESCAPE)
