@@ -1,4 +1,5 @@
 #include "main.h"
+#include <math.h>
 
 #include "../WDL/lice/lice.h"
 #include "../WDL/lice/lice_text.h"
@@ -697,6 +698,9 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
   r.bottom += origin_y;
   LICE_DrawRect(drawbm,r.left,r.top,r.right-r.left,r.bottom-r.top,LICE_RGBA(32,32,32,32),1.0f,LICE_BLIT_MODE_COPY);
 
+  g_imagerecord_font.SetTextColor(LICE_RGBA(255,255,255,0));
+  g_imagerecord_font.SetEffectColor(LICE_RGBA(0,0,0,0));
+
   bool usedFullImage=(m_fullimage &&!m_want_fullimage) ;
 
 //  WDL_MutexLock tmp(usedFullImage ? &g_images_mutex : NULL);
@@ -856,11 +860,59 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
 
       LICE_DrawRect(drawbm,cr.left,cr.top,cr.right-cr.left,cr.bottom-cr.top,LICE_RGBA(255,255,255,255),1.0f,LICE_BLIT_MODE_COPY);
 
+      
+      g_imagerecord_font.SetCombineMode(LICE_BLIT_MODE_COPY,1.0f);
+
+      {
+        int w=m_croprect.right-m_croprect.left;
+        int h=m_croprect.bottom-m_croprect.top;
+        if (w<1) w= m_srcimage_w;
+        if (h<1) h=m_srcimage_h;
+
+        if (m_rot&1) 
+        {
+          int a=w;
+          w=h;
+          h=a;
+        }
+        RECT tr=r;
+        tr.top+=24;
+
+        double ar = w / (double)h;
+
+        double bestdiff = 0.2;
+        int denom=1;
+
+        int i;
+        static char denoms[] = { 1, 2,3,4,9,10};
+        for(i=0;i<sizeof(denoms)/sizeof(denoms[0]);i++)
+        {
+          double b = ar*(int)denoms[i];
+          b = fabs(floor(b+0.5) - b);
+          if (b < bestdiff)
+          {
+            bestdiff=b;
+            denom=(int)denoms[i];
+          }
+        }
+        double num= ar * denom;
+        // calculate ideal numerator/denom
+
+
+        char numstr[64];
+        sprintf(numstr,"%.1f",num);
+        char *p=strstr(numstr,".");
+        if (p && p[0] && p[1] == '0' && !p[2]) *p=0;
+
+        char fmtstring[256];
+        sprintf(fmtstring,"%dx%d -- %s : %d -- %.1fmpix",w,h,numstr,denom,w*(double)h/1000000.0);
+        g_imagerecord_font.DrawText(drawbm,fmtstring,-1,&tr,DT_CENTER|DT_TOP|DT_SINGLELINE);
+      }
+
+
     }
 
   }
-  g_imagerecord_font.SetTextColor(LICE_RGBA(255,255,255,0));
-  g_imagerecord_font.SetEffectColor(LICE_RGBA(0,0,0,0));
 
   if (m_state != IR_STATE_LOADED && !srcimage)
   {
