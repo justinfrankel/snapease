@@ -37,7 +37,7 @@ $tmp = $output_root;
 for ($x=0;$x<count($a)-1;$x++)
 {
   $tmp .= "/" . $a[$x];
-  @mkdir($tmp); // todo mode?
+  @mkdir($tmp,0777); // todo mode?
 }
 
 if (!@move_uploaded_file($file["tmp_name"], "$output_root/$tgt")) die("error copying file to '$output_root/$tgt'\n");
@@ -370,11 +370,12 @@ int PostUploader::Run(char *statusBuf, int statusBufLen) // >0 completed, <0 err
       m_extrapost_content.Set("");
     }
   }
-  {
-    char tmp[512];
-    sprintf(tmp,"Sending %d/%d",m_file_send_pos,m_file_size_sending);
-    lstrcpyn(statusBuf,tmp,statusBufLen);
-  }
+
+  char tmp[512];
+  sprintf(tmp,"Sending %d/%d",m_file_send_pos,m_file_size_sending);
+  lstrcpyn(statusBuf,tmp,statusBufLen);
+  
+  if (maxsend < 1) Sleep(3);
 
   return 0;
 }
