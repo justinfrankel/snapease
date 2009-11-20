@@ -348,10 +348,10 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
                                   avg_imgsize,
 
                                  rec->m_fn.Get(),
-                                 m_disk_out[0] ? m_disk_out : "<nowhere>/",
+                                 m_disk_out[0] ? m_disk_out : m_upload_mode ? "<upload>:" : "<nul>/",
                                  m_disk_out[0] ? PREF_DIRSTR: "",
                                  m_outname.Get(),
-                                 "" // if upload, " (upload to blah)" : ""
+                                 m_disk_out[0] && m_upload_mode ? " + upload" : ""
                                
                                  );
 

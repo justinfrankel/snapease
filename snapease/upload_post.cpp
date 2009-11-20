@@ -162,6 +162,8 @@ bool PostUploader::SendFile(const char *srcfullfn, const char *destfn) // true i
   m_con->connect(hb.Get(), port);
 
   m_extrapost_content.Set("\r\n");
+  char initialcontent[2048];
+
   {
     char tgt[1024];
     lstrcpyn(tgt,m_leadpath.Get(),300);
@@ -176,6 +178,11 @@ bool PostUploader::SendFile(const char *srcfullfn, const char *destfn) // true i
         case '\\': 
           if (out==tgt || out[-1] != '/') *out++='/'; 
         break;
+
+        case '\"': // ingore these chars
+        case '\n':
+        case '\r':
+        break;
         
         default:
           if (out!=in) *out=*in;
@@ -186,15 +193,17 @@ bool PostUploader::SendFile(const char *srcfullfn, const char *destfn) // true i
     }
     *out=0;
     AddTextField(&m_extrapost_content,"snapease_target",tgt);
+
+    sprintf(initialcontent,
+        "--" POST_DIV_STRING "\r\n"
+        "Content-Disposition: form-data; name=\"snapease_file\"; filename=\"%s\"\r\n"
+        "Content-Type: application/octet-stream\r\n"
+        "Content-transfer-encoding: binary\r\n"
+        "\r\n",
+          tgt);
+
   }
   m_extrapost_content.Append("--" POST_DIV_STRING "--\r\n");
-
-
-  const char *initialcontent = "--" POST_DIV_STRING "\r\n"
-                        "Content-Disposition: form-data; name=\"snapease_file\"; filename=\"snapease_random_filename.dat\"\r\n"
-                        "Content-Type: application/octet-stream\r\n"
-                        "Content-transfer-encoding: binary\r\n"
-                        "\r\n";
 
   
 
@@ -206,21 +215,20 @@ bool PostUploader::SendFile(const char *srcfullfn, const char *destfn) // true i
   lpbuf[0]=0;
   if (m_login.Get()[0]||m_pass.Get()[0])
   {
-    WDL_String tmp;
-    tmp.Set(m_login.Get());
-    tmp.Append(":");
-    tmp.Append(m_pass.Get());
-    if (strlen(tmp.Get()) > 256) tmp.Get()[255]=0;
+    char tmp[256];
+    lstrcpyn(tmp,m_login.Get(),125);
+    strcat(tmp,":");
+    lstrcpyn(tmp+strlen(tmp),m_pass.Get(),125);
 
     strcpy(lpbuf,"Authorization: Basic ");
-    JNL_HTTPGet::do_encode_mimestr(tmp.Get(),lpbuf+strlen(lpbuf));
+    JNL_HTTPGet::do_encode_mimestr(tmp,lpbuf+strlen(lpbuf));
     strcat(lpbuf,"\r\n");
   }
 
-  WDL_String tmp;
-  tmp.SetFormatted(4096,"POST /%s HTTP/1.1\r\n"
+  char tmp[2048];
+  sprintf(tmp,"POST /%.200s HTTP/1.1\r\n"
                         "Connection: close\r\n"
-                        "Host: %s\r\n"
+                        "Host: %.200s\r\n"
                         "User-Agent: Cockos SnapEase (Mozilla)\r\n"
                         "MIME-Version: 1.0\r\n"
                         "Content-type: multipart/form-data; boundary=" POST_DIV_STRING "\r\n"
@@ -232,7 +240,7 @@ bool PostUploader::SendFile(const char *srcfullfn, const char *destfn) // true i
                         lpbuf
                         );
 
-  m_con->send_string(tmp.Get());
+  m_con->send_string(tmp);
 
   m_con->send_string(initialcontent);
 
