@@ -680,6 +680,90 @@ void ImageRecord::OnMouseUp(int xpos, int ypos)
 }
 
 
+bool ImageRecord::ProcessImageToBitmap(LICE_IBitmap *srcimage, LICE_IBitmap *destimage, int max_w, int max_h)
+{
+  if (!srcimage || !destimage) return false;
+
+  LICE_SubBitmap subbm(srcimage, m_croprect.left,m_croprect.top,m_croprect.right-m_croprect.left,m_croprect.bottom-m_croprect.top); 
+  if (m_croprect.right-m_croprect.left>0&&m_croprect.bottom-m_croprect.top>0)
+  {
+    if (subbm.getWidth()<1||subbm.getHeight()<1) return false; // this would catch if it exceeds the bounds of the image, perhaps?
+    srcimage=&subbm;
+  }
+
+  int srcw=srcimage->getWidth();
+  int srch=srcimage->getHeight();
+
+
+  int rot = m_rot&3;
+  if (rot&1)
+  {
+    int a= srcw;
+    srcw=srch;
+    srch=a;
+  }
+
+  double out_w = srcw;
+  double out_h = srch;
+  if (max_w && out_w > max_w) 
+  {
+    out_h = (out_h * max_w) / out_w;
+    out_w = max_w;
+  }
+  if (max_h && out_h > max_h)
+  {
+    out_w = (out_w * max_h) / out_h;
+    out_h = max_h;
+  }
+
+  int w = (int) (out_w+0.5);
+  int h = (int) (out_h+0.5);
+
+  if (w<1 || h < 1) return false;
+
+  destimage->resize(w,h);
+
+  // todo: better filtering perhaps? this is used for final image generation ,bleh
+
+  if (!rot) LICE_ScaledBlit(destimage,srcimage,0,0,w,h,0,0,srcimage->getWidth(),srcimage->getHeight(),1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
+  else
+  {
+
+    double dsdx=0, dsdy=0,dtdx=0,dtdy=0;
+
+    int sx = rot != 1 ? srcimage->getWidth() - 1 : 0;
+    int sy = rot != 3 ? srcimage->getHeight() - 1 : 0;
+
+    if (rot!=2)
+    {
+      dtdx = srcimage->getHeight() / (double) w;
+      dsdy = srcimage->getWidth() / (double) h;
+      if (rot==1) dtdx=-dtdx;
+      else dsdy=-dsdy;
+    }
+    else // flip
+    {
+      dsdx=-srcimage->getWidth() / (double) w;
+      dtdy=-srcimage->getHeight() / (double) h;
+    }
+
+    LICE_DeltaBlit(destimage,srcimage,0,0,w,h,
+              sx,sy, // start x,y
+          srcimage->getWidth(),srcimage->getHeight(),
+            dsdx, dtdx,
+            dsdy, dtdy,
+            0,0,false,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
+
+  }
+  if (m_bw)
+  {
+    LICE_ProcessRect(destimage,0,0,w,h,makeBWFunc,NULL);
+  }
+
+
+  return true;
+}
+
 
 void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect)
 {
@@ -782,8 +866,9 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     else
     {
       m_fullimage_rendercached_valid=false;
+
       if (!rot)
-        LICE_ScaledBlit(drawbm,srcimage,xoffs,yoffs,w,h,0,0,srcw,srch,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
+        LICE_ScaledBlit(drawbm,srcimage,xoffs,yoffs,w,h,0,0,srcimage->getWidth(),srcimage->getHeight(),1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
       else
       {
 
@@ -810,7 +895,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
               srcimage->getWidth(),srcimage->getHeight(),
                 dsdx, dtdx,
                 dsdy, dtdy,
-                0,0,false,1.0f,LICE_BLIT_MODE_COPY);
+                0,0,false,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
 
       }
       if (m_bw)

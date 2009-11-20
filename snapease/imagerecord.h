@@ -23,6 +23,7 @@ public:
 
   //////
 
+  bool ProcessImageToBitmap(LICE_IBitmap *srcimage, LICE_IBitmap *destimage, int max_w, int max_h); // resizes destimage, return false on error
 
   void SetIsFullscreen(bool isFS);
 

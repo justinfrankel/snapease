@@ -17,7 +17,7 @@ static bool g_DecodeThreadQuit=true;
 //#define USE_SEH
 #endif
 
-static bool LoadFullBitmap(LICE_IBitmap *bmOut, const char *fn)
+bool LoadFullBitmap(LICE_IBitmap *bmOut, const char *fn)
 {
   bool success=false;
 #ifdef USE_SEH

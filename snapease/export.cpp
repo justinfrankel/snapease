@@ -153,10 +153,10 @@ static struct
   bool isFinished;
   int runpos;
 
-  LICE_IBitmap *workbm1, *workbm2;
-
   WDL_String messages;
 
+  int total_files_out;
+  WDL_INT64 total_bytes_out;
 } exportConfig;
 
 
@@ -196,6 +196,8 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
       exportConfig.messages.Set("");
       exportConfig.runpos=0;
       exportConfig.isFinished=0;
+      exportConfig.total_files_out=0;
+      exportConfig.total_bytes_out=0;
 
       if (exportConfig.disk_out[0]) CreateDirectory(exportConfig.disk_out,NULL);
       
@@ -207,7 +209,10 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
         ImageRecord *rec = g_images.Get(exportConfig.runpos);
         if (!rec)
         {
-          DisplayMessage(hwndDlg,false,"Processing of %d images completed!\n",exportConfig.runpos);
+          DisplayMessage(hwndDlg,false,"Processing %d/%d images completed!\r\nTotal size: %.2fMB, average image size: %.2fMB",exportConfig.total_files_out,exportConfig.runpos,
+            (exportConfig.total_bytes_out/1024.0/1024.0),
+            (exportConfig.total_bytes_out/1024.0/1024.0)/(double)max(1,exportConfig.total_files_out)
+            );
           SetDlgItemText(hwndDlg,IDCANCEL,"Close");
           exportConfig.isFinished=true;
           break;
@@ -226,7 +231,7 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
 
         bool preventDiskOutput=false;
 
-        if (exportConfig.overwrite>1 && exportConfig.disk_out[0]) // change if needed
+        if (exportConfig.overwrite!=1 && exportConfig.disk_out[0]) // change if needed
         {
           int x;
           const int maxtries=1000;
@@ -248,9 +253,14 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
               outname.Append(apstr);
               break;
             }
+            if (exportConfig.overwrite==0)
+            {
+              preventDiskOutput=true;
+              break;
+            }
           }
 
-          if (x>=maxtries)
+          if (x>=maxtries&&exportConfig.overwrite>1)
           {
 
             DisplayMessage(hwndDlg,true,"Could not find suitable unused output filename for:\r\n"
@@ -308,16 +318,65 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
                                      outname.Get());
 
 
+        bool hadError=false;
 
-        // todo: load rec->m_fn.Get(), process save to tmpfn.Get()
+        LICE_IBitmap *srcimage = LICE_LoadImage(rec->m_fn.Get(),NULL,false);
+        if (!srcimage)
+        {
+          hadError=true;
+          DisplayMessage(hwndDlg,true,"Failed loading image:\r\n\t%.200s\r\n",rec->m_fn.Get());
+        }
+
+        if (!hadError)
+        {
+          LICE_MemBitmap tempimage;
+          if (!rec->ProcessImageToBitmap(srcimage,&tempimage,
+                                    exportConfig.constrain_w,
+                                    exportConfig.constrain_h))
+          {
+            DisplayMessage(hwndDlg,true,"Failed processing image:\r\n\t%.200s\r\n",rec->m_fn.Get());
+            hadError=true;
+          }          
+          else
+          {            
+            if (exportConfig.fmt == FORMAT_JPG)
+            {
+              if (!LICE_WriteJPG(tmpfn.Get(),&tempimage,exportConfig.jpg_level,exportConfig.jpg_baseline))
+                hadError=true;
+              else 
+              {
+                exportConfig.total_files_out++;
+                exportConfig.total_bytes_out += file_size(tmpfn.Get());
+              }
+            }
+            else if (exportConfig.fmt == FORMAT_PNG)
+            {
+              if (!LICE_WritePNG(tmpfn.Get(),&tempimage,exportConfig.png_alpha))
+                hadError=true;
+              else 
+              {
+                exportConfig.total_files_out++;
+                exportConfig.total_bytes_out += file_size(tmpfn.Get());
+              }
+            }
+            else
+            {
+              DisplayMessage(hwndDlg,true,"Unknown format selected");
+              hadError=true;
+            }
+            if (hadError) DisplayMessage(hwndDlg,true,"Failed writing image to:\r\n\t%.200s\r\n",tmpfn.Get());
+          }
+        }
 
 
         
+        delete srcimage;
+
 
         // todo: if uploading, upload tmpfn.Get(), using outname.Get() as the "name"
 
 
-        if (exportConfig.disk_out[0] && !preventDiskOutput)
+        if (!hadError && exportConfig.disk_out[0] && !preventDiskOutput)
         {
           WDL_String s;
           s.Set(exportConfig.disk_out);
@@ -350,10 +409,6 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
       // handle any cleanup needed
 
       exportConfig.messages.Set("");
-      delete exportConfig.workbm1;
-      delete exportConfig.workbm2;
-      exportConfig.workbm1=0;
-      exportConfig.workbm2=0;
 
     break;
   }
@@ -386,7 +441,7 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
 
       if (config_readint("export_jpg_baseline",0))
         CheckDlgButton(hwndDlg,IDC_CHECK5,BST_CHECKED);
-      SetDlgItemInt(hwndDlg,IDC_EDIT3,config_readint("export_jpg_level",75),FALSE);
+      SetDlgItemInt(hwndDlg,IDC_EDIT3,config_readint("export_jpg_level",90),FALSE);
 
       if (config_readint("export_png_alpha",0))
         CheckDlgButton(hwndDlg,IDC_CHECK6,BST_CHECKED);

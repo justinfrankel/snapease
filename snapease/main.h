@@ -90,6 +90,7 @@ bool SavePromptForClose(const char *promptmsg);
 void ClearImageList();
 
 bool file_exists(const char *filename);
+WDL_INT64 file_size(const char *filename);
 
 #ifndef WM_MOUSEWHEEL
 #define WM_MOUSEWHEEL 0x20a
