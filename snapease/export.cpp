@@ -138,7 +138,7 @@ static void DoImageOutputFileCalculation(const char *infn, const char *outname, 
 class imageExporter
 {
 public:
-  imageExporter() { }
+  imageExporter() { Reset(); }
   ~imageExporter() { }
 
   void DisplayMessage(HWND hwndDlg, bool isLog, const char *fmt, ...);
@@ -146,6 +146,8 @@ public:
 
   void Reset()
   {
+    m_preventDiskOutput=false;
+    m_state=0;
     m_messages.Set("");
     m_runpos=0;
     m_isFinished=0;
@@ -170,7 +172,9 @@ public:
   bool m_isFinished;
 
 private:
+  int m_state;
   int m_runpos;
+  bool m_preventDiskOutput;
 
   WDL_String m_messages;
 
@@ -215,206 +219,222 @@ void imageExporter::DisplayMessage(HWND hwndDlg, bool isLog, const char *fmt, ..
 
 void imageExporter::RunExportTimer(HWND hwndDlg)
 {
-  ImageRecord *rec;
-  
-  if (g_fullmode_item && g_images.Find(g_fullmode_item)>=0) rec = m_runpos ? 0 : g_fullmode_item;
-  else rec = g_images.Get(m_runpos);
-  if (!rec)
+  if (m_state == 0)
   {
-    DisplayMessage(hwndDlg,false,"Processing %d/%d images completed!\r\n"
-        "Total size: %.2fMB, average image size: %.2fMB",
-        m_total_files_out,m_runpos,
-      (m_total_bytes_out/1024.0/1024.0),
-      (m_total_bytes_out/1024.0/1024.0)/(double)max(1,m_total_files_out)
-      );
-    SetDlgItemText(hwndDlg,IDCANCEL,"Close");
-    m_isFinished=true;
-    return;
-  }
+    ImageRecord *rec;
   
-  const char *extension = m_fmt == FORMAT_JPG ? ".jpg" : m_fmt == FORMAT_PNG ? ".png" : ".unknown";
-  // calculate output file
-  
-  DoImageOutputFileCalculation(rec->m_fn.Get(),
-                               rec->m_outname.Get(),
-                               g_images.Find(rec)+1,
-                               g_imagelist_fn.Get()[0] ? g_imagelist_fn.Get() : "Untitled",
-                               m_disk_out,
-                               m_formatstr[0]?m_formatstr:"<",
-                               &m_outname);
-
-  bool preventDiskOutput=false;
-
-  if (m_overwrite!=1 && m_disk_out[0]) // change if needed
-  {
-    int x;
-    const int maxtries=1000;
-    WDL_String s;
-    
-    for (x=0;x<maxtries;x++)
+    if (g_fullmode_item && g_images.Find(g_fullmode_item)>=0) rec = m_runpos ? 0 : g_fullmode_item;
+    else rec = g_images.Get(m_runpos);
+    if (!rec)
     {
+      DisplayMessage(hwndDlg,false,"Processing %d/%d images completed!\r\n"
+          "Total size: %.2fMB, average image size: %.2fMB",
+          m_total_files_out,m_runpos,
+        (m_total_bytes_out/1024.0/1024.0),
+        (m_total_bytes_out/1024.0/1024.0)/(double)max(1,m_total_files_out)
+        );
+      SetDlgItemText(hwndDlg,IDCANCEL,"Close");
+      m_isFinished=true;
+      return;
+    }
+  
+    const char *extension = m_fmt == FORMAT_JPG ? ".jpg" : m_fmt == FORMAT_PNG ? ".png" : ".unknown";
+    // calculate output file
+  
+    DoImageOutputFileCalculation(rec->m_fn.Get(),
+                                 rec->m_outname.Get(),
+                                 g_images.Find(rec)+1,
+                                 g_imagelist_fn.Get()[0] ? g_imagelist_fn.Get() : "Untitled",
+                                 m_disk_out,
+                                 m_formatstr[0]?m_formatstr:"<",
+                                 &m_outname);
+
+    m_preventDiskOutput=false;
+
+    if (m_overwrite!=1 && m_disk_out[0]) // change if needed
+    {
+      int x;
+      const int maxtries=1000;
+      WDL_String s;
+    
+      for (x=0;x<maxtries;x++)
+      {
+        s.Set(m_disk_out);
+        s.Append(PREF_DIRSTR);
+        s.Append(m_outname.Get());
+        char apstr[256];            
+        if (x) sprintf(apstr," (%d)",x+1);
+        else apstr[0]=0;
+
+        s.Append(apstr);
+        s.Append(extension);
+        if (!file_exists(s.Get()))
+        {
+          m_outname.Append(apstr);
+          break;
+        }
+        if (m_overwrite==0)
+        {
+          m_preventDiskOutput=true;
+          break;
+        }
+      }
+
+      if (x>=maxtries&&m_overwrite>1)
+      {
+
+        DisplayMessage(hwndDlg,true,"Could not find suitable unused output filename for:\r\n"
+                                    "\t%.200s\r\n"
+                                    "Last try was: %.200s\r\n",
+                                    rec->m_fn.Get(),
+                                    s.Get());
+
+        m_preventDiskOutput=true;
+      }
+    }
+
+
+    if (m_disk_out[0])
+    {
+      m_tmpfn.Set(m_disk_out);
+      m_tmpfn.Append(PREF_DIRSTR);
+      m_tmpfn.Append(m_outname.Get());
+      m_tmpfn.Append(".SnapEase-temp");
+    }
+    else
+    {
+      char fn[2048];
+  #ifdef _WIN32
+      GetTempPath(sizeof(fn)-128, fn);
+  #else
+      char *p = getenv("TEMP");
+      if (!p || !*p) p="/tmp";
+      lstrcpyn(fn, p, 512);
+      strcat(fn,"/");
+  #endif
+
+      sprintf(fn+strlen(fn),"snapease-temp-%08x-%08x.tmp",
+  #ifdef _WIN32
+        GetCurrentProcessId(),
+  #else
+        0, // todo
+  #endif
+        GetTickCount());
+
+      m_tmpfn.Set(fn);
+    }
+
+    m_outname.Append(extension);
+
+    SetDlgItemText(hwndDlg,IDC_UPLOADSTATUS,"");
+    double avg_imgsize=(m_total_bytes_out/1024.0/1024.0)/(double)max(1,m_total_files_out);
+    DisplayMessage(hwndDlg,false,"Processing %d/%d - %.2fMB/%.2fMB (est), average image size = %.2fMB\r\n"
+                                 "Source: %.100s\r\n"
+                                 "Destination: %.100s%s%.100s%s\r\n"
+                                 ,
+                                 m_runpos + 1,
+                                 g_fullmode_item && g_images.Find(g_fullmode_item)>=0 ? 1 : g_images.GetSize(),
+
+                                  (m_total_bytes_out/1024.0/1024.0),
+                                  avg_imgsize * (g_fullmode_item && g_images.Find(g_fullmode_item)>=0 ? 1 : g_images.GetSize()),
+                                  avg_imgsize,
+
+                                 rec->m_fn.Get(),
+                                 m_disk_out[0] ? m_disk_out : "<nowhere>/",
+                                 m_disk_out[0] ? PREF_DIRSTR: "",
+                                 m_outname.Get(),
+                                 "" // if upload, " (upload to blah)" : ""
+                               
+                                 );
+
+
+    bool hadError=false;
+
+    LICE_IBitmap *srcimage = LICE_LoadImage(rec->m_fn.Get(),NULL,false);
+    if (!srcimage)
+    {
+      hadError=true;
+      DisplayMessage(hwndDlg,true,"Failed loading image:\r\n\t%.200s\r\n",rec->m_fn.Get());
+    }
+
+    if (!hadError)
+    {
+      LICE_MemBitmap tempimage;
+      if (!rec->ProcessImageToBitmap(srcimage,&tempimage,
+                                m_constrain_w,
+                                m_constrain_h))
+      {
+        DisplayMessage(hwndDlg,true,"Failed processing image:\r\n\t%.200s\r\n",rec->m_fn.Get());
+        hadError=true;
+      }          
+      else
+      {            
+        if (m_fmt == FORMAT_JPG)
+        {
+          if (!LICE_WriteJPG(m_tmpfn.Get(),&tempimage,m_jpg_level,m_jpg_baseline))
+            hadError=true;
+          else 
+          {
+            m_total_files_out++;
+            m_total_bytes_out += file_size(m_tmpfn.Get());
+          }
+        }
+        else if (m_fmt == FORMAT_PNG)
+        {
+          if (!LICE_WritePNG(m_tmpfn.Get(),&tempimage,m_png_alpha))
+            hadError=true;
+          else 
+          {
+            m_total_files_out++;
+            m_total_bytes_out += file_size(m_tmpfn.Get());
+          }
+        }
+        else
+        {
+          DisplayMessage(hwndDlg,true,"Unknown format selected");
+          hadError=true;
+        }
+        if (hadError) DisplayMessage(hwndDlg,true,"Failed writing image to:\r\n\t%.200s\r\n",m_tmpfn.Get());
+      }
+    }
+
+
+  
+    delete srcimage;
+
+    if (!hadError) m_state++;
+    else m_state=3; // go straight to cleanup pass
+
+  }
+  else if (m_state==1)
+  {
+    // todo: if uploading, upload m_tmpfn.Get(), using m_outname.Get() as the "name"
+    m_state++;
+  }  
+  else if (m_state==2)
+  {
+    if (m_disk_out[0] && !m_preventDiskOutput)
+    {
+      WDL_String s;
       s.Set(m_disk_out);
       s.Append(PREF_DIRSTR);
       s.Append(m_outname.Get());
-      char apstr[256];            
-      if (x) sprintf(apstr," (%d)",x+1);
-      else apstr[0]=0;
-
-      s.Append(apstr);
-      s.Append(extension);
-      if (!file_exists(s.Get()))
+      if (m_overwrite==1) DeleteFile(s.Get());
+      if (!MoveFile(m_tmpfn.Get(),s.Get()))
       {
-        m_outname.Append(apstr);
-        break;
-      }
-      if (m_overwrite==0)
-      {
-        preventDiskOutput=true;
-        break;
+        DisplayMessage(hwndDlg,true,"Failed moving:\r\n\t%.200s\r\nto:\r\n\t%.200s\r\n",m_tmpfn.Get(),s.Get());
       }
     }
-
-    if (x>=maxtries&&m_overwrite>1)
-    {
-
-      DisplayMessage(hwndDlg,true,"Could not find suitable unused output filename for:\r\n"
-                                  "\t%.200s\r\n"
-                                  "Last try was: %.200s\r\n",
-                                  rec->m_fn.Get(),
-                                  s.Get());
-
-      preventDiskOutput=true;
-    }
+    m_state++;
   }
 
-
-  if (m_disk_out[0])
+  if (m_state==3)
   {
-    m_tmpfn.Set(m_disk_out);
-    m_tmpfn.Append(PREF_DIRSTR);
-    m_tmpfn.Append(m_outname.Get());
-    m_tmpfn.Append(".SnapEase-temp");
+    DeleteFile(m_tmpfn.Get());
+    m_runpos++;
+
+    m_state=0;
   }
-  else
-  {
-    char fn[2048];
-#ifdef _WIN32
-    GetTempPath(sizeof(fn)-128, fn);
-#else
-    char *p = getenv("TEMP");
-    if (!p || !*p) p="/tmp";
-    lstrcpyn(fn, p, 512);
-    strcat(fn,"/");
-#endif
-
-    sprintf(fn+strlen(fn),"snapease-temp-%08x-%08x.tmp",
-#ifdef _WIN32
-      GetCurrentProcessId(),
-#else
-      0, // todo
-#endif
-      GetTickCount());
-
-    m_tmpfn.Set(fn);
-  }
-
-  m_outname.Append(extension);
-
-  SetDlgItemText(hwndDlg,IDC_UPLOADSTATUS,"");
-  double avg_imgsize=(m_total_bytes_out/1024.0/1024.0)/(double)max(1,m_total_files_out);
-  DisplayMessage(hwndDlg,false,"Processing %d/%d - %.2fMB/%.2fMB (est), average image size = %.2fMB\r\n"
-                               "Source: %.100s\r\n"
-                               "Destination: %.100s%s%.100s%s\r\n"
-                               ,
-                               m_runpos + 1,
-                               g_fullmode_item && g_images.Find(g_fullmode_item)>=0 ? 1 : g_images.GetSize(),
-
-                                (m_total_bytes_out/1024.0/1024.0),
-                                avg_imgsize * (g_fullmode_item && g_images.Find(g_fullmode_item)>=0 ? 1 : g_images.GetSize()),
-                                avg_imgsize,
-
-                               rec->m_fn.Get(),
-                               m_disk_out[0] ? m_disk_out : "<nowhere>/",
-                               m_disk_out[0] ? PREF_DIRSTR: "",
-                               m_outname.Get(),
-                               "" // if upload, " (upload to blah)" : ""
-                               
-                               );
-
-
-  bool hadError=false;
-
-  LICE_IBitmap *srcimage = LICE_LoadImage(rec->m_fn.Get(),NULL,false);
-  if (!srcimage)
-  {
-    hadError=true;
-    DisplayMessage(hwndDlg,true,"Failed loading image:\r\n\t%.200s\r\n",rec->m_fn.Get());
-  }
-
-  if (!hadError)
-  {
-    LICE_MemBitmap tempimage;
-    if (!rec->ProcessImageToBitmap(srcimage,&tempimage,
-                              m_constrain_w,
-                              m_constrain_h))
-    {
-      DisplayMessage(hwndDlg,true,"Failed processing image:\r\n\t%.200s\r\n",rec->m_fn.Get());
-      hadError=true;
-    }          
-    else
-    {            
-      if (m_fmt == FORMAT_JPG)
-      {
-        if (!LICE_WriteJPG(m_tmpfn.Get(),&tempimage,m_jpg_level,m_jpg_baseline))
-          hadError=true;
-        else 
-        {
-          m_total_files_out++;
-          m_total_bytes_out += file_size(m_tmpfn.Get());
-        }
-      }
-      else if (m_fmt == FORMAT_PNG)
-      {
-        if (!LICE_WritePNG(m_tmpfn.Get(),&tempimage,m_png_alpha))
-          hadError=true;
-        else 
-        {
-          m_total_files_out++;
-          m_total_bytes_out += file_size(m_tmpfn.Get());
-        }
-      }
-      else
-      {
-        DisplayMessage(hwndDlg,true,"Unknown format selected");
-        hadError=true;
-      }
-      if (hadError) DisplayMessage(hwndDlg,true,"Failed writing image to:\r\n\t%.200s\r\n",m_tmpfn.Get());
-    }
-  }
-
-
-  
-  delete srcimage;
-
-
-  // todo: if uploading, upload m_tmpfn.Get(), using m_outname.Get() as the "name"
-
-
-  if (!hadError && m_disk_out[0] && !preventDiskOutput)
-  {
-    WDL_String s;
-    s.Set(m_disk_out);
-    s.Append(PREF_DIRSTR);
-    s.Append(m_outname.Get());
-    if (m_overwrite==1) DeleteFile(s.Get());
-    if (!MoveFile(m_tmpfn.Get(),s.Get()))
-    {
-      DisplayMessage(hwndDlg,true,"Failed moving:\r\n\t%.200s\r\nto:\r\n\t%.200s\r\n",m_tmpfn.Get(),s.Get());
-    }
-  }
-
-  DeleteFile(m_tmpfn.Get());
-  m_runpos++;
 }
 
 static imageExporter exportConfig;
@@ -440,7 +460,12 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
         if (!reent)
         {
           reent=true;
-          exportConfig.RunExportTimer(hwndDlg);
+          DWORD tc = GetTickCount()+50;
+          do
+          {
+            exportConfig.RunExportTimer(hwndDlg);
+          }
+          while (!exportConfig.m_isFinished && GetTickCount()<tc);
           reent=false;
         }
       }
@@ -451,7 +476,7 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
         case IDCANCEL:
           if (!exportConfig.m_isFinished)
           {
-            if (MessageBox(hwndDlg,"Abort conversion?","Abort",MB_YESNO)==IDNO) return 0;
+            if (MessageBox(hwndDlg,"Abort export?","Abort",MB_YESNO)==IDNO) return 0;
           }
           EndDialog(hwndDlg,0);
         break;
@@ -678,8 +703,6 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
             }
 
           }
-
-          // save config state
 
           EndDialog(hwndDlg,1);
         break;
