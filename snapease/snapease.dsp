@@ -954,6 +954,10 @@ SOURCE=.\main.cpp
 
 SOURCE=.\main_wnd.cpp
 # End Source File
+# Begin Source File
+
+SOURCE=.\upload_post.cpp
+# End Source File
 # End Group
 # Begin Group "Resource Files"
 

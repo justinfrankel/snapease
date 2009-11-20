@@ -147,6 +147,7 @@ public:
 
   void Reset()
   {
+    m_upload_statustext[0]=0;
     m_preventDiskOutput=false;
     m_state=0;
     m_messages.Set("");
@@ -158,6 +159,7 @@ public:
     m_uploader=0;
   }
 
+  char m_upload_statustext[256];
   int m_overwrite; // 0=skip, 1=overwrite, 2= output to (2)
 
   int m_constrain_w,m_constrain_h; // zero if unconstrained
@@ -169,6 +171,7 @@ public:
 
   char m_disk_out[1024]; // empty if not writing to disk
 
+  int m_upload_mode; // 0=off, 1=generic post
 
   // export run state
 
@@ -331,7 +334,7 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
 
     m_outname.Append(extension);
 
-    SetDlgItemText(hwndDlg,IDC_UPLOADSTATUS,"");
+    m_upload_statustext[0]=0;
     double avg_imgsize=(m_total_bytes_out/1024.0/1024.0)/(double)max(1,m_total_files_out);
     DisplayMessage(hwndDlg,false,"Processing %d/%d - %.2fMB/%.2fMB (est), average image size = %.2fMB\r\n"
                                  "Source: %.100s\r\n"
@@ -413,6 +416,12 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
       delete m_uploader;
       m_uploader=0; 
 
+
+      if (m_upload_mode==1)
+      {
+        IFileUploader *CreateGenericPostUploader();
+        m_uploader = CreateGenericPostUploader();
+      }
       // optionally create the uploader here
       if (m_uploader)
       {
@@ -431,14 +440,12 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
   {
     if (m_uploader)
     {
-      char sbuf[512];
-      sbuf[0]=0;
-      int a = m_uploader->Run(sbuf,sizeof(sbuf));
-      SetDlgItemText(hwndDlg,IDC_UPLOADSTATUS,sbuf);
+      m_upload_statustext[0]=0;
+      int a = m_uploader->Run(m_upload_statustext,sizeof(m_upload_statustext));
       if (a)
       {
         if (a<0)
-          DisplayMessage(hwndDlg,true,"Failed uploading image:\r\n\t%.200s\r\nReason: %.200s\r\n",m_tmpfn.Get(),sbuf);
+          DisplayMessage(hwndDlg,true,"Failed uploading image:\r\n\t%.200s\r\nReason: %.200s\r\n",m_tmpfn.Get(),m_upload_statustext);
         m_state++;
       }
     }
@@ -465,7 +472,7 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
 
   if (m_state==3)
   {
-    SetDlgItemText(hwndDlg,IDC_UPLOADSTATUS,"");
+    m_upload_statustext[0]=0;
     DeleteFile(m_tmpfn.Get());
     m_runpos++;
 
@@ -495,6 +502,8 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
         static bool reent; // in case something runs the message loop in this bitch
         if (!reent)
         {
+          char oldb[512];
+          strcpy(oldb,exportConfig.m_upload_statustext);
           reent=true;
           DWORD tc = GetTickCount()+50;
           do
@@ -503,6 +512,11 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
           }
           while (!exportConfig.m_isFinished && GetTickCount()<tc);
           reent=false;
+          if (strcmp(oldb,exportConfig.m_upload_statustext))
+          {            
+            SetDlgItemText(hwndDlg,IDC_UPLOADSTATUS,exportConfig.m_upload_statustext);
+            UpdateWindow(GetDlgItem(hwndDlg,IDC_UPLOADSTATUS));
+          }
         }
       }
     break;
@@ -737,6 +751,13 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
               if (MessageBox(hwndDlg,"Note: format string contains \"*\", which represents the current imagelist file name.\r\n\r\n"
                     "The current imagelist is not saved, so the string \"Untitled\" will be used in its place.", "Conversion warning",MB_OKCANCEL) == IDCANCEL) return 0;
             }
+
+
+            bool isUp;
+
+            config_writeint("export_upload",isUp= !!IsDlgButtonChecked(hwndDlg,IDC_CHECK8));
+              
+            exportConfig.m_upload_mode = isUp ? 1: 0;
 
           }
 
