@@ -60,6 +60,7 @@ static void DoImageOutputFileCalculation(const char *infn, const char *outname, 
                                   const char *fmt,
                                   WDL_String *nameOut)
 {
+  nameOut->Set("");
   while (*fmt)
   {
     switch (*fmt)
@@ -220,7 +221,9 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
   else rec = g_images.Get(m_runpos);
   if (!rec)
   {
-    DisplayMessage(hwndDlg,false,"Processing %d/%d images completed!\r\nTotal size: %.2fMB, average image size: %.2fMB",m_total_files_out,m_runpos,
+    DisplayMessage(hwndDlg,false,"Processing %d/%d images completed!\r\n"
+        "Total size: %.2fMB, average image size: %.2fMB",
+        m_total_files_out,m_runpos,
       (m_total_bytes_out/1024.0/1024.0),
       (m_total_bytes_out/1024.0/1024.0)/(double)max(1,m_total_files_out)
       );
@@ -231,6 +234,7 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
   
   const char *extension = m_fmt == FORMAT_JPG ? ".jpg" : m_fmt == FORMAT_PNG ? ".png" : ".unknown";
   // calculate output file
+  
   DoImageOutputFileCalculation(rec->m_fn.Get(),
                                rec->m_outname.Get(),
                                g_images.Find(rec)+1,
@@ -317,16 +321,25 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
   m_outname.Append(extension);
 
   SetDlgItemText(hwndDlg,IDC_UPLOADSTATUS,"");
-  DisplayMessage(hwndDlg,false,"Processing %d/%d:\r\n"
-                               "From: %.100s\r\n"
-                               "To: %.100s%s%.100s\r\n"
+  double avg_imgsize=(m_total_bytes_out/1024.0/1024.0)/(double)max(1,m_total_files_out);
+  DisplayMessage(hwndDlg,false,"Processing %d/%d - %.2fMB/%.2fMB (est), average image size = %.2fMB\r\n"
+                               "Source: %.100s\r\n"
+                               "Destination: %.100s%s%.100s%s\r\n"
                                ,
                                m_runpos + 1,
                                g_fullmode_item && g_images.Find(g_fullmode_item)>=0 ? 1 : g_images.GetSize(),
+
+                                (m_total_bytes_out/1024.0/1024.0),
+                                avg_imgsize * (g_fullmode_item && g_images.Find(g_fullmode_item)>=0 ? 1 : g_images.GetSize()),
+                                avg_imgsize,
+
                                rec->m_fn.Get(),
-                               m_disk_out,
+                               m_disk_out[0] ? m_disk_out : "<nowhere>/",
                                m_disk_out[0] ? PREF_DIRSTR: "",
-                               m_outname.Get());
+                               m_outname.Get(),
+                               "" // if upload, " (upload to blah)" : ""
+                               
+                               );
 
 
   bool hadError=false;
