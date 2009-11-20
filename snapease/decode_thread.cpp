@@ -244,8 +244,16 @@ void DecodeThread_RunTimer()
 {
   if (!hThread[0] && !g_DecodeThreadQuit)
   {
-    static DecodeThreadContext *p;
-    if (!p) p=new DecodeThreadContext;
-    if (p) RunWork(*p);
+    static bool reent; // in case something runs the message loop in this bitch
+    if (!reent)
+    {
+      reent=true;
+
+      static DecodeThreadContext *p;
+      if (!p) p=new DecodeThreadContext;
+      if (p) RunWork(*p);
+
+      reent=false;
+    }
   }
 }

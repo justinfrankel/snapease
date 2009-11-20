@@ -109,7 +109,6 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,281,210,50,14
     CONTROL         "",IDC_RECT,"Static",SS_BLACKFRAME | NOT WS_VISIBLE,74,
                     149,257,57
-    PUSHBUTTON      "Estimate output size...",IDC_BUTTON2,128,210,82,14
 END
 
 IDD_EXPORT_RUN DIALOG DISCARDABLE  0, 0, 389, 236
@@ -118,10 +117,11 @@ CAPTION "Exporting images..."
 FONT 8, "MS Sans Serif"
 BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,169,215,50,14
-    LTEXT           "Initializing...",IDC_STATUS,7,7,375,45
-    EDITTEXT        IDC_EDIT1,7,66,375,145,ES_MULTILINE | ES_AUTOVSCROLL | 
+    LTEXT           "Initializing...",IDC_STATUS,7,7,375,41
+    EDITTEXT        IDC_EDIT1,7,77,375,134,ES_MULTILINE | ES_AUTOVSCROLL | 
                     ES_AUTOHSCROLL | ES_READONLY | WS_VSCROLL
-    LTEXT           "Messages:",IDC_STATIC,7,55,35,8
+    LTEXT           "Messages:",IDC_STATIC,7,66,35,8
+    LTEXT           "",IDC_UPLOADSTATUS,7,53,375,9
 END
 
 
