@@ -18,6 +18,46 @@
 #include <shlobj.h>
 #include <commctrl.h>
 
+// add uploaders here
+HWND CreateGenericPostUploaderConfig(HWND hwndPar);
+IFileUploader *CreateGenericPostUploader();
+
+
+enum 
+{
+  UPLOADER_POST=0,
+  NUM_UPLOADERS,
+};
+
+
+static const char *uploaderNames[NUM_UPLOADERS] = {
+  "Generic HTTP post uploader",
+};
+
+static HWND CreateUploaderConfig(HWND par, int mode)
+{
+  if (mode == UPLOADER_POST) return CreateGenericPostUploaderConfig(par);
+  return NULL;
+}
+static IFileUploader *CreateUploader(int mode)
+{
+  if (mode == UPLOADER_POST) return CreateGenericPostUploader();
+  return NULL;
+}
+/////////////////////////
+
+
+static void PositionChildWindow(HWND hwndDlg, HWND hwnd, int frameid)
+{
+  if (!hwndDlg||!hwnd||!frameid) return;
+  RECT r;
+  GetWindowRect(GetDlgItem(hwndDlg,frameid),&r);
+  ScreenToClient(hwndDlg,(LPPOINT)&r);
+  ScreenToClient(hwndDlg,((LPPOINT)&r)+1);
+  SetWindowPos(hwnd,NULL,r.left,r.top,r.right-r.left,r.bottom-r.top,SWP_NOZORDER|SWP_NOACTIVATE);
+  ShowWindow(hwnd,SW_SHOWNA);
+}
+
 static int WINAPI BrowseCallbackProc( HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
 {
 	switch (uMsg)
@@ -171,7 +211,7 @@ public:
 
   char m_disk_out[1024]; // empty if not writing to disk
 
-  int m_upload_mode; // 0=off, 1=generic post
+  int m_upload_mode; // <0=off, UPLOADER_POST etc
 
   // export run state
 
@@ -348,10 +388,10 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
                                   avg_imgsize,
 
                                  rec->m_fn.Get(),
-                                 m_disk_out[0] ? m_disk_out : m_upload_mode ? "<upload>:" : "<nul>/",
+                                 m_disk_out[0] ? m_disk_out : m_upload_mode>=0 ? "<upload>:" : "<nul>/",
                                  m_disk_out[0] ? PREF_DIRSTR: "",
                                  m_outname.Get(),
-                                 m_disk_out[0] && m_upload_mode ? " + upload" : ""
+                                 m_disk_out[0] && m_upload_mode>=0 ? " + upload" : ""
                                
                                  );
 
@@ -414,14 +454,8 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
     {
       m_state++;
       delete m_uploader;
-      m_uploader=0; 
 
-
-      if (m_upload_mode==1)
-      {
-        IFileUploader *CreateGenericPostUploader();
-        m_uploader = CreateGenericPostUploader();
-      }
+      m_uploader = CreateUploader(m_upload_mode);
       // optionally create the uploader here
       if (m_uploader)
       {
@@ -544,9 +578,15 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
 
 static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+  static HWND s_uploaderCfg;
   switch (uMsg)
   {
+    case WM_DESTROY:
+      s_uploaderCfg=0;
+    break;
     case WM_INITDIALOG:
+      s_uploaderCfg=0;
+
       SetWindowText(hwndDlg,g_fullmode_item&&g_images.Find(g_fullmode_item)>=0?"Export one image" : "Export all images");
 
       WDL_UTF8_HookComboBox(GetDlgItem(hwndDlg,IDC_COMBO1));
@@ -603,10 +643,13 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
       if (config_readint("export_upload",0))
         CheckDlgButton(hwndDlg,IDC_CHECK8,BST_CHECKED);
 
-      // todo populate IDC_COMBO3, ui in IDC_RECT
-
-      // IDC_COMBO3 = upload w/ IDC_RECT 
-
+      {
+        int x;
+        for (x=0;x<NUM_UPLOADERS;x++)
+          SendDlgItemMessage(hwndDlg,IDC_COMBO3,CB_ADDSTRING,0,(LPARAM)uploaderNames[x]);
+      }
+      SendDlgItemMessage(hwndDlg,IDC_COMBO3,CB_SETCURSEL,config_readint("export_uploadmethod",0),0);
+      SendMessage(hwndDlg,WM_COMMAND,MAKEWPARAM(IDC_COMBO3,CBN_SELCHANGE),0);
 
     return 1;
     case WM_COMMAND:
@@ -643,7 +686,23 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
 #endif            
           }
         break;
+        case IDC_COMBO3:
+          if (HIWORD(wParam) == CBN_SELCHANGE) 
+          {
+            if (s_uploaderCfg) 
+            {
+              DestroyWindow(s_uploaderCfg);
+              s_uploaderCfg=0;
+            }
+            int mode = SendDlgItemMessage(hwndDlg,IDC_COMBO3,CB_GETCURSEL,0,0);
+            s_uploaderCfg = CreateUploaderConfig(hwndDlg,mode);
+
+            if (s_uploaderCfg) PositionChildWindow(hwndDlg,s_uploaderCfg,IDC_RECT);
+            
+          }
+        break;
         case IDC_COMBO2:
+          if (HIWORD(wParam) == CBN_SELCHANGE) 
           {
             int fmt = SendDlgItemMessage(hwndDlg,IDC_COMBO2,CB_GETCURSEL,0,0);
             ShowWindow(GetDlgItem(hwndDlg,IDC_JPGLBL),fmt==FORMAT_JPG);
@@ -756,8 +815,13 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
             bool isUp;
 
             config_writeint("export_upload",isUp= !!IsDlgButtonChecked(hwndDlg,IDC_CHECK8));
+            
+            int mode = SendDlgItemMessage(hwndDlg,IDC_COMBO3,CB_GETCURSEL,0,0);            
+            if (mode>=0) config_writeint("export_uploadmethod",mode);
               
-            exportConfig.m_upload_mode = isUp ? 1: 0;
+            if (s_uploaderCfg) SendMessage(s_uploaderCfg,WM_COMMAND,IDOK,0);
+
+            exportConfig.m_upload_mode = isUp ? mode : -1;
 
           }
 

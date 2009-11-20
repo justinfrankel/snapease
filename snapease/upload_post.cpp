@@ -61,6 +61,7 @@ echo "ok\n";
 #include "../WDL/fileread.h"
 
 #include "uploader.h"
+#include "resource.h"
 
 #define POST_DIV_STRING "zzzASFIJAHFASJFHASLKFHZI8VZJKZ__________AZZ8530597329562798067FZJXXXX"
 
@@ -117,10 +118,21 @@ static void AddTextField(WDL_String *s, const char *name, const char *value)
 
 bool PostUploader::SendFile(const char *srcfullfn, const char *destfn) // true if success
 {
-  WDL_String m_host("http://www.1014.org/test/upload.php");
-  WDL_String m_login("test");
-  WDL_String m_pass("password");
-  WDL_String m_leadpath("blah");
+  char useUrl[1024];
+  useUrl[0]=0;
+  config_readstr("export_post_url",useUrl,sizeof(useUrl));
+
+  char useLogin[256];
+  useLogin[0]=0;
+  config_readstr("export_post_user",useLogin,sizeof(useLogin));
+
+  char usePass[256];
+  usePass[0]=0;
+  config_readstr("export_post_pass",usePass,sizeof(usePass));
+
+  char useLeadPath[256];
+  useLeadPath[0]=0;
+  config_readstr("export_post_path",useLeadPath,sizeof(useLeadPath));
 
   m_errorstate=0;
   m_linestate=0;
@@ -137,7 +149,7 @@ bool PostUploader::SendFile(const char *srcfullfn, const char *destfn) // true i
     return false;
   }
 
-  const char *hsrc = m_host.Get();
+  const char *hsrc = useUrl;
   if (!strnicmp(hsrc,"http://",7)) hsrc+=7;
   WDL_String hb(hsrc);
   int port=80;
@@ -166,8 +178,8 @@ bool PostUploader::SendFile(const char *srcfullfn, const char *destfn) // true i
 
   {
     char tgt[1024];
-    lstrcpyn(tgt,m_leadpath.Get(),300);
-    strcat(tgt,"/");
+    lstrcpyn(tgt,useLeadPath,300);
+    if (tgt[0]) strcat(tgt,"/");
     lstrcpyn(tgt+strlen(tgt),destfn,300);
     char *in = tgt, *out=tgt;
     while (*in)
@@ -176,7 +188,7 @@ bool PostUploader::SendFile(const char *srcfullfn, const char *destfn) // true i
       {
         case '/':
         case '\\': 
-          if (out==tgt || out[-1] != '/') *out++='/'; 
+          if (out!=tgt && out[-1] != '/') *out++='/'; 
         break;
 
         case '\"': // ingore these chars
@@ -213,12 +225,12 @@ bool PostUploader::SendFile(const char *srcfullfn, const char *destfn) // true i
 
   char lpbuf[1024];
   lpbuf[0]=0;
-  if (m_login.Get()[0]||m_pass.Get()[0])
+  if (useLogin[0]||usePass[0])
   {
     char tmp[256];
-    lstrcpyn(tmp,m_login.Get(),125);
+    lstrcpyn(tmp,useLogin,125);
     strcat(tmp,":");
-    lstrcpyn(tmp+strlen(tmp),m_pass.Get(),125);
+    lstrcpyn(tmp+strlen(tmp),usePass,125);
 
     strcpy(lpbuf,"Authorization: Basic ");
     JNL_HTTPGet::do_encode_mimestr(tmp,lpbuf+strlen(lpbuf));
@@ -396,4 +408,48 @@ int PostUploader::Run(char *statusBuf, int statusBufLen) // >0 completed, <0 err
 IFileUploader *CreateGenericPostUploader()
 {
   return new PostUploader;
+}
+
+static WDL_DLGRET cfgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+  switch (uMsg)
+  {
+    case WM_INITDIALOG:
+      {
+        char buf[1024];
+        buf[0]=0;
+        config_readstr("export_post_url",buf,sizeof(buf));
+        SetDlgItemText(hwndDlg,IDC_EDIT1,buf);
+        buf[0]=0;
+        config_readstr("export_post_user",buf,sizeof(buf));
+        SetDlgItemText(hwndDlg,IDC_EDIT2,buf);
+        buf[0]=0;
+        config_readstr("export_post_pass",buf,sizeof(buf));
+        SetDlgItemText(hwndDlg,IDC_EDIT3,buf);
+        buf[0]=0;
+        config_readstr("export_post_path",buf,sizeof(buf));
+        SetDlgItemText(hwndDlg,IDC_EDIT4,buf);
+      }
+    return 1;
+    case WM_COMMAND:
+      if (LOWORD(wParam) == IDOK)
+      {
+        char buf[1024];
+        GetDlgItemText(hwndDlg,IDC_EDIT1,buf,sizeof(buf));
+        config_writestr("export_post_url",buf);
+        GetDlgItemText(hwndDlg,IDC_EDIT2,buf,sizeof(buf));
+        config_writestr("export_post_user",buf);
+        GetDlgItemText(hwndDlg,IDC_EDIT3,buf,sizeof(buf));
+        config_writestr("export_post_pass",buf);
+        GetDlgItemText(hwndDlg,IDC_EDIT4,buf,sizeof(buf));
+        config_writestr("export_post_path",buf);
+      }
+    return 0;
+  }
+  return 0;
+}
+
+HWND CreateGenericPostUploaderConfig(HWND hwndPar)
+{
+  return CreateDialog(g_hInst,MAKEINTRESOURCE(IDD_ULCFG_POST),hwndPar,cfgProc);
 }

@@ -645,7 +645,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           }
         break;
         case ID_EXPORT:
-          DoExportDialog(hwndDlg);
+          if (g_images.GetSize()) DoExportDialog(hwndDlg);
         break;
         case ID_IMPORT:
 
