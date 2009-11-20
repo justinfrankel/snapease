@@ -18,6 +18,21 @@
 #include <shlobj.h>
 #include <commctrl.h>
 
+static int WINAPI BrowseCallbackProc( HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
+{
+	switch (uMsg)
+	{
+		case BFFM_INITIALIZED:
+			if (lpData && ((char *)lpData)[0]) 
+      {
+        SendMessage(hwnd,BFFM_SETSELECTION,1,(long)lpData);
+      }
+      return 0;
+      
+	}
+	return 0;
+}
+#endif
 // add uploaders here
 HWND CreateGenericPostUploaderConfig(HWND hwndPar);
 IFileUploader *CreateGenericPostUploader();
@@ -58,21 +73,6 @@ static void PositionChildWindow(HWND hwndDlg, HWND hwnd, int frameid)
   ShowWindow(hwnd,SW_SHOWNA);
 }
 
-static int WINAPI BrowseCallbackProc( HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
-{
-	switch (uMsg)
-	{
-		case BFFM_INITIALIZED:
-			if (lpData && ((char *)lpData)[0]) 
-      {
-        SendMessage(hwnd,BFFM_SETSELECTION,1,(long)lpData);
-      }
-    return 0;
-
-	}
-	return 0;
-}
-#endif
 
 static void FNFilterAppend(WDL_String *out, const char *in, int inlen)
 {

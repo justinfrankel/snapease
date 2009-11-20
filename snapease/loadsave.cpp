@@ -383,8 +383,8 @@ void UpdateCaption()
   SetWindowText(g_hwnd,tmp.Get());
 
   #ifndef _WIN32
-  void Mac_SetMainWindowRepre(); // unsaved repre (move to swell?)
-  Mac_SetMainWindowRepre();
+  //void Mac_SetMainWindowRepre(); // unsaved repre (move to swell?)
+//  Mac_SetMainWindowRepre();
   #endif
 
 }

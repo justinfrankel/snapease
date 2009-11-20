@@ -1,5 +1,8 @@
 #include "main.h"
 
+#ifndef _WIN32
+#include "../WDL/swell/swell-dlggen.h"
+#endif
 static HWND s_wnd;
 static ImageRecord *s_rec;
 
@@ -65,11 +68,18 @@ void EditImageLabel(ImageRecord *rec)
   tr.top -= 4;
 
 
+#ifdef _WIN32
   s_wnd = CreateWindowEx(WS_EX_NOPARENTNOTIFY,"Edit","",
       WS_CHILDWINDOW|WS_TABSTOP|ES_CENTER|ES_AUTOHSCROLL|ES_WANTRETURN,
       tr.left,tr.top,tr.right-tr.left,tr.bottom-tr.top,
       g_hwnd,NULL,g_hInst,0);
   SendMessage(s_wnd,WM_SETFONT,SendMessage(g_hwnd,WM_GETFONT,0,0),0);
+#else
+  SWELL_MakeSetCurParms(1,1,0,0,g_hwnd,false,false);
+  s_wnd = __SWELL_MakeEditField(0,tr.left,tr.top,tr.right-tr.left,tr.bottom-tr.top,ES_AUTOHSCROLL|ES_WANTRETURN);
+  SWELL_MakeSetCurParms(1,1,0,0,NULL,false,false);
+  
+#endif
   SetWindowText(s_wnd,rec->m_outname.Get());
 
   SendMessage(s_wnd,EM_SETSEL,0,-1);

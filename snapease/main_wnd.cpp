@@ -559,7 +559,10 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 #ifndef _WIN32
       UninitializeCoolSB(hwndDlg);
 #endif
+      
+#ifdef _WIN32
       PostQuitMessage(0);
+#endif
     return 0;
     case WM_TIMER:
       if (wParam == TOOLTIP_TIMER)
@@ -693,7 +696,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             l.Flags = OFN_HIDEREADONLY|OFN_EXPLORER|OFN_FILEMUSTEXIST|OFN_ALLOWMULTISELECT|OFN_NOCHANGEDIR;
             if (GetOpenFileName(&l))          
           #else
-            char *temp=BrowseForFiles("Add images:", dir, fn, false, extlist);
+            char *temp=BrowseForFiles("Add images:", cwd, NULL, false, extlist);
             if (temp)
           #endif     
             {

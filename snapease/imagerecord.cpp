@@ -154,7 +154,13 @@ LICE_CachedFont g_imagerecord_font;
 
 LICE_IBitmap *LoadThemeElement(int idx, const char *name)
 {
+#ifdef _WIN32
   LICE_IBitmap *bm = LICE_LoadPNGFromResource(g_hInst,idx,NULL);
+#else
+  // todo: query app resource path
+  LICE_IBitmap *bm =  NULL; //LICE_LoadPNG(
+
+#endif
   return bm;
 
 #if 0
@@ -553,9 +559,13 @@ int ImageRecord::UpdateCursor(int xpos, int ypos)
     }
     if (cm&5) // left or right
     {
-      void *idx=IDC_SIZEWE;
+      INT_PTR idx=(INT_PTR)IDC_SIZEWE;
 
-      if (cm&10) idx = ((cm&1)^!!(cm&2)) ? IDC_SIZENESW : IDC_SIZENWSE;
+#ifdef _WIN32
+      if (cm&10) idx = (INT_PTR) ( ((cm&1)^!!(cm&2)) ? IDC_SIZENESW : IDC_SIZENWSE);
+#else
+      if (cm&10) idx=(INT_PTR)IDC_SIZEALL;
+#endif
 
       SetCursor(LoadCursor(NULL,MAKEINTRESOURCE(idx)));
       return 1;
