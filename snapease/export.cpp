@@ -2,6 +2,9 @@
 
 #include "resource.h"
 
+
+#include "../WDL/lice/lice.h"
+
 #define FORMAT_JPG 0
 #define FORMAT_PNG 1
 
@@ -30,6 +33,107 @@ static int WINAPI BrowseCallbackProc( HWND hwnd, UINT uMsg, LPARAM lParam, LPARA
 }
 #endif
 
+static void FNFilterAppend(WDL_String *out, const char *in, int inlen)
+{
+  while (inlen-->0 && *in)
+  {    
+    char b[2]={*in,0};
+    switch (b[0])
+    {
+      case '<': b[0]='('; break;
+      case '>': b[0]=')'; break;
+      case '"': 
+      case '?': 
+      case '*': b[0]='_'; break;
+      case '|': 
+      case ':': b[0]=' '; break;
+      
+    }
+    if (b[0])
+      out->Append(b);
+    in++;
+  }
+}
+
+static void DoImageOutputFileCalculation(const char *infn, const char *outname, int index, 
+                                  const char *imagelistname, const char *diskoutpath, 
+                                  const char *fmt,
+                                  WDL_String *nameOut)
+{
+  while (*fmt)
+  {
+    switch (*fmt)
+    {
+      case '*':
+      case '<':
+        {
+          int oldsz = strlen(nameOut->Get());
+
+          // add filename portion
+          {
+            const char *srcstr = *fmt == '<' ? infn : imagelistname;
+            const char *p = srcstr;
+            while (*p) p++;
+            while (p >= srcstr && *p != '\\' && *p != '/') p--;
+            p++;
+            FNFilterAppend(nameOut,p,strlen(p));
+          }
+          
+          // remove extension
+          char *p=nameOut->Get();
+          char *st = nameOut->Get() + oldsz;
+          while (*p) p++;
+          while (p > st && *p != '.') p--;
+          if (p > st) *p=0;
+        }
+      break;
+      case '>':
+        {
+          const char *p = outname;
+          while (*p)
+          {
+            if (*p == '/' || *p == '\\')
+            {
+              WDL_String temp(diskoutpath);
+              temp.Append(PREF_DIRSTR);
+              temp.Append(nameOut->Get());
+              CreateDirectory(temp.Get(),NULL);                       
+            }
+
+            FNFilterAppend(nameOut,p,1);
+            p++;
+          }
+        }
+      break;
+      case '\\':
+      case '/':
+        if (diskoutpath[0])
+        {
+          WDL_String temp(diskoutpath);
+          temp.Append(PREF_DIRSTR);
+          temp.Append(nameOut->Get());
+          CreateDirectory(temp.Get(),NULL);          
+        }
+        nameOut->Append(PREF_DIRSTR);
+      break;
+      case '$':
+        {
+          int n=1;
+          while (fmt[1] == '$') { fmt++; n++; }
+          char s[32];
+          sprintf(s,"%%0%dd",n); // whats that syntax for doing this directly? I forget...
+          nameOut->AppendFormatted(256,s,index);
+        }
+      break;
+      default: 
+        FNFilterAppend(nameOut,fmt,1);
+      break;
+    }
+    fmt++;
+  }
+}
+
+
 static struct
 {
   bool overwrite;
@@ -44,7 +148,214 @@ static struct
   char disk_out[1024]; // empty if not writing to disk
 
 
+  // export run state
+
+  bool isFinished;
+  int runpos;
+
+  LICE_IBitmap *workbm1, *workbm2;
+
+  WDL_String messages;
+
 } exportConfig;
+
+
+
+static void DisplayMessage(HWND hwndDlg, bool isLog, const char *fmt, ...)
+{
+  char b[4096];
+  b[0]=0;
+
+  va_list arglist;
+	va_start(arglist, fmt);
+  #ifdef _WIN32
+	int written = _vsnprintf(b, sizeof(b)-1, fmt, arglist);
+  #else
+	int written = vsnprintf(b, sizeof(b)-1, fmt, arglist);
+  #endif
+  if (written < 0) written = 0;
+	va_end(arglist);
+  b[written] = '\0';
+
+  SetDlgItemText(hwndDlg,IDC_STATUS,b);
+  if (isLog)
+  {
+    exportConfig.messages.Append(b);
+    exportConfig.messages.Append("\r\n");
+    SetDlgItemText(hwndDlg,IDC_EDIT1,exportConfig.messages.Get());
+  }
+
+  UpdateWindow(hwndDlg);
+}
+
+static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+  switch (uMsg)
+  {
+    case WM_INITDIALOG:
+      exportConfig.messages.Set("");
+      exportConfig.runpos=0;
+      exportConfig.isFinished=0;
+
+      if (exportConfig.disk_out[0]) CreateDirectory(exportConfig.disk_out,NULL);
+      
+      SetTimer(hwndDlg,1,10,NULL);
+    return 1;
+    case WM_TIMER:
+      if (wParam==1 && !exportConfig.isFinished)
+      {
+        ImageRecord *rec = g_images.Get(exportConfig.runpos);
+        if (!rec)
+        {
+          DisplayMessage(hwndDlg,false,"Processing of %d images completed!\n",exportConfig.runpos);
+          SetDlgItemText(hwndDlg,IDCANCEL,"Close");
+          exportConfig.isFinished=true;
+          break;
+        }
+        
+        const char *extension = exportConfig.fmt == FORMAT_JPG ? ".jpg" : exportConfig.fmt == FORMAT_PNG ? ".png" : ".unknown";
+        // calculate output file
+        WDL_String outname; // without any leading path
+        DoImageOutputFileCalculation(rec->m_fn.Get(),
+                                     rec->m_outname.Get(),
+                                     exportConfig.runpos+1,
+                                     g_imagelist_fn.Get()[0] ? g_imagelist_fn.Get() : "Untitled",
+                                     exportConfig.disk_out,
+                                     exportConfig.formatstr[0]?exportConfig.formatstr:"<",
+                                     &outname);
+
+        if (!exportConfig.overwrite && exportConfig.disk_out[0]) // change if needed
+        {
+          int x;
+          const int maxtries=1000;
+          WDL_String s;
+          
+          for (x=0;x<maxtries;x++)
+          {
+            s.Set(exportConfig.disk_out);
+            s.Append(PREF_DIRSTR);
+            s.Append(outname.Get());
+            char apstr[256];            
+            if (x) sprintf(apstr," (%d)",x+1);
+            else apstr[0]=0;
+
+            s.Append(apstr);
+            s.Append(extension);
+            if (!file_exists(s.Get()))
+            {
+              outname.Append(apstr);
+              break;
+            }
+          }
+
+          if (x>=maxtries)
+          {
+
+            DisplayMessage(hwndDlg,true,"Failed processing: could not find suitable unused filename for:\r\n"
+                                        "\t%.200s\r\n"
+                                        "Last try was: %.200s\r\n",
+                                        rec->m_fn.Get(),
+                                        s.Get());
+
+            exportConfig.runpos++;
+            break;
+          }
+        }
+
+
+        WDL_String tmpfn;
+        if (exportConfig.disk_out[0])
+        {
+          tmpfn.Set(exportConfig.disk_out);
+          tmpfn.Append(PREF_DIRSTR);
+          tmpfn.Append(outname.Get());
+          tmpfn.Append(".SnapEase-temp");
+        }
+        else
+        {
+          char fn[2048];
+  #ifdef _WIN32
+          GetTempPath(sizeof(fn)-128, fn);
+  #else
+          char *p = getenv("TEMP");
+          if (!p || !*p) p="/tmp";
+          lstrcpyn(fn, p, 512);
+          strcat(fn,"/");
+  #endif
+
+          sprintf(fn+strlen(fn),"snapease-temp-%08x-%08x.tmp",
+#ifdef _WIN32
+            GetCurrentProcessId(),
+#else
+            0, // todo
+#endif
+            GetTickCount());
+
+          tmpfn.Set(fn);
+        }
+
+        outname.Append(extension);
+
+
+        DisplayMessage(hwndDlg,false,"Processing:\r\n"
+                                     "From: %.100s\r\n"
+                                     "To: %.100s%s%.100s\r\n"
+                                     ,
+                                     rec->m_fn.Get(),
+                                     exportConfig.disk_out,
+                                     exportConfig.disk_out[0] ? PREF_DIRSTR: "",
+                                     outname.Get());
+
+
+
+        // todo: load rec->m_fn.Get(), process save to tmpfn.Get()
+
+
+
+        if (exportConfig.disk_out[0])
+        {
+          WDL_String s;
+          s.Set(exportConfig.disk_out);
+          s.Append(PREF_DIRSTR);
+          s.Append(outname.Get());
+          if (exportConfig.overwrite) DeleteFile(s.Get());
+          if (!MoveFile(tmpfn.Get(),s.Get()))
+          {
+            DisplayMessage(hwndDlg,true,"Failed moving:\r\n\t%.200s\r\nto:\r\n\t%.200s\r\n",tmpfn.Get(),s.Get());
+          }
+        }
+
+        // todo: if uploading, upload tmpfn.Get(), using outname.Get() as the "name"
+
+        DeleteFile(tmpfn.Get());
+        exportConfig.runpos++;
+      }
+    break;
+    case WM_COMMAND:
+      switch (LOWORD(wParam))
+      {
+        case IDCANCEL:
+          if (!exportConfig.isFinished)
+          {
+            if (MessageBox(hwndDlg,"Abort conversion?","Abort",MB_YESNO)==IDNO) return 0;
+          }
+          EndDialog(hwndDlg,0);
+        break;
+      }
+    break;
+    case WM_DESTROY:
+      // handle any cleanup needed
+
+      exportConfig.messages.Set("");
+      delete exportConfig.workbm1;
+      delete exportConfig.workbm2;
+      exportConfig.workbm1=0;
+      exportConfig.workbm2=0;
+
+    break;
+  }
+  return 0;
+}
 
 static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -237,6 +548,12 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
             config_writestr("export_fnstr",buf);
             lstrcpyn(exportConfig.formatstr,buf,sizeof(exportConfig.formatstr));
 
+            if (strstr(exportConfig.formatstr,"*") && !g_imagelist_fn.Get()[0])
+            {
+              if (MessageBox(hwndDlg,"Note: format string contains \"*\", which represents the current imagelist file name.\r\n\r\n"
+                    "The current imagelist is not saved, so the string \"Untitled\" will be used in its place.", "Conversion warning",MB_OKCANCEL) == IDCANCEL) return 0;
+            }
+
           }
 
           // save config state
@@ -252,5 +569,10 @@ void DoExportDialog(HWND hwndDlg)
 {
   if (DialogBox(g_hInst,MAKEINTRESOURCE(IDD_EXPORT_CONFIG),hwndDlg,ExportConfigDialogProc))
   {
+    DecodeThread_Quit();
+
+    DialogBox(g_hInst,MAKEINTRESOURCE(IDD_EXPORT_RUN),hwndDlg,ExportRunDialogProc);
+
+    DecodeThread_Init();
   }
 }

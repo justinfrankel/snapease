@@ -7,7 +7,7 @@
 #define DESIRED_PREVIEW_CACHEDIM 256
 
 bool g_DecodeDidSomething;
-static bool g_DecodeThreadQuit;
+static bool g_DecodeThreadQuit=true;
 
 
 #define FORCE_THREADS 1
@@ -242,7 +242,7 @@ void DecodeThread_Quit()
 
 void DecodeThread_RunTimer()
 {
-  if (!hThread[0])
+  if (!hThread[0] && !g_DecodeThreadQuit)
   {
     static DecodeThreadContext *p;
     if (!p) p=new DecodeThreadContext;
