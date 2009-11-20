@@ -2,6 +2,7 @@
 
 #include "resource.h"
 
+#include "uploader.h"
 
 #include "../WDL/lice/lice.h"
 
@@ -138,8 +139,8 @@ static void DoImageOutputFileCalculation(const char *infn, const char *outname, 
 class imageExporter
 {
 public:
-  imageExporter() { Reset(); }
-  ~imageExporter() { }
+  imageExporter() { m_uploader=0; Reset(); }
+  ~imageExporter() { delete m_uploader; }
 
   void DisplayMessage(HWND hwndDlg, bool isLog, const char *fmt, ...);
   void RunExportTimer(HWND hwndDlg);
@@ -153,6 +154,8 @@ public:
     m_isFinished=0;
     m_total_files_out=0;
     m_total_bytes_out=0;
+    delete m_uploader;
+    m_uploader=0;
   }
 
   int m_overwrite; // 0=skip, 1=overwrite, 2= output to (2)
@@ -175,6 +178,8 @@ private:
   int m_state;
   int m_runpos;
   bool m_preventDiskOutput;
+
+  IFileUploader *m_uploader;
 
   WDL_String m_messages;
 
@@ -402,17 +407,47 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
   
     delete srcimage;
 
-    if (!hadError) m_state++;
+    if (!hadError) 
+    {
+      m_state++;
+      delete m_uploader;
+      m_uploader=0; 
+
+      // optionally create the uploader here
+      if (m_uploader)
+      {
+        if (!m_uploader->SendFile(m_tmpfn.Get(),m_outname.Get()))
+        {
+          DisplayMessage(hwndDlg,true,"Failed requesting upload of image:\r\n\t%.200s\r\nDest name: %.200s\r\n",m_tmpfn.Get(),m_outname.Get());
+          delete m_uploader;
+          m_uploader=0;
+        }
+      }
+    }
     else m_state=3; // go straight to cleanup pass
 
   }
   else if (m_state==1)
   {
-    // todo: if uploading, upload m_tmpfn.Get(), using m_outname.Get() as the "name"
-    m_state++;
+    if (m_uploader)
+    {
+      char sbuf[512];
+      sbuf[0]=0;
+      int a = m_uploader->Run(sbuf,sizeof(sbuf));
+      SetDlgItemText(hwndDlg,IDC_UPLOADSTATUS,sbuf);
+      if (a)
+      {
+        if (a<0)
+          DisplayMessage(hwndDlg,true,"Failed uploading image:\r\n\t%.200s\r\nReason: %.200s\r\n",m_tmpfn.Get(),sbuf);
+        m_state++;
+      }
+    }
+    else m_state++;
   }  
   else if (m_state==2)
   {
+    delete m_uploader;
+    m_uploader=0;
     if (m_disk_out[0] && !m_preventDiskOutput)
     {
       WDL_String s;
@@ -430,6 +465,7 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
 
   if (m_state==3)
   {
+    SetDlgItemText(hwndDlg,IDC_UPLOADSTATUS,"");
     DeleteFile(m_tmpfn.Get());
     m_runpos++;
 
