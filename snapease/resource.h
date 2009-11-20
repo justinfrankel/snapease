@@ -36,6 +36,7 @@
 #define IDC_RECT                        1018
 #define IDC_CHECK2                      1019
 #define IDC_STATUS                      1020
+#define IDC_COMBO4                      1020
 #define ID_IMPORT                       40001
 #define ID_ABOUT                        40002
 #define ID_NEWLIST                      40003

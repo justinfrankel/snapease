@@ -136,7 +136,7 @@ static void DoImageOutputFileCalculation(const char *infn, const char *outname, 
 
 static struct
 {
-  bool overwrite;
+  int overwrite; // 0=skip, 1=overwrite, 2= output to (2)
 
   int constrain_w,constrain_h; // zero if unconstrained
   int fmt;
@@ -224,7 +224,9 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
                                      exportConfig.formatstr[0]?exportConfig.formatstr:"<",
                                      &outname);
 
-        if (!exportConfig.overwrite && exportConfig.disk_out[0]) // change if needed
+        bool preventDiskOutput=false;
+
+        if (exportConfig.overwrite>1 && exportConfig.disk_out[0]) // change if needed
         {
           int x;
           const int maxtries=1000;
@@ -251,14 +253,13 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
           if (x>=maxtries)
           {
 
-            DisplayMessage(hwndDlg,true,"Failed processing: could not find suitable unused filename for:\r\n"
+            DisplayMessage(hwndDlg,true,"Could not find suitable unused output filename for:\r\n"
                                         "\t%.200s\r\n"
                                         "Last try was: %.200s\r\n",
                                         rec->m_fn.Get(),
                                         s.Get());
 
-            exportConfig.runpos++;
-            break;
+            preventDiskOutput=true;
           }
         }
 
@@ -311,21 +312,23 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
         // todo: load rec->m_fn.Get(), process save to tmpfn.Get()
 
 
+        
 
-        if (exportConfig.disk_out[0])
+        // todo: if uploading, upload tmpfn.Get(), using outname.Get() as the "name"
+
+
+        if (exportConfig.disk_out[0] && !preventDiskOutput)
         {
           WDL_String s;
           s.Set(exportConfig.disk_out);
           s.Append(PREF_DIRSTR);
           s.Append(outname.Get());
-          if (exportConfig.overwrite) DeleteFile(s.Get());
+          if (exportConfig.overwrite==1) DeleteFile(s.Get());
           if (!MoveFile(tmpfn.Get(),s.Get()))
           {
             DisplayMessage(hwndDlg,true,"Failed moving:\r\n\t%.200s\r\nto:\r\n\t%.200s\r\n",tmpfn.Get(),s.Get());
           }
         }
-
-        // todo: if uploading, upload tmpfn.Get(), using outname.Get() as the "name"
 
         DeleteFile(tmpfn.Get());
         exportConfig.runpos++;
@@ -367,8 +370,12 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
 
       if (config_readint("export_constrainsize",1))
         CheckDlgButton(hwndDlg,IDC_CHECK1,BST_CHECKED);
-      if (config_readint("export_overwrite",1))
-        CheckDlgButton(hwndDlg,IDC_CHECK2,BST_CHECKED);
+
+      SendDlgItemMessage(hwndDlg,IDC_COMBO4,CB_ADDSTRING,0,(LPARAM)"Skip files that exist");
+      SendDlgItemMessage(hwndDlg,IDC_COMBO4,CB_ADDSTRING,0,(LPARAM)"Overwrite existing files");
+      SendDlgItemMessage(hwndDlg,IDC_COMBO4,CB_ADDSTRING,0,(LPARAM)"Output to filename (n)");
+      SendDlgItemMessage(hwndDlg,IDC_COMBO4,CB_SETCURSEL,config_readint("export_overwrite",1),0);
+      
       SetDlgItemInt(hwndDlg,IDC_EDIT1,config_readint("export_maxw",800),FALSE);
       SetDlgItemInt(hwndDlg,IDC_EDIT2,config_readint("export_maxh",800),FALSE);
 
@@ -466,7 +473,14 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
         break;
         case IDOK:
 
-          config_writeint("export_overwrite",exportConfig.overwrite = !!IsDlgButtonChecked(hwndDlg,IDC_CHECK2));
+          {
+            int a = SendDlgItemMessage(hwndDlg,IDC_COMBO4,CB_GETCURSEL,0,0);
+            if (a>=0)
+            {
+              exportConfig.overwrite = a;
+              config_writeint("export_overwrite", a);
+            }
+          }
 
           {
             BOOL t;
