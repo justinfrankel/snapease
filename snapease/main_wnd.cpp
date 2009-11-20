@@ -1,21 +1,33 @@
 /*
 
   Todo: 
-    load/save set
     browse sets? (tabs for sets along top ?)
     disk-based thumbnail cache? sqlite?
-    
-    keys: l/r to navigate items, esc to exit single item viewing, generic shortcuts too
 
     export set
-      disk folder | onlineetc
-      format (png,jpeg) (button to estimate size?)
-      limit width, height
-      other stuff
+      generic post. facebook?
 
-  clone button on item
 
-  tab to nav between renaming items (autoscroll or switch g_fullmode_item, if necessary)
+
+                                      http://api.facebook.com/restserver.php
+
+                                      if no session key:
+
+                                        auth.createToken
+                                        launch browser to  login.php with this token
+                                        when user hits OK, Auth.getSession
+
+                                        upload.
+                                           photos.getAlbums...
+                                           Photos.createAlbum
+
+                                           Photos.upload : aid : caption 
+
+                                          - fail, reset session key, repeat
+
+                                      save session key in ini?
+
+      (button to estimate size?)
 
     slideshows etc?
     confirm to remove item from set?
@@ -23,7 +35,7 @@
 
 */
 
-#define VERSTRING "0.01"
+#define VERSTRING "0.02"
 
 #include "main.h"
 #include <math.h>
