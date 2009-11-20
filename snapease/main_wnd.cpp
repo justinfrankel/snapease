@@ -1,3 +1,5 @@
+#define VERSTRING "0.03"
+
 /*
 
   Todo: 
@@ -33,7 +35,6 @@
 
 */
 
-#define VERSTRING "0.03"
 
 #include "main.h"
 #include <math.h>

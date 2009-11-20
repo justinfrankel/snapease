@@ -1,0 +1,4 @@
+SnapEase 
+Copyright (C) 2009, Cockos Incorporated
+
+This software is provided "as is" with no warranties whatsoever, including any warranty of merchantability, non-infringement, or fitness for any particular purpose.  In no event shall the authors be liable for any special, indirect or consequential damages or any damages whatsoever resulting from the loss of use, data or profits, whether in an action of contract, negligence or other tortious action, arising out of or in connection with the use or performance of this software.
