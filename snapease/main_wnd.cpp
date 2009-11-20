@@ -1,11 +1,10 @@
 /*
 
   Todo: 
-    browse sets? (tabs for sets along top ?)
+    (tabs for image lists along top ?)
     disk-based thumbnail cache? sqlite?
 
-    export set
-      generic post. facebook?
+      facebook?
 
 
 
@@ -27,8 +26,7 @@
 
                                       save session key in ini?
 
-      (button to estimate size?)
-
+    
     slideshows etc?
     confirm to remove item from set?
 
@@ -48,6 +46,10 @@
 #include "../jmde/coolsb/coolscroll.h"
 
 #include "resource.h"
+
+WDL_String g_ini_file;
+WDL_String g_list_path;
+
 
 WDL_PtrList<ImageRecord> g_images;
 WDL_Mutex g_images_mutex;
@@ -486,6 +488,20 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 #ifndef _WIN32 // need to fix some coolsb top level window bugs
       InitializeCoolSB(hwndDlg);
 #endif
+
+
+      {
+        g_list_path.Set(g_ini_file.Get());
+        char *p=g_list_path.Get();
+        while (*p) p++;
+        while (p > g_list_path.Get() && *p != '\\' && *p != '/') p--;
+        *p=0;
+
+        g_list_path.Append(PREF_DIRSTR "lists");
+        CreateDirectory(g_list_path.Get(),NULL);
+    
+      }
+
       g_hwnd = hwndDlg;
       g_vwnd.SetRealParent(hwndDlg);
       
@@ -507,10 +523,15 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       else
 #endif
         ShowWindow(hwndDlg,SW_SHOW);
+ 
+      DecodeThread_Init();
 
       SetTimer(hwndDlg,GENERAL_TIMER,30,NULL);
     return 0;
     case WM_DESTROY:
+
+      DecodeThread_Quit();
+
 
       {
         RECT r;
