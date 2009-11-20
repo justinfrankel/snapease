@@ -142,7 +142,7 @@ BEGIN
         MENUITEM "&Save image list\tCtrl+S",    ID_SAVE
         MENUITEM "Save image list &as...\tCtrl+Shift+S", ID_SAVEAS
         MENUITEM SEPARATOR
-        MENUITEM "&Export images...\tCtrl+E",   ID_EXPORT
+        MENUITEM "&Export...\tCtrl+E",          ID_EXPORT
         MENUITEM SEPARATOR
         MENUITEM "&Quit\tCtrl+Q",               ID_QUIT
     END

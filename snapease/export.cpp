@@ -206,7 +206,10 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
     case WM_TIMER:
       if (wParam==1 && !exportConfig.isFinished)
       {
-        ImageRecord *rec = g_images.Get(exportConfig.runpos);
+        ImageRecord *rec;
+        
+        if (g_fullmode_item && g_images.Find(g_fullmode_item)>=0) rec = exportConfig.runpos ? 0 : g_fullmode_item;
+        else rec = g_images.Get(exportConfig.runpos);
         if (!rec)
         {
           DisplayMessage(hwndDlg,false,"Processing %d/%d images completed!\r\nTotal size: %.2fMB, average image size: %.2fMB",exportConfig.total_files_out,exportConfig.runpos,
@@ -223,7 +226,7 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
         WDL_String outname; // without any leading path
         DoImageOutputFileCalculation(rec->m_fn.Get(),
                                      rec->m_outname.Get(),
-                                     exportConfig.runpos+1,
+                                     g_images.Find(rec)+1,
                                      g_imagelist_fn.Get()[0] ? g_imagelist_fn.Get() : "Untitled",
                                      exportConfig.disk_out,
                                      exportConfig.formatstr[0]?exportConfig.formatstr:"<",
@@ -420,6 +423,8 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
   switch (uMsg)
   {
     case WM_INITDIALOG:
+      SetWindowText(hwndDlg,g_fullmode_item&&g_images.Find(g_fullmode_item)>=0?"Export one image" : "Export all images");
+
       WDL_UTF8_HookComboBox(GetDlgItem(hwndDlg,IDC_COMBO1));
       WDL_UTF8_HookComboBox(GetDlgItem(hwndDlg,IDC_COMBO2));
 
