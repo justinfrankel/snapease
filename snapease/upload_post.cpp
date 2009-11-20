@@ -2,8 +2,8 @@
 
   Example PHP:
 
-
 <?php
+$use_perm=0775;
 $output_root = dirname(__FILE__);
 if ($output_root == "") die("error on server\n");
 
@@ -34,18 +34,22 @@ if (strcasecmp(substr($tgt,-4),".jpg") && strcasecmp(substr($tgt,-4),".png")) di
 
 $a = explode("/",$tgt);
 $tmp = $output_root;
+
 for ($x=0;$x<count($a)-1;$x++)
 {
   $tmp .= "/" . $a[$x];
-  @mkdir($tmp,0777); // todo mode?
+  @mkdir($tmp);
+
+  if ($use_perm) @chmod($tmp,$use_perm);
 }
 
 if (!@move_uploaded_file($file["tmp_name"], "$output_root/$tgt")) die("error copying file to '$output_root/$tgt'\n");
 
+if ($use_perm) @chmod("$output_root/$tgt",$use_perm & 0666);
+
 echo "ok\n";
 
 ?>
-
 
 
 
