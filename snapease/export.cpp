@@ -134,34 +134,57 @@ static void DoImageOutputFileCalculation(const char *infn, const char *outname, 
 }
 
 
-static struct
+class imageExporter
 {
-  int overwrite; // 0=skip, 1=overwrite, 2= output to (2)
+public:
+  imageExporter() { }
+  ~imageExporter() { }
 
-  int constrain_w,constrain_h; // zero if unconstrained
-  int fmt;
-  bool jpg_baseline;
-  int jpg_level;
-  bool png_alpha;
-  char formatstr[256];
+  void DisplayMessage(HWND hwndDlg, bool isLog, const char *fmt, ...);
+  void RunExportTimer(HWND hwndDlg);
 
-  char disk_out[1024]; // empty if not writing to disk
+  void Reset()
+  {
+    m_messages.Set("");
+    m_runpos=0;
+    m_isFinished=0;
+    m_total_files_out=0;
+    m_total_bytes_out=0;
+  }
+
+  int m_overwrite; // 0=skip, 1=overwrite, 2= output to (2)
+
+  int m_constrain_w,m_constrain_h; // zero if unconstrained
+  int m_fmt;
+  bool m_jpg_baseline;
+  int m_jpg_level;
+  bool m_png_alpha;
+  char m_formatstr[256];
+
+  char m_disk_out[1024]; // empty if not writing to disk
 
 
   // export run state
 
-  bool isFinished;
-  int runpos;
+  bool m_isFinished;
 
-  WDL_String messages;
+private:
+  int m_runpos;
 
-  int total_files_out;
-  WDL_INT64 total_bytes_out;
-} exportConfig;
+  WDL_String m_messages;
+
+  int m_total_files_out;
+  WDL_INT64 m_total_bytes_out;
 
 
+  // cur state
+  WDL_String m_outname; // without any leading path
+  WDL_String m_tmpfn;
 
-static void DisplayMessage(HWND hwndDlg, bool isLog, const char *fmt, ...)
+
+};
+
+void imageExporter::DisplayMessage(HWND hwndDlg, bool isLog, const char *fmt, ...)
 {
   char b[4096];
   b[0]=0;
@@ -180,45 +203,45 @@ static void DisplayMessage(HWND hwndDlg, bool isLog, const char *fmt, ...)
   SetDlgItemText(hwndDlg,IDC_STATUS,b);
   if (isLog)
   {
-    exportConfig.messages.Append(b);
-    exportConfig.messages.Append("\r\n");
-    SetDlgItemText(hwndDlg,IDC_EDIT1,exportConfig.messages.Get());
+    m_messages.Append(b);
+    m_messages.Append("\r\n");
+    SetDlgItemText(hwndDlg,IDC_EDIT1,m_messages.Get());
   }
 
   UpdateWindow(hwndDlg);
 }
 
-static void RunExportTimer(HWND hwndDlg)
+
+void imageExporter::RunExportTimer(HWND hwndDlg)
 {
   ImageRecord *rec;
   
-  if (g_fullmode_item && g_images.Find(g_fullmode_item)>=0) rec = exportConfig.runpos ? 0 : g_fullmode_item;
-  else rec = g_images.Get(exportConfig.runpos);
+  if (g_fullmode_item && g_images.Find(g_fullmode_item)>=0) rec = m_runpos ? 0 : g_fullmode_item;
+  else rec = g_images.Get(m_runpos);
   if (!rec)
   {
-    DisplayMessage(hwndDlg,false,"Processing %d/%d images completed!\r\nTotal size: %.2fMB, average image size: %.2fMB",exportConfig.total_files_out,exportConfig.runpos,
-      (exportConfig.total_bytes_out/1024.0/1024.0),
-      (exportConfig.total_bytes_out/1024.0/1024.0)/(double)max(1,exportConfig.total_files_out)
+    DisplayMessage(hwndDlg,false,"Processing %d/%d images completed!\r\nTotal size: %.2fMB, average image size: %.2fMB",m_total_files_out,m_runpos,
+      (m_total_bytes_out/1024.0/1024.0),
+      (m_total_bytes_out/1024.0/1024.0)/(double)max(1,m_total_files_out)
       );
     SetDlgItemText(hwndDlg,IDCANCEL,"Close");
-    exportConfig.isFinished=true;
+    m_isFinished=true;
     return;
   }
   
-  const char *extension = exportConfig.fmt == FORMAT_JPG ? ".jpg" : exportConfig.fmt == FORMAT_PNG ? ".png" : ".unknown";
+  const char *extension = m_fmt == FORMAT_JPG ? ".jpg" : m_fmt == FORMAT_PNG ? ".png" : ".unknown";
   // calculate output file
-  WDL_String outname; // without any leading path
   DoImageOutputFileCalculation(rec->m_fn.Get(),
                                rec->m_outname.Get(),
                                g_images.Find(rec)+1,
                                g_imagelist_fn.Get()[0] ? g_imagelist_fn.Get() : "Untitled",
-                               exportConfig.disk_out,
-                               exportConfig.formatstr[0]?exportConfig.formatstr:"<",
-                               &outname);
+                               m_disk_out,
+                               m_formatstr[0]?m_formatstr:"<",
+                               &m_outname);
 
   bool preventDiskOutput=false;
 
-  if (exportConfig.overwrite!=1 && exportConfig.disk_out[0]) // change if needed
+  if (m_overwrite!=1 && m_disk_out[0]) // change if needed
   {
     int x;
     const int maxtries=1000;
@@ -226,9 +249,9 @@ static void RunExportTimer(HWND hwndDlg)
     
     for (x=0;x<maxtries;x++)
     {
-      s.Set(exportConfig.disk_out);
+      s.Set(m_disk_out);
       s.Append(PREF_DIRSTR);
-      s.Append(outname.Get());
+      s.Append(m_outname.Get());
       char apstr[256];            
       if (x) sprintf(apstr," (%d)",x+1);
       else apstr[0]=0;
@@ -237,17 +260,17 @@ static void RunExportTimer(HWND hwndDlg)
       s.Append(extension);
       if (!file_exists(s.Get()))
       {
-        outname.Append(apstr);
+        m_outname.Append(apstr);
         break;
       }
-      if (exportConfig.overwrite==0)
+      if (m_overwrite==0)
       {
         preventDiskOutput=true;
         break;
       }
     }
 
-    if (x>=maxtries&&exportConfig.overwrite>1)
+    if (x>=maxtries&&m_overwrite>1)
     {
 
       DisplayMessage(hwndDlg,true,"Could not find suitable unused output filename for:\r\n"
@@ -261,13 +284,12 @@ static void RunExportTimer(HWND hwndDlg)
   }
 
 
-  WDL_String tmpfn;
-  if (exportConfig.disk_out[0])
+  if (m_disk_out[0])
   {
-    tmpfn.Set(exportConfig.disk_out);
-    tmpfn.Append(PREF_DIRSTR);
-    tmpfn.Append(outname.Get());
-    tmpfn.Append(".SnapEase-temp");
+    m_tmpfn.Set(m_disk_out);
+    m_tmpfn.Append(PREF_DIRSTR);
+    m_tmpfn.Append(m_outname.Get());
+    m_tmpfn.Append(".SnapEase-temp");
   }
   else
   {
@@ -289,22 +311,22 @@ static void RunExportTimer(HWND hwndDlg)
 #endif
       GetTickCount());
 
-    tmpfn.Set(fn);
+    m_tmpfn.Set(fn);
   }
 
-  outname.Append(extension);
+  m_outname.Append(extension);
 
   SetDlgItemText(hwndDlg,IDC_UPLOADSTATUS,"");
   DisplayMessage(hwndDlg,false,"Processing %d/%d:\r\n"
                                "From: %.100s\r\n"
                                "To: %.100s%s%.100s\r\n"
                                ,
-                               exportConfig.runpos + 1,
+                               m_runpos + 1,
                                g_fullmode_item && g_images.Find(g_fullmode_item)>=0 ? 1 : g_images.GetSize(),
                                rec->m_fn.Get(),
-                               exportConfig.disk_out,
-                               exportConfig.disk_out[0] ? PREF_DIRSTR: "",
-                               outname.Get());
+                               m_disk_out,
+                               m_disk_out[0] ? PREF_DIRSTR: "",
+                               m_outname.Get());
 
 
   bool hadError=false;
@@ -320,32 +342,32 @@ static void RunExportTimer(HWND hwndDlg)
   {
     LICE_MemBitmap tempimage;
     if (!rec->ProcessImageToBitmap(srcimage,&tempimage,
-                              exportConfig.constrain_w,
-                              exportConfig.constrain_h))
+                              m_constrain_w,
+                              m_constrain_h))
     {
       DisplayMessage(hwndDlg,true,"Failed processing image:\r\n\t%.200s\r\n",rec->m_fn.Get());
       hadError=true;
     }          
     else
     {            
-      if (exportConfig.fmt == FORMAT_JPG)
+      if (m_fmt == FORMAT_JPG)
       {
-        if (!LICE_WriteJPG(tmpfn.Get(),&tempimage,exportConfig.jpg_level,exportConfig.jpg_baseline))
+        if (!LICE_WriteJPG(m_tmpfn.Get(),&tempimage,m_jpg_level,m_jpg_baseline))
           hadError=true;
         else 
         {
-          exportConfig.total_files_out++;
-          exportConfig.total_bytes_out += file_size(tmpfn.Get());
+          m_total_files_out++;
+          m_total_bytes_out += file_size(m_tmpfn.Get());
         }
       }
-      else if (exportConfig.fmt == FORMAT_PNG)
+      else if (m_fmt == FORMAT_PNG)
       {
-        if (!LICE_WritePNG(tmpfn.Get(),&tempimage,exportConfig.png_alpha))
+        if (!LICE_WritePNG(m_tmpfn.Get(),&tempimage,m_png_alpha))
           hadError=true;
         else 
         {
-          exportConfig.total_files_out++;
-          exportConfig.total_bytes_out += file_size(tmpfn.Get());
+          m_total_files_out++;
+          m_total_bytes_out += file_size(m_tmpfn.Get());
         }
       }
       else
@@ -353,7 +375,7 @@ static void RunExportTimer(HWND hwndDlg)
         DisplayMessage(hwndDlg,true,"Unknown format selected");
         hadError=true;
       }
-      if (hadError) DisplayMessage(hwndDlg,true,"Failed writing image to:\r\n\t%.200s\r\n",tmpfn.Get());
+      if (hadError) DisplayMessage(hwndDlg,true,"Failed writing image to:\r\n\t%.200s\r\n",m_tmpfn.Get());
     }
   }
 
@@ -362,49 +384,50 @@ static void RunExportTimer(HWND hwndDlg)
   delete srcimage;
 
 
-  // todo: if uploading, upload tmpfn.Get(), using outname.Get() as the "name"
+  // todo: if uploading, upload m_tmpfn.Get(), using m_outname.Get() as the "name"
 
 
-  if (!hadError && exportConfig.disk_out[0] && !preventDiskOutput)
+  if (!hadError && m_disk_out[0] && !preventDiskOutput)
   {
     WDL_String s;
-    s.Set(exportConfig.disk_out);
+    s.Set(m_disk_out);
     s.Append(PREF_DIRSTR);
-    s.Append(outname.Get());
-    if (exportConfig.overwrite==1) DeleteFile(s.Get());
-    if (!MoveFile(tmpfn.Get(),s.Get()))
+    s.Append(m_outname.Get());
+    if (m_overwrite==1) DeleteFile(s.Get());
+    if (!MoveFile(m_tmpfn.Get(),s.Get()))
     {
-      DisplayMessage(hwndDlg,true,"Failed moving:\r\n\t%.200s\r\nto:\r\n\t%.200s\r\n",tmpfn.Get(),s.Get());
+      DisplayMessage(hwndDlg,true,"Failed moving:\r\n\t%.200s\r\nto:\r\n\t%.200s\r\n",m_tmpfn.Get(),s.Get());
     }
   }
 
-  DeleteFile(tmpfn.Get());
-  exportConfig.runpos++;
+  DeleteFile(m_tmpfn.Get());
+  m_runpos++;
 }
+
+static imageExporter exportConfig;
+
 
 static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   switch (uMsg)
   {
     case WM_INITDIALOG:
-      exportConfig.messages.Set("");
-      exportConfig.runpos=0;
-      exportConfig.isFinished=0;
-      exportConfig.total_files_out=0;
-      exportConfig.total_bytes_out=0;
 
-      if (exportConfig.disk_out[0]) CreateDirectory(exportConfig.disk_out,NULL);
+      exportConfig.Reset();
+
+
+      if (exportConfig.m_disk_out[0]) CreateDirectory(exportConfig.m_disk_out,NULL);
       
       SetTimer(hwndDlg,1,10,NULL);
     return 1;
     case WM_TIMER:
-      if (wParam==1 && !exportConfig.isFinished)
+      if (wParam==1 && !exportConfig.m_isFinished)
       {
         static bool reent; // in case something runs the message loop in this bitch
         if (!reent)
         {
           reent=true;
-          RunExportTimer(hwndDlg);
+          exportConfig.RunExportTimer(hwndDlg);
           reent=false;
         }
       }
@@ -413,7 +436,7 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
       switch (LOWORD(wParam))
       {
         case IDCANCEL:
-          if (!exportConfig.isFinished)
+          if (!exportConfig.m_isFinished)
           {
             if (MessageBox(hwndDlg,"Abort conversion?","Abort",MB_YESNO)==IDNO) return 0;
           }
@@ -424,7 +447,7 @@ static WDL_DLGRET ExportRunDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
     case WM_DESTROY:
       // handle any cleanup needed
 
-      exportConfig.messages.Set("");
+      exportConfig.Reset();
 
     break;
   }
@@ -550,7 +573,7 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
             int a = SendDlgItemMessage(hwndDlg,IDC_COMBO4,CB_GETCURSEL,0,0);
             if (a>=0)
             {
-              exportConfig.overwrite = a;
+              exportConfig.m_overwrite = a;
               config_writeint("export_overwrite", a);
             }
           }
@@ -564,29 +587,29 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
             if (IsDlgButtonChecked(hwndDlg,IDC_CHECK1))
             {
               config_writeint("export_constrainsize",1);
-              exportConfig.constrain_h=h;
-              exportConfig.constrain_w=w;
+              exportConfig.m_constrain_h=h;
+              exportConfig.m_constrain_w=w;
             }
             else
             {
               config_writeint("export_constrainsize",0);
-              exportConfig.constrain_w = 0;
-              exportConfig.constrain_h = 0;
+              exportConfig.m_constrain_w = 0;
+              exportConfig.m_constrain_h = 0;
             }
 
-            exportConfig.fmt = SendDlgItemMessage(hwndDlg,IDC_COMBO2,CB_GETCURSEL,0,0);
-            if (exportConfig.fmt>=0) config_writeint("export_fmt",exportConfig.fmt);
+            exportConfig.m_fmt = SendDlgItemMessage(hwndDlg,IDC_COMBO2,CB_GETCURSEL,0,0);
+            if (exportConfig.m_fmt>=0) config_writeint("export_fmt",exportConfig.m_fmt);
 
-            config_writeint("export_jpg_baseline",exportConfig.jpg_baseline = !!IsDlgButtonChecked(hwndDlg,IDC_CHECK5));
+            config_writeint("export_jpg_baseline",exportConfig.m_jpg_baseline = !!IsDlgButtonChecked(hwndDlg,IDC_CHECK5));
 
-            exportConfig.jpg_level = GetDlgItemInt(hwndDlg,IDC_EDIT3,&t,FALSE);
-            if (!t) exportConfig.jpg_level=75;
-            if (exportConfig.jpg_level<0)exportConfig.jpg_level=0;
-            else if (exportConfig.jpg_level>120)exportConfig.jpg_level=120;
+            exportConfig.m_jpg_level = GetDlgItemInt(hwndDlg,IDC_EDIT3,&t,FALSE);
+            if (!t) exportConfig.m_jpg_level=75;
+            if (exportConfig.m_jpg_level<0)exportConfig.m_jpg_level=0;
+            else if (exportConfig.m_jpg_level>120)exportConfig.m_jpg_level=120;
 
-            config_writeint("export_jpg_level",exportConfig.jpg_level);
+            config_writeint("export_jpg_level",exportConfig.m_jpg_level);
       
-            config_writeint("export_png_alpha",exportConfig.png_alpha = !!IsDlgButtonChecked(hwndDlg,IDC_CHECK6));
+            config_writeint("export_png_alpha",exportConfig.m_png_alpha = !!IsDlgButtonChecked(hwndDlg,IDC_CHECK6));
 
             char buf[4096];
             GetDlgItemText(hwndDlg,IDC_COMBO1,buf,sizeof(buf));
@@ -594,12 +617,12 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
             if (IsDlgButtonChecked(hwndDlg,IDC_CHECK4))
             {
               config_writeint("export_todisk",1);
-              lstrcpyn(exportConfig.disk_out,buf,sizeof(exportConfig.disk_out));
+              lstrcpyn(exportConfig.m_disk_out,buf,sizeof(exportConfig.m_disk_out));
             }
             else 
             {
               config_writeint("export_todisk",0);
-              exportConfig.disk_out[0]=0;
+              exportConfig.m_disk_out[0]=0;
             }
 
             int x,oidx=0;
@@ -633,9 +656,9 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
             GetDlgItemText(hwndDlg,IDC_EDIT4,buf,sizeof(buf));
             if (!buf[0]) strcpy(buf,">");
             config_writestr("export_fnstr",buf);
-            lstrcpyn(exportConfig.formatstr,buf,sizeof(exportConfig.formatstr));
+            lstrcpyn(exportConfig.m_formatstr,buf,sizeof(exportConfig.m_formatstr));
 
-            if (strstr(exportConfig.formatstr,"*") && !g_imagelist_fn.Get()[0])
+            if (strstr(exportConfig.m_formatstr,"*") && !g_imagelist_fn.Get()[0])
             {
               if (MessageBox(hwndDlg,"Note: format string contains \"*\", which represents the current imagelist file name.\r\n\r\n"
                     "The current imagelist is not saved, so the string \"Untitled\" will be used in its place.", "Conversion warning",MB_OKCANCEL) == IDCANCEL) return 0;
