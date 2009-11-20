@@ -71,6 +71,7 @@ public:
   WDL_String curfn;
   LICE_IBitmap *bmOut;
   int last_visstart;
+  int last_listsize;
   int scanpos;
 };
 
@@ -79,8 +80,10 @@ static int RunWork(DecodeThreadContext &ctx)
   int sleepAmt=1;
   g_images_mutex.Enter();
 
-  if (ctx.last_visstart != g_firstvisible_startitem)
+  if (ctx.last_visstart != g_firstvisible_startitem || 
+      ctx.last_listsize != g_images.GetSize())
   {
+    ctx.last_listsize = g_images.GetSize();
     ctx.last_visstart=g_firstvisible_startitem;
     ctx.scanpos=0;
   }
