@@ -1105,6 +1105,7 @@ int MainProcessMessage(MSG *msg)
             a += (msg->wParam == VK_PRIOR) ? -1 : 1;
             if (g_images.Get(a)) EnsureImageRecVisible(g_images.Get(a));
           }
+          return 1;
         }
       }
       else
@@ -1112,6 +1113,7 @@ int MainProcessMessage(MSG *msg)
         if (msg->wParam == VK_NEXT || msg->wParam == VK_PRIOR)
         {
           SetMainScrollPosition(msg->wParam == VK_NEXT ? 0.5 : -0.5, 2);
+          return 1;
         }
       }
 
