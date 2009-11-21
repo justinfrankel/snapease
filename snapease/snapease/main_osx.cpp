@@ -37,9 +37,28 @@ void SWELL_app_startupcompleted()
     SWELL_SetDefaultModalWindowMenu(menu);
   }
   
-  
-  HWND h=CreateDialog(g_hInst,MAKEINTRESOURCE(IDD_MAIN),NULL,MainWindowProc);
   HMENU menu = LoadMenu(NULL,MAKEINTRESOURCE(IDR_MENU1));
+  {
+    HMENU sm=GetSubMenu(menu,0);
+    DeleteMenu(sm,ID_QUIT,MF_BYCOMMAND);
+    
+    int a= GetMenuItemCount(sm);
+    while (a > 0 && GetMenuItemID(sm,a-1)==0)
+    {
+      DeleteMenu(sm,a-1,MF_BYPOSITION);
+      a--;
+    }
+  }
+  
+  // set modifiers
+  SetMenuItemModifier(menu,ID_EXPORT,MF_BYCOMMAND,'E',FCONTROL);
+  SetMenuItemModifier(menu,ID_IMPORT,MF_BYCOMMAND,'A',0);
+  SetMenuItemModifier(menu,ID_NEWLIST,MF_BYCOMMAND,'N',FCONTROL);
+  SetMenuItemModifier(menu,ID_LOAD,MF_BYCOMMAND,'O',FCONTROL);
+  SetMenuItemModifier(menu,ID_LOAD_ADD,MF_BYCOMMAND,'O',FCONTROL|FSHIFT);
+  SetMenuItemModifier(menu,ID_SAVE,MF_BYCOMMAND,'S',FCONTROL);
+  SetMenuItemModifier(menu,ID_SAVEAS,MF_BYCOMMAND,'S',FCONTROL|FSHIFT);  
+  
   if (SWELL_app_stocksysmenu)
   {
     HMENU nm=SWELL_DuplicateMenu(SWELL_app_stocksysmenu);
@@ -48,7 +67,11 @@ void SWELL_app_startupcompleted()
       MENUITEMINFO mi={sizeof(mi),MIIM_STATE|MIIM_SUBMENU|MIIM_TYPE,MFT_STRING,0,0,nm,NULL,NULL,0,"SnapEase"};
       InsertMenuItem(menu,0,TRUE,&mi);           
     }
-  }
+  }  
+  
+  HWND h=CreateDialog(g_hInst,MAKEINTRESOURCE(IDD_MAIN),NULL,MainWindowProc);
+
+  
   SetMenu(h,menu);
   
   

@@ -780,7 +780,13 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
 {
   if (!g_imagerecord_font.GetHFont())
   {
-    bool doOutLine = true;
+    bool doOutLine = 
+#ifdef _WIN32
+    true
+#else
+    false
+#endif
+    ;
     LOGFONT lf = 
     {
         14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
