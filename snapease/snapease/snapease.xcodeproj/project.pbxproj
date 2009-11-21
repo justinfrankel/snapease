@@ -146,6 +146,8 @@
 		337ED65810B75A3D009528D7 /* rot_right.png in Resources */ = {isa = PBXBuildFile; fileRef = 337ED64D10B75A3D009528D7 /* rot_right.png */; };
 		337ED65910B75A3D009528D7 /* snapease.png in Resources */ = {isa = PBXBuildFile; fileRef = 337ED64E10B75A3D009528D7 /* snapease.png */; };
 		337ED65B10B75AE8009528D7 /* snapease.icns in Resources */ = {isa = PBXBuildFile; fileRef = 337ED65A10B75AE8009528D7 /* snapease.icns */; };
+		33E310FF10B78E07009F49F7 /* main_osx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 33E310FE10B78E07009F49F7 /* main_osx.cpp */; };
+		33E3117610B7954B009F49F7 /* swellappmain.mm in Sources */ = {isa = PBXBuildFile; fileRef = 33E3117510B7954B009F49F7 /* swellappmain.mm */; };
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
 		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
@@ -333,6 +335,9 @@
 		337ED64D10B75A3D009528D7 /* rot_right.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = rot_right.png; path = ../images/rot_right.png; sourceTree = SOURCE_ROOT; };
 		337ED64E10B75A3D009528D7 /* snapease.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = snapease.png; path = ../images/snapease.png; sourceTree = SOURCE_ROOT; };
 		337ED65A10B75AE8009528D7 /* snapease.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; name = snapease.icns; path = ../images/snapease.icns; sourceTree = SOURCE_ROOT; };
+		33E310FE10B78E07009F49F7 /* main_osx.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main_osx.cpp; sourceTree = "<group>"; };
+		33E3117410B7954B009F49F7 /* swellappmain.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = swellappmain.h; path = ../../WDL/swell/swellappmain.h; sourceTree = SOURCE_ROOT; };
+		33E3117510B7954B009F49F7 /* swellappmain.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = swellappmain.mm; path = ../../WDL/swell/swellappmain.mm; sourceTree = SOURCE_ROOT; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8D1107320486CEB800E47090 /* snapease.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = snapease.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -414,6 +419,7 @@
 			children = (
 				32CA4F630368D1EE00C91783 /* snapease_Prefix.pch */,
 				29B97316FDCFA39411CA2CEA /* main.m */,
+				33E310FE10B78E07009F49F7 /* main_osx.cpp */,
 			);
 			name = "Other Sources";
 			sourceTree = "<group>";
@@ -638,6 +644,8 @@
 		337ED5B310B75721009528D7 /* SWELL */ = {
 			isa = PBXGroup;
 			children = (
+				33E3117410B7954B009F49F7 /* swellappmain.h */,
+				33E3117510B7954B009F49F7 /* swellappmain.mm */,
 				337ED5B410B7574B009528D7 /* swell-appstub.mm */,
 				337ED5B510B7574B009528D7 /* swell-dlg.mm */,
 				337ED5B610B7574B009528D7 /* swell-dlggen.h */,
@@ -877,6 +885,8 @@
 				337ED5E410B7579F009528D7 /* main_wnd.cpp in Sources */,
 				337ED5E510B7579F009528D7 /* upload_post.cpp in Sources */,
 				337ED60A10B758E2009528D7 /* projectcontext.cpp in Sources */,
+				33E310FF10B78E07009F49F7 /* main_osx.cpp in Sources */,
+				33E3117610B7954B009F49F7 /* swellappmain.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

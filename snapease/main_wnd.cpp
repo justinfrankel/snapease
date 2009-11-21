@@ -560,8 +560,11 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       UninitializeCoolSB(hwndDlg);
 #endif
       
+      g_hwnd=0; // prevent multidelete on osx :)
 #ifdef _WIN32
       PostQuitMessage(0);
+#else
+      SWELL_PostQuitMessage(hwndDlg);
 #endif
     return 0;
     case WM_TIMER:
@@ -696,7 +699,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             l.Flags = OFN_HIDEREADONLY|OFN_EXPLORER|OFN_FILEMUSTEXIST|OFN_ALLOWMULTISELECT|OFN_NOCHANGEDIR;
             if (GetOpenFileName(&l))          
           #else
-            char *temp=BrowseForFiles("Add images:", cwd, NULL, false, extlist);
+            char *temp=BrowseForFiles("Add images:", cwd, NULL, true, extlist);
             if (temp)
           #endif     
             {

@@ -157,8 +157,9 @@ LICE_IBitmap *LoadThemeElement(int idx, const char *name)
 #ifdef _WIN32
   LICE_IBitmap *bm = LICE_LoadPNGFromResource(g_hInst,idx,NULL);
 #else
-  // todo: query app resource path
-  LICE_IBitmap *bm =  NULL; //LICE_LoadPNG(
+  char buf[512];
+  sprintf(buf,"%.400s.png",name);
+  LICE_IBitmap *bm =  LICE_LoadPNGFromNamedResource(buf,NULL);
 
 #endif
   return bm;
