@@ -750,6 +750,9 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 if (g_fullmode_item && newimages.Get(0)) EnsureImageRecVisible(newimages.Get(0));
                 else if (newimages.GetSize()) UpdateMainWindowWithSizeChanged();
               }
+  
+              SetImageListIsDirty(true);
+
               free(temp);
 
             }
@@ -991,6 +994,9 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           g_images.Add(w);
         }
         g_images_mutex.Leave();
+
+        if (newimages.GetSize())
+          SetImageListIsDirty(true);
 
         if (g_fullmode_item && newimages.Get(0)) EnsureImageRecVisible(newimages.Get(0));
         else
