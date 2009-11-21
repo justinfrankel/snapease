@@ -72,6 +72,9 @@ INT_PTR SWELLAppMain(int msg, INT_PTR parm1, INT_PTR parm2)
             a--;
           }
         }
+        // delete help menu
+        DeleteMenu(menu,GetMenuItemCount(menu)-1,MF_BYPOSITION);
+        
         
         // set modifiers
         SetMenuItemModifier(menu,ID_EXPORT,MF_BYCOMMAND,'E',FCONTROL);
@@ -81,6 +84,7 @@ INT_PTR SWELLAppMain(int msg, INT_PTR parm1, INT_PTR parm2)
         SetMenuItemModifier(menu,ID_LOAD_ADD,MF_BYCOMMAND,'O',FCONTROL|FSHIFT);
         SetMenuItemModifier(menu,ID_SAVE,MF_BYCOMMAND,'S',FCONTROL);
         SetMenuItemModifier(menu,ID_SAVEAS,MF_BYCOMMAND,'S',FCONTROL|FSHIFT);  
+        
         
         if (SWELL_app_stocksysmenu)
         {
