@@ -560,11 +560,7 @@ int ImageRecord::UpdateCursor(int xpos, int ypos)
     {
       INT_PTR idx=(INT_PTR)IDC_SIZEWE;
 
-#ifdef _WIN32
       if (cm&10) idx = (INT_PTR) ( ((cm&1)^!!(cm&2)) ? IDC_SIZENESW : IDC_SIZENWSE);
-#else
-      if (cm&10) idx=(INT_PTR)IDC_SIZEALL;
-#endif
 
       SetCursor(LoadCursor(NULL,MAKEINTRESOURCE(idx)));
       return 1;
