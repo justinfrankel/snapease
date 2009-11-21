@@ -76,7 +76,8 @@ if ($fp)
   fclose($fp);
 }
 
-system("perl ./pkg-dmg --format UDBZ --target ./build/snapease$ver.dmg --source $workdir/SnapEase --license ./license-cleaned.txt --copy stage_DS_Store:/.DS_Store --symlink /Applications:/Applications --mkdir .background --copy background.png:.background --volname SNAPEASE_INSTALL --icon ../images/snapease.icns");
+//system("perl ./pkg-dmg --format UDBZ --target ./build/snapease$ver.dmg --source $workdir/SnapEase --license ./license-cleaned.txt --copy stage_DS_Store:/.DS_Store --symlink /Applications:/Applications --mkdir .background --copy background.png:.background --volname SNAPEASE_INSTALL --icon ../images/snapease.icns");
+system("perl ./pkg-dmg --format UDBZ --target ./build/snapease$ver.dmg --source $workdir/SnapEase --license ./license-cleaned.txt --symlink /Applications:/Applications --volname SNAPEASE_INSTALL --icon ../images/snapease.icns");
 
 
 
