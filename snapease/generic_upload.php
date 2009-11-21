@@ -13,7 +13,7 @@ if ($_SERVER['PHP_AUTH_USER'] != $username || $_SERVER['PHP_AUTH_PW'] != $pass)
 {
    header('WWW-Authenticate: Basic realm="snapease_upload"');
    header('HTTP/1.0 401 Unauthorized');
-   die('error bad password\n');
+   die("error bad password\n");
 }
 
 if (!$_FILES || !($file = $_FILES["snapease_file"])) die("error no file\n");
