@@ -102,9 +102,12 @@ void EditImageLabelEnd(bool ignoreData)
         if (buf[0]) s_rec->m_outname.Set(buf);
         else s_rec->SetDefaultTitle();
       }
+      s_rec=0;
     }
-    DestroyWindow(s_wnd);
+    HWND ow = s_wnd;
+    s_wnd=0;
+    DestroyWindow(ow);
     InvalidateRect(g_hwnd,NULL,FALSE);
   }
-  s_rec=0;
+  else s_rec=0;
 }
