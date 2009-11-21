@@ -20,9 +20,32 @@ INT_PTR SWELLAppMain(int msg, INT_PTR parm1, INT_PTR parm2)
         char *p=g_exepath;
         while (*p) p++;
         while (p > g_exepath && *p != '/') p--; *p=0;
-      }
+      }        
+      
       g_ini_file.Set(g_exepath);
       g_ini_file.Append("/snapease.ini");      
+      if (!file_exists(g_ini_file.Get()))
+      {
+        char *p=getenv("HOME");
+        if (p && *p)
+        {
+          g_ini_file.Set(p);
+          g_ini_file.Append("/Library/Application Support/SnapEase");
+          mkdir(g_ini_file.Get(),0777);
+          
+          g_ini_file.Append("/snapease.ini");
+          FILE *fp=fopen(g_ini_file.Get(),"a");
+          if (fp) 
+          {     
+            fclose(fp);
+          }
+          else
+          {
+            g_ini_file.Set(g_exepath);
+            g_ini_file.Append("/snapease.ini");      
+          }
+        }
+      }
     break;
     case SWELLAPP_LOADED:
       if (SWELL_app_stocksysmenu)
