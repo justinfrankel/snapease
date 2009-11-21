@@ -209,6 +209,8 @@ static HANDLE hThread[MAX_THREADS]={0,};
 
 void DecodeThread_Init()
 {
+  if (!g_DecodeThreadQuit) return;
+
   g_DecodeThreadQuit=false;
 
 
@@ -230,6 +232,8 @@ void DecodeThread_Init()
 
 void DecodeThread_Quit()
 {
+  if (g_DecodeThreadQuit) return;
+
   int x;
   g_DecodeThreadQuit = true;
   for(x=0;x<sizeof(hThread)/sizeof(hThread[0]);x++)
