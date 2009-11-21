@@ -157,9 +157,7 @@ LICE_IBitmap *LoadThemeElement(int idx, const char *name)
 #ifdef _WIN32
   LICE_IBitmap *bm = LICE_LoadPNGFromResource(g_hInst,idx,NULL);
 #else
-  char buf[512];
-  sprintf(buf,"%.400s.png",name);
-  LICE_IBitmap *bm =  LICE_LoadPNGFromNamedResource(buf,NULL);
+  LICE_IBitmap *bm =  LICE_LoadPNGFromNamedResource(name,NULL);
 
 #endif
   return bm;
@@ -191,20 +189,20 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state)
   if (!init)
   {
 #define ASSIGN(x,st,name,resid) { names_[(x) - BUTTONID_BASE][st] = (name); resids_[(x) - BUTTONID_BASE][st]=(resid); }
-    ASSIGN(BUTTONID_FULLSCREEN,0,"full_off",IDR_FULLOFF);
-    ASSIGN(BUTTONID_FULLSCREEN,1,"full_on",IDR_FULLON);
+    ASSIGN(BUTTONID_FULLSCREEN,0,"full_off.png",IDR_FULLOFF);
+    ASSIGN(BUTTONID_FULLSCREEN,1,"full_on.png",IDR_FULLON);
 
-    ASSIGN(BUTTONID_BW,0,"bw_off",IDR_BWOFF);
-    ASSIGN(BUTTONID_BW,1,"bw_on",IDR_BWON);
+    ASSIGN(BUTTONID_BW,0,"bw_off.png",IDR_BWOFF);
+    ASSIGN(BUTTONID_BW,1,"bw_on.png",IDR_BWON);
 
-    ASSIGN(BUTTONID_CROP,0,"crop_off",IDR_CROPOFF);
-    ASSIGN(BUTTONID_CROP,1,"crop_on",IDR_CROPON);
+    ASSIGN(BUTTONID_CROP,0,"crop_off.png",IDR_CROPOFF);
+    ASSIGN(BUTTONID_CROP,1,"crop_on.png",IDR_CROPON);
     
 
-    ASSIGN(BUTTONID_CLONE,0,"clone",IDR_CLONE);
-    ASSIGN(BUTTONID_ROTCW,0,"rot_right",IDR_ROTR);
-    ASSIGN(BUTTONID_ROTCCW,0,"rot_left",IDR_ROTL);
-    ASSIGN(BUTTONID_REMOVE,0,"remove",IDR_REMOVE);
+    ASSIGN(BUTTONID_CLONE,0,"clone.png",IDR_CLONE);
+    ASSIGN(BUTTONID_ROTCW,0,"rot_right.png",IDR_ROTR);
+    ASSIGN(BUTTONID_ROTCCW,0,"rot_left.png",IDR_ROTL);
+    ASSIGN(BUTTONID_REMOVE,0,"remove.png",IDR_REMOVE);
 #undef ASSIGN
     init=true;
   }

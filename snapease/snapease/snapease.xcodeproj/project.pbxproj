@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1DDD58160DA1D0A300B32029 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 1DDD58140DA1D0A300B32029 /* MainMenu.xib */; };
+		3313F58A10B8865300ABDFC4 /* scrollbar.png in Resources */ = {isa = PBXBuildFile; fileRef = 3313F58910B8865300ABDFC4 /* scrollbar.png */; };
 		337ED4B210B7559B009528D7 /* virtwnd-iconbutton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 337ED4AA10B7559B009528D7 /* virtwnd-iconbutton.cpp */; };
 		337ED4B310B7559B009528D7 /* virtwnd-listbox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 337ED4AB10B7559B009528D7 /* virtwnd-listbox.cpp */; };
 		337ED4B410B7559B009528D7 /* virtwnd-slider.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 337ED4AD10B7559B009528D7 /* virtwnd-slider.cpp */; };
@@ -162,6 +163,7 @@
 		29B97324FDCFA39411CA2CEA /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
 		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		32CA4F630368D1EE00C91783 /* snapease_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = snapease_Prefix.pch; sourceTree = "<group>"; };
+		3313F58910B8865300ABDFC4 /* scrollbar.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = scrollbar.png; path = ../images/scrollbar.png; sourceTree = SOURCE_ROOT; };
 		337ED4AA10B7559B009528D7 /* virtwnd-iconbutton.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "virtwnd-iconbutton.cpp"; path = "../../WDL/wingui/virtwnd-iconbutton.cpp"; sourceTree = SOURCE_ROOT; };
 		337ED4AB10B7559B009528D7 /* virtwnd-listbox.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "virtwnd-listbox.cpp"; path = "../../WDL/wingui/virtwnd-listbox.cpp"; sourceTree = SOURCE_ROOT; };
 		337ED4AC10B7559B009528D7 /* virtwnd-skin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "virtwnd-skin.h"; path = "../../WDL/wingui/virtwnd-skin.h"; sourceTree = SOURCE_ROOT; };
@@ -676,6 +678,7 @@
 		337ED64310B75A30009528D7 /* images */ = {
 			isa = PBXGroup;
 			children = (
+				3313F58910B8865300ABDFC4 /* scrollbar.png */,
 				337ED65A10B75AE8009528D7 /* snapease.icns */,
 				337ED64410B75A3D009528D7 /* bw_off.png */,
 				337ED64510B75A3D009528D7 /* bw_on.png */,
@@ -749,6 +752,7 @@
 				337ED65810B75A3D009528D7 /* rot_right.png in Resources */,
 				337ED65910B75A3D009528D7 /* snapease.png in Resources */,
 				337ED65B10B75AE8009528D7 /* snapease.icns in Resources */,
+				3313F58A10B8865300ABDFC4 /* scrollbar.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

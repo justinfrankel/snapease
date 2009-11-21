@@ -391,7 +391,7 @@ static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
 {
   static LICE_IBitmap *splash=  NULL;
   if (!splash)
-    splash = LoadThemeElement(IDR_SPLASH,"snapease");
+    splash = LoadThemeElement(IDR_SPLASH,"snapease.png");
   if (splash)
   {
     int xo=0,yo=0;
@@ -1144,7 +1144,11 @@ void *GetIconThemePointer(const char *name)
 {
   if (!strcmp(name,"scrollbar"))
   {
-    // todo: load/cache scrollbar image
+#ifndef _WIN32
+    static LICE_IBitmap *sb;
+    if (!sb) sb = LoadThemeElement(0,"scrollbar.png");
+    return &sb;
+#endif
   }
   return NULL;
 }
