@@ -1,4 +1,49 @@
-SnapEase 
-Copyright (C) 2009, Cockos Incorporated
+END USER LICENSE AGREEMENT For SnapEase™
 
-This software is provided "as is" with no warranties whatsoever, including any warranty of merchantability, non-infringement, or fitness for any particular purpose.  In no event shall the authors be liable for any special, indirect or consequential damages or any damages whatsoever resulting from the loss of use, data or profits, whether in an action of contract, negligence or other tortious action, arising out of or in connection with the use or performance of this software.
+IMPORTANT:  This SnapEase™ ("Software") End User License Agreement ("EULA") is a legal agreement between you (either an individual or, if purchased for an entity, an entity) and Cockos Incorporated ("Cockos").  READ IT CAREFULLY BEFORE COMPLETING THE INSTALLATION PROCESS AND USING THIS SOFTWARE.  It provides a license to use this software and contains warranty and liability disclaimers.  BY DOWNLOADING OR INSTALLING THE SOFTWARE YOU ARE INDICATING YOUR FULL AND VOLUNTARY ASSENT TO THE TERMS OF THIS LICENSE.  If you do not agree to all of the following terms, do not download or install the software or discontinue use immediately and destroy all copies on your computer. 
+
+1. License Grants and Purchase:
+
+1.1  Cockos grants you a limited, non-exclusive and non-transferable license to copy and use the Software. 
+
+1.2  Those interested in licensing SnapEase™ for any other purpose should contact Cockos Incorporated at licensing@cockos.com.
+
+1.3  Subject to the terms and conditions of this Agreement, you are granted a limited non-exclusive license to use the Software on one (1) computer any given time.  This License is not a sale of the Software or any other copy.  Cockos retains title and ownership of the Software and documentation, including all intellectual property rights.  No title to the intellectual property in the Software is transferred to you.  You will not acquire any rights to the Software except as expressly set forth herein.
+
+1.4  Said purchased license shall apply to the current version of SnapEase™ and any future versions of SnapEase™ up through and including version 0.99.  
+
+1.5  Cockos reserves the right within its sole discretion to modify the terms of its license for all future versions of SnapEase™.
+
+2.  End User Support:  At Cockos’ discretion, Cockos may provide limited support through email or discussion forums at http://forum.cockos.com.
+ 
+3.  License Restrictions:
+
+3.1  You may not alter, merge, modify, adapt or translate the Software, or decompile, reverse engineer, disassemble, or otherwise reduce the Software to a human-perceivable form. 
+
+3.2  You may not sell, rent, lease, sublicense, transfer, resell for profit or otherwise distribute the Software, its documentation, or any part thereof. 
+
+3.3  You may not modify the Software or create derivative works based upon the Software. 
+
+3.4  You may not remove or obscure any copyright and trademark notices relating to the Software. 
+
+4.  Ownership and Intellectual Property Rights:   This Agreement gives you limited rights to use the Software.  Cockos retains any and all rights, title and interest in and to the Software and all copies thereof, including copyrights, patents, trade secret rights, trademarks and other intellectual property rights.  All rights not specifically granted in this Agreement, including International Copyrights, are reserved by Cockos.  The structure, organization and code of the Software are valuable trade secrets and confidential information of Cockos. 
+
+5.  Disclaimer of Warranties: Cockos does not warrant that the Software is error free.  Cockos offers the Software “as is” and “with all faults” and by using the Software, you accept it “as is” and “with all faults”.  Cockos disclaims all other warranties, either express or implied, including but not limited to implied warranties of merchantability and fitness for a particular purpose.  Should the Software prove defective, you assume the entire cost of all necessary servicing, repair or correction.  Some jurisdictions may not allow the exclusion of implied warranties, so the above disclaimers may not apply to you.
+
+6.  Limitations on Liability:  To the maximum extent permitted by applicable law, Cockos shall not be liable for any special, incidental, indirect, or consequential damages whatsoever, (including, but not limited to, damages for loss of profits or loss of confidential or other information, for business interruption, for personal injury, for loss of privacy, for failure to meet any duty including of good faith or of reasonable care, for negligence, and for any other pecuniary or other loss whatsoever), arising out of or in any way related to the use or inability to use the Software, the provision of or failure to provide support services, or otherwise under or in connection with any provision of this EULA, even in event of fault, tort (including negligence), strict liability, breach of contract or breach of warranty of Cockos, and even if Cockos has been advised of the possibility of such damages.  In any case, Cockos’ entire liability under the provisions of this EULA or the applicable law shall be limited to the amount paid by you for the Software.  Some jurisdictions may not allow the exclusion of consequential damages, so the above limitations and exclusions may not apply to you.  This Agreement sets forth Cockos’ entire liability and your exclusive remedy with respect to the Software.
+
+7.  Termination of EULA:  This Agreement is effective until terminated.  This Agreement, including the license to use the Software, will terminate automatically if you fail to comply with any term or condition.
+
+8.  General: 
+
+8.1  Cockos reserves the right at any time to cease the support of the Software and to alter prices, features, specifications, capabilities, functions, licensing terms, release dates, general availability or other characteristics of the Software. 
+
+8.2  If any provision hereof shall be held illegal, invalid or unenforceable, in whole or in part, such provision shall be modified to the minimum extent necessary to make it legal, valid and enforceable, and the legality, validity and enforceability of all other provisions of this Agreement shall not be affected.
+
+8.3  This Agreement is to be governed by and construed in accordance with the laws of California.  Each party for itself and its property, hereby submits to the jurisdiction and venue of San Francisco, California in relation to any claim or dispute that may arise with respect to this Agreement and any judgment that may be rendered in connection with any such claim or dispute.  This Agreement will be will be interpreted as if the agreement were made between California residents and performed entirely within California.
+
+8.4 You may not assign this Agreement. Any attempt by You to assign this Agreement will be null and void.
+
+8.5  This Agreement contains the entire agreement between Cockos and You related to the software and supersedes all prior agreements and understandings, whether oral or written. All questions concerning this Agreement shall be directed to licensing@cockos.com.
+
+© 2009 Cockos Incorporated
