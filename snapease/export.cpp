@@ -619,7 +619,7 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
         char buf[1024];
         buf[0]=0;
         config_readstr("export_fnstr",buf,sizeof(buf));
-        if (!buf[0]) strcpy(buf,">");
+        if (!buf[0]) strcpy(buf,"*/>");
         SetDlgItemText(hwndDlg,IDC_EDIT4,buf);
       }
       if (config_readint("export_todisk",0))
@@ -801,7 +801,7 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
 
             buf[0]=0;
             GetDlgItemText(hwndDlg,IDC_EDIT4,buf,sizeof(buf));
-            if (!buf[0]) strcpy(buf,">");
+            if (!buf[0]) strcpy(buf,"*/>");
             config_writestr("export_fnstr",buf);
             lstrcpyn(exportConfig.m_formatstr,buf,sizeof(exportConfig.m_formatstr));
 
