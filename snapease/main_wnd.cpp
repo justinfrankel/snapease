@@ -1,4 +1,4 @@
-#define VERSTRING "0.03"
+#define VERSTRING "0.1"
 
 /*
 
