@@ -460,8 +460,7 @@ void ImageRecord::GetCropRectForScreen(int w, int h, RECT *cr)
 
 enum
 {
-  LOCAL_CAP_NIL=-1000,
-  LOCAL_CAP_CROP,
+  LOCAL_CAP_CROP=-1000,
 
 };
 
@@ -623,8 +622,6 @@ void ImageRecord::OnMouseMove(int xpos, int ypos)
 {
   switch (m_captureidx)
   {
-    case LOCAL_CAP_NIL:
-    return;
     case LOCAL_CAP_CROP:
       if (m_crop_capmode)
       {
@@ -668,12 +665,8 @@ void ImageRecord::OnMouseMove(int xpos, int ypos)
 
 void ImageRecord::OnMouseUp(int xpos, int ypos)
 {
-  m_captureidx= -1;
   switch (m_captureidx)
   {
-    case LOCAL_CAP_NIL:
-      m_captureidx= -1;
-    return;
     case LOCAL_CAP_CROP:
 
       // todo: notify that edit finished?
