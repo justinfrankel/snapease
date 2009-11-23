@@ -5,10 +5,17 @@
 #include "../WDL/lice/lice_text.h"
 #include "../WDL/wingui/virtwnd-controls.h"
 
+#ifdef ENABLE_FUN_TRANSFORM_TEST
+#include "../WDL/plush2/plush.h"
+#endif
+
+
 #include "imagerecord.h"
 
 
 #include "resource.h"
+
+#define TRANSFORM_PT_RADIUS 3.0
 
 enum
 {
@@ -43,6 +50,7 @@ ImageRecord::ImageRecord(const char *fn)
   m_fullimage_rendercached=0;
   m_fullimage_rendercached_valid=0;
   m_crop_active=false;
+  m_transform_active=false;
   m_fullimage=0;
   m_want_fullimage=0;
   m_bw=false;
@@ -92,6 +100,7 @@ ImageRecord::~ImageRecord()
   delete m_preview_image;
   delete m_fullimage;
   delete m_fullimage_rendercached;
+  m_transform.Empty(true);
 }
 
 ImageRecord *ImageRecord ::Duplicate()
@@ -461,6 +470,7 @@ void ImageRecord::GetCropRectForScreen(int w, int h, RECT *cr)
 enum
 {
   LOCAL_CAP_CROP=-1000,
+  LOCAL_CAP_TRANSFORM,
 
 };
 
@@ -587,33 +597,198 @@ int ImageRecord::OnMouseDown(int xpos, int ypos)
       return 1;
     }
   }
-  if (!a && m_crop_active)
+  if (!a)
   {
-    m_crop_capmode = 0;
-    int f=0;
-    if (ypos >= m_last_crop_drawrect.top-3 && ypos <= m_last_crop_drawrect.bottom+3)
+#ifdef ENABLE_FUN_TRANSFORM_TEST
+    if (m_transform_active)
     {
-      if (xpos >= m_last_crop_drawrect.left-3 && xpos <= m_last_crop_drawrect.left+3) m_crop_capmode|=1;
-      else if (xpos >= m_last_crop_drawrect.right-3 && xpos <= m_last_crop_drawrect.right+3) m_crop_capmode|=4;
-      else f|=1;
-    }
-    if (xpos >= m_last_crop_drawrect.left-3 && xpos <= m_last_crop_drawrect.right+3)
-    {
-      if (ypos >= m_last_crop_drawrect.top-3 && ypos <= m_last_crop_drawrect.top+3) m_crop_capmode|=2;
-      else if (ypos >= m_last_crop_drawrect.bottom-3 && ypos <= m_last_crop_drawrect.bottom+3) m_crop_capmode|=8;
-      else f|=2;
-    }
+      m_captureidx= LOCAL_CAP_TRANSFORM;
 
-    if (f==3)  m_crop_capmode=0xf;
-    m_crop_capmode_lastpos.x = xpos - ((m_crop_capmode & 1) ? m_last_crop_drawrect.left : m_last_crop_drawrect.right);
-    m_crop_capmode_lastpos.y = ypos - ((m_crop_capmode & 2) ? m_last_crop_drawrect.top : m_last_crop_drawrect.bottom);
-    
-    if (m_crop_capmode)
-    {
-      m_captureidx = LOCAL_CAP_CROP;
+      int capcnt = 0;
+      double wscale = (m_last_drawrect.right-m_last_drawrect.left) / (double) m_srcimage_w;
+      double hscale = (m_last_drawrect.bottom-m_last_drawrect.top) / (double) m_srcimage_h;
+      int i;
+
+      for(i=0;i<m_transform.GetSize();i++)
+      {
+        TransformTriangle *t = m_transform.Get(i);
+
+        t->cap[0]=t->cap[1]=t->cap[2]=false;
+
+        int a;
+        for(a=0;a<3;a++)
+        {
+          int x = m_last_drawrect.left + (int) (t->x[a]*wscale + 0.5) - xpos;
+          int y = m_last_drawrect.top + (int) (t->y[a]*hscale + 0.5) - ypos;
+          if (x * x + y * y <= (int)(TRANSFORM_PT_RADIUS*TRANSFORM_PT_RADIUS + 0.5))
+          {
+            t->cap[a]=true;
+            t->cap_offs[a].x = x;
+            t->cap_offs[a].y = y;
+            capcnt++;
+            break;
+          }
+        }
+
+      }
+
+      if (!capcnt)
+      {
+        int orig_sz = m_transform.GetSize();
+        double xfx = (xpos - m_last_drawrect.left) / wscale;
+        double xfy = (ypos - m_last_drawrect.top) / hscale;
+        for(i=0;i<orig_sz;i++)
+        {
+          TransformTriangle *t = m_transform.Get(i);
+          // todo check edges first
+          double v0x = t->x[2] - t->x[0], v0y = t->y[2] - t->y[0];
+          double v1x = t->x[1] - t->x[0], v1y = t->y[1] - t->y[0];
+          double v2x = xfx - t->x[0], v2y = xfy - t->y[0];
+          double dot00 = v0x*v0x + v0y*v0y;
+          double dot01 = v0x*v1x + v0y*v1y;
+          double dot02 = v0x*v2x + v0y*v2y;
+          double dot11 = v1x*v1x + v1y*v1y;
+          double dot12 = v1x*v2x + v1y*v2y;
+
+          double iv = 1.0/(dot00 * dot11 - dot01 * dot01);
+          double uu = (dot11 * dot02 - dot01 * dot12) * iv;
+          double vv = (dot00 * dot12 - dot01 * dot02) * iv;
+
+          if (uu >= -0.01 && vv >= -0.01 && (uu + vv <= 1.1))
+          {
+            double calcu = vv * t->u[1] + uu*t->u[2] + (1.0 - uu - vv)*t->u[0];
+            double calcv = vv * t->v[1] + uu*t->v[2] + (1.0 - uu - vv)*t->v[0];
+
+
+            if (uu < 0.01) // todo better factor
+            {
+              // on edge between [0] and [1]
+              TransformTriangle *nt = new TransformTriangle(t->x[0],t->y[0],t->x[2],t->y[2], xfx, xfy);
+              nt->cap[2]=true;
+              nt->u[0]=t->u[0];
+              nt->v[0]=t->v[0];
+              nt->u[1]=t->u[2];
+              nt->v[1]=t->v[2];
+              nt->u[2]=calcu;
+              nt->v[2]=calcv;
+              m_transform.Add(nt);
+
+              t->x[0]=xfx;
+              t->y[0]=xfy;
+              t->u[0]=calcu;
+              t->v[0]=calcv;
+              t->cap[0]=true;
+              t->cap_offs[0].x=t->cap_offs[0].y=0;
+            }
+            else if (vv < 0.01)
+            {
+              // on edge between [0] and [2]
+              TransformTriangle *nt = new TransformTriangle(t->x[0],t->y[0],t->x[1],t->y[1], xfx, xfy);
+              nt->cap[2]=true;
+              nt->u[0]=t->u[0];
+              nt->v[0]=t->v[0];
+              nt->u[1]=t->u[1];
+              nt->v[1]=t->v[1];
+              nt->u[2]=calcu;
+              nt->v[2]=calcv;
+              m_transform.Add(nt);
+
+              t->x[0]=xfx;
+              t->y[0]=xfy;
+              t->u[0]=calcu;
+              t->v[0]=calcv;
+              t->cap[0]=true;
+              t->cap_offs[0].x=t->cap_offs[0].y=0;
+            }
+            else if (uu+vv >= 0.98)
+            {
+              // on edge between [1] and [2]
+              TransformTriangle *nt = new TransformTriangle(t->x[0],t->y[0],t->x[1],t->y[1], xfx, xfy);
+              nt->cap[2]=true;
+              nt->u[0]=t->u[0];
+              nt->v[0]=t->v[0];
+              nt->u[1]=t->u[1];
+              nt->v[1]=t->v[1];
+              nt->u[2]=calcu;
+              nt->v[2]=calcv;
+              m_transform.Add(nt);
+
+              t->x[1]=xfx;
+              t->y[1]=xfy;
+              t->u[1]=calcu;
+              t->v[1]=calcv;
+              t->cap[1]=true;
+              t->cap_offs[1].x=t->cap_offs[1].y=0;
+            }
+            else
+            {
+              TransformTriangle *nt = new TransformTriangle(t->x[0],t->y[0],t->x[1],t->y[1], xfx, xfy);
+              nt->cap[2]=true;
+              nt->u[0]=t->u[0];
+              nt->v[0]=t->v[0];
+              nt->u[1]=t->u[1];
+              nt->v[1]=t->v[1];
+              nt->u[2]=calcu;
+              nt->v[2]=calcv;
+              m_transform.Add(nt);
+
+              nt = new TransformTriangle(t->x[0],t->y[0],t->x[2],t->y[2], xfx, xfy);
+              nt->cap[2]=true;
+              nt->u[0]=t->u[0];
+              nt->v[0]=t->v[0];
+              nt->u[1]=t->u[2];
+              nt->v[1]=t->v[2];
+              nt->u[2]=calcu;
+              nt->v[2]=calcv;
+              m_transform.Add(nt);
+
+              t->x[0]=xfx;
+              t->y[0]=xfy;
+              t->u[0]=calcu;
+              t->v[0]=calcv;
+              t->cap[0]=true;
+              t->cap_offs[0].x=t->cap_offs[0].y=0;
+            }
+
+            m_fullimage_rendercached=false;
+          }
+
+        }
+      }
+      RequestRedraw(NULL);
+
       return 1;
     }
-    // hit test
+    else 
+#endif
+      if (m_crop_active)
+    {
+      m_crop_capmode = 0;
+      int f=0;
+      if (ypos >= m_last_crop_drawrect.top-3 && ypos <= m_last_crop_drawrect.bottom+3)
+      {
+        if (xpos >= m_last_crop_drawrect.left-3 && xpos <= m_last_crop_drawrect.left+3) m_crop_capmode|=1;
+        else if (xpos >= m_last_crop_drawrect.right-3 && xpos <= m_last_crop_drawrect.right+3) m_crop_capmode|=4;
+        else f|=1;
+      }
+      if (xpos >= m_last_crop_drawrect.left-3 && xpos <= m_last_crop_drawrect.right+3)
+      {
+        if (ypos >= m_last_crop_drawrect.top-3 && ypos <= m_last_crop_drawrect.top+3) m_crop_capmode|=2;
+        else if (ypos >= m_last_crop_drawrect.bottom-3 && ypos <= m_last_crop_drawrect.bottom+3) m_crop_capmode|=8;
+        else f|=2;
+      }
+
+      if (f==3)  m_crop_capmode=0xf;
+      m_crop_capmode_lastpos.x = xpos - ((m_crop_capmode & 1) ? m_last_crop_drawrect.left : m_last_crop_drawrect.right);
+      m_crop_capmode_lastpos.y = ypos - ((m_crop_capmode & 2) ? m_last_crop_drawrect.top : m_last_crop_drawrect.bottom);
+    
+      if (m_crop_capmode)
+      {
+        m_captureidx = LOCAL_CAP_CROP;
+        return 1;
+      }
+      // hit test
+    }
   }
   return a;
 }
@@ -622,6 +797,34 @@ void ImageRecord::OnMouseMove(int xpos, int ypos)
 {
   switch (m_captureidx)
   {
+    case LOCAL_CAP_TRANSFORM:
+#ifdef ENABLE_FUN_TRANSFORM_TEST
+      {
+        double uwscale = m_srcimage_w / (double) (m_last_drawrect.right-m_last_drawrect.left);
+        double uhscale = m_srcimage_h / (double) (m_last_drawrect.bottom-m_last_drawrect.top);
+        int cnt=0,i;
+        for(i=0;i<m_transform.GetSize();i++)
+        {
+          TransformTriangle *t = m_transform.Get(i);
+          int a;
+          for(a=0;a<3;a++)
+          {
+            if (t->cap[a])
+            {
+              t->x[a] = uwscale * (xpos - m_last_drawrect.left - t->cap_offs[a].x);
+              t->y[a] = uhscale * (ypos - m_last_drawrect.top - t->cap_offs[a].y);
+              cnt++;
+            }
+          }
+        }
+        if (cnt)
+        {
+          m_fullimage_rendercached=false;
+          RequestRedraw(NULL);
+        }
+      }
+#endif
+    return;
     case LOCAL_CAP_CROP:
       if (m_crop_capmode)
       {
@@ -667,6 +870,9 @@ void ImageRecord::OnMouseUp(int xpos, int ypos)
 {
   switch (m_captureidx)
   {
+    case LOCAL_CAP_TRANSFORM: 
+      m_captureidx= -1;
+    return;
     case LOCAL_CAP_CROP:
 
       // todo: notify that edit finished?
@@ -859,6 +1065,15 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     m_last_drawrect.bottom = m_last_drawrect.top + h;
 
 
+#ifdef ENABLE_FUN_TRANSFORM_TEST
+    if (!m_transform_active)
+    {
+      m_transform_active=true;
+      m_transform.Add(new TransformTriangle(0,0,      m_srcimage_w,0,0,m_srcimage_h));
+      m_transform.Add(new TransformTriangle(m_srcimage_w,m_srcimage_h,m_srcimage_w,0,0,m_srcimage_h));
+    }
+#endif
+
     // todo: cache scaled/rotated version in global cache if srcimage == m_fullimage?
 
     if (usedFullImage &&
@@ -871,6 +1086,51 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     {
       m_fullimage_rendercached_valid=false;
 
+#ifdef ENABLE_FUN_TRANSFORM_TEST
+      if (m_transform.GetSize())
+      {
+        pl_Cam cam;
+        cam.WantZBuffer=false;
+        cam.Begin(drawbm);
+
+        double xsc = w / (double)m_srcimage_w;
+        double ysc = h / (double)m_srcimage_h;
+        double wsc = 1.0 / (double)m_srcimage_w;
+        double hsc = 1.0 / (double)m_srcimage_h;
+        pl_Mat mat;
+        mat.SolidOpacity=0.0;
+        mat.Texture = srcimage;
+        mat.TexCombineMode=LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR;
+
+        pl_Face tmp;
+        memset(&tmp,0,sizeof(tmp));
+        tmp.Material = &mat;
+
+        int x;
+        for(x=0;x<m_transform.GetSize();x++)
+        {
+          TransformTriangle *t = m_transform.Get(x);
+          int a;
+          for(a=0;a<3;a++)
+          {
+            tmp.MappingU[0][a] = t->u[a] * wsc;
+            tmp.MappingV[0][a] = t->v[a] * hsc;
+            tmp.Scrx[a]=xoffs + t->x[a]*xsc;
+            tmp.Scry[a]=yoffs + t->y[a]*ysc;
+            tmp.Scrz[a] = 100.0;
+            if (tmp.Scrx[a]<0||tmp.Scrx[a]>=drawbm->getWidth()) break;
+            if (tmp.Scry[a]<0||tmp.Scry[a]>=drawbm->getHeight()) break;
+          }
+          if (a>=3)
+            cam.PutFace(&tmp);
+
+        }
+
+        cam.End();
+        // draw as triangles
+      }
+      else 
+#endif  
       if (!rot)
         LICE_ScaledBlit(drawbm,srcimage,xoffs,yoffs,w,h,0,0,srcimage->getWidth(),srcimage->getHeight(),1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
       else
@@ -924,7 +1184,51 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     }
 
 
-    if (m_crop_active)
+#ifdef ENABLE_FUN_TRANSFORM_TEST
+    if (m_transform_active)
+    {
+      int x;
+      LICE_pixel col = LICE_RGBA(255,255,255,255);
+      float al = 0.5;
+      int mode=LICE_BLIT_MODE_COPY;
+      bool aa=true;
+      double wscale = w / (double) m_srcimage_w;
+      double hscale = h / (double) m_srcimage_h;
+      double cr=TRANSFORM_PT_RADIUS;
+
+      if (!m_crop_active) for(x=0;x<m_transform.GetSize();x++)
+      {
+        TransformTriangle *t = m_transform.Get(x);
+        int x1 = (int) (xoffs + t->x[0] * wscale + 0.5);
+        int x2 = (int) (xoffs + t->x[1] * wscale + 0.5);
+        int x3 = (int) (xoffs + t->x[2] * wscale + 0.5);
+        int y1 = (int) (yoffs + t->y[0] * hscale + 0.5);
+        int y2 = (int) (yoffs + t->y[1] * hscale + 0.5);
+        int y3 = (int) (yoffs + t->y[2] * hscale + 0.5);
+
+        if (t->cap[0] && m_captureidx == LOCAL_CAP_TRANSFORM)
+          LICE_FillCircle(drawbm,x1,y1,cr,col,al,mode,aa);
+        else 
+          LICE_Circle(drawbm,x1,y1,cr,col,al,mode,aa);
+        
+        if (t->cap[1] && m_captureidx == LOCAL_CAP_TRANSFORM)
+          LICE_FillCircle(drawbm,x2,y2,cr,col,al,mode,aa);
+        else 
+          LICE_Circle(drawbm,x2,y2,cr,col,al,mode,aa);
+
+        if (t->cap[2] && m_captureidx == LOCAL_CAP_TRANSFORM)
+          LICE_FillCircle(drawbm,x3,y3,cr,col,al,mode,aa);
+        else 
+          LICE_Circle(drawbm,x3,y3,cr,col,al,mode,aa);
+
+        LICE_Line(drawbm,x1,y1,x2,y2,col,al,mode,aa);
+        LICE_Line(drawbm,x3,y3,x2,y2,col,al,mode,aa);
+        LICE_Line(drawbm,x1,y1,x3,y3,col,al,mode,aa);
+      }
+    }
+    else 
+#endif
+      if (m_crop_active)
     {
 
       RECT cr;

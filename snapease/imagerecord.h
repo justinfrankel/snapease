@@ -50,6 +50,30 @@ public:
 
   RECT m_croprect;
 
+  bool m_transform_active;
+  class TransformTriangle
+  {
+    public:
+      TransformTriangle(double x1,double y1,double x2, double y2, double x3, double y3) 
+      { 
+        x[0]=u[0]=x1;  
+        y[0]=v[0]=y1;
+        x[1]=u[1]=x2;  
+        y[1]=v[1]=y2;
+        x[2]=u[2]=x3;  
+        y[2]=v[2]=y3;
+        cap[0]=cap[1]=cap[2]=false;
+        memset(cap_offs,0,sizeof(cap_offs));
+      }
+      ~TransformTriangle() { }
+      double x[3],y[3]; // vertices
+
+      double u[3],v[3]; 
+
+      bool cap[3]; // whether each vertex is in mouse capture
+      POINT cap_offs[3];
+  };
+  WDL_PtrList<TransformTriangle> m_transform;
 
   // state
   int m_state;
