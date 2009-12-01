@@ -44,7 +44,7 @@
 #include "../WDL/dirscan.h"
 #include "../WDL/lice/lice_text.h"
 
-#include "../jmde/coolsb/coolscroll.h"
+#include "../WDL/wingui/scrollbar/coolscroll.h"
 
 #include "resource.h"
 
