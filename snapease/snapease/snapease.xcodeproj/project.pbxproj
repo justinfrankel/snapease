@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		1DDD58160DA1D0A300B32029 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 1DDD58140DA1D0A300B32029 /* MainMenu.xib */; };
 		3313F58A10B8865300ABDFC4 /* scrollbar.png in Resources */ = {isa = PBXBuildFile; fileRef = 3313F58910B8865300ABDFC4 /* scrollbar.png */; };
+		33731F7910C494DA0084E77F /* coolscroll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 33731F7810C494DA0084E77F /* coolscroll.cpp */; };
 		337ED4B210B7559B009528D7 /* virtwnd-iconbutton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 337ED4AA10B7559B009528D7 /* virtwnd-iconbutton.cpp */; };
 		337ED4B310B7559B009528D7 /* virtwnd-listbox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 337ED4AB10B7559B009528D7 /* virtwnd-listbox.cpp */; };
 		337ED4B410B7559B009528D7 /* virtwnd-slider.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 337ED4AD10B7559B009528D7 /* virtwnd-slider.cpp */; };
@@ -123,8 +124,6 @@
 		337ED5C910B7574B009528D7 /* swell-miscdlg.mm in Sources */ = {isa = PBXBuildFile; fileRef = 337ED5BE10B7574B009528D7 /* swell-miscdlg.mm */; };
 		337ED5CA10B7574B009528D7 /* swell-wnd.mm in Sources */ = {isa = PBXBuildFile; fileRef = 337ED5BF10B7574B009528D7 /* swell-wnd.mm */; };
 		337ED5CB10B7574B009528D7 /* swell.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 337ED5C010B7574B009528D7 /* swell.cpp */; };
-		337ED5D110B7577A009528D7 /* coolsblib.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 337ED5CF10B7577A009528D7 /* coolsblib.cpp */; };
-		337ED5D210B7577A009528D7 /* coolscroll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 337ED5D010B7577A009528D7 /* coolscroll.cpp */; };
 		337ED5DE10B7579F009528D7 /* config.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 337ED5D310B7579F009528D7 /* config.cpp */; };
 		337ED5DF10B7579F009528D7 /* decode_thread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 337ED5D410B7579F009528D7 /* decode_thread.cpp */; };
 		337ED5E010B7579F009528D7 /* export.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 337ED5D510B7579F009528D7 /* export.cpp */; };
@@ -164,6 +163,7 @@
 		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		32CA4F630368D1EE00C91783 /* snapease_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = snapease_Prefix.pch; sourceTree = "<group>"; };
 		3313F58910B8865300ABDFC4 /* scrollbar.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = scrollbar.png; path = ../images/scrollbar.png; sourceTree = SOURCE_ROOT; };
+		33731F7810C494DA0084E77F /* coolscroll.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = coolscroll.cpp; path = ../../WDL/wingui/scrollbar/coolscroll.cpp; sourceTree = SOURCE_ROOT; };
 		337ED4AA10B7559B009528D7 /* virtwnd-iconbutton.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "virtwnd-iconbutton.cpp"; path = "../../WDL/wingui/virtwnd-iconbutton.cpp"; sourceTree = SOURCE_ROOT; };
 		337ED4AB10B7559B009528D7 /* virtwnd-listbox.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "virtwnd-listbox.cpp"; path = "../../WDL/wingui/virtwnd-listbox.cpp"; sourceTree = SOURCE_ROOT; };
 		337ED4AC10B7559B009528D7 /* virtwnd-skin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "virtwnd-skin.h"; path = "../../WDL/wingui/virtwnd-skin.h"; sourceTree = SOURCE_ROOT; };
@@ -309,8 +309,6 @@
 		337ED5BF10B7574B009528D7 /* swell-wnd.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = "swell-wnd.mm"; path = "../../WDL/swell/swell-wnd.mm"; sourceTree = SOURCE_ROOT; };
 		337ED5C010B7574B009528D7 /* swell.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = swell.cpp; path = ../../WDL/swell/swell.cpp; sourceTree = SOURCE_ROOT; };
 		337ED5C110B7574B009528D7 /* swell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = swell.h; path = ../../WDL/swell/swell.h; sourceTree = SOURCE_ROOT; };
-		337ED5CF10B7577A009528D7 /* coolsblib.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = coolsblib.cpp; path = ../../jmde/coolsb/coolsblib.cpp; sourceTree = SOURCE_ROOT; };
-		337ED5D010B7577A009528D7 /* coolscroll.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = coolscroll.cpp; path = ../../jmde/coolsb/coolscroll.cpp; sourceTree = SOURCE_ROOT; };
 		337ED5D310B7579F009528D7 /* config.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = config.cpp; path = ../config.cpp; sourceTree = SOURCE_ROOT; };
 		337ED5D410B7579F009528D7 /* decode_thread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = decode_thread.cpp; path = ../decode_thread.cpp; sourceTree = SOURCE_ROOT; };
 		337ED5D510B7579F009528D7 /* export.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = export.cpp; path = ../export.cpp; sourceTree = SOURCE_ROOT; };
@@ -669,8 +667,7 @@
 		337ED5CE10B75768009528D7 /* coolsb */ = {
 			isa = PBXGroup;
 			children = (
-				337ED5CF10B7577A009528D7 /* coolsblib.cpp */,
-				337ED5D010B7577A009528D7 /* coolscroll.cpp */,
+				33731F7810C494DA0084E77F /* coolscroll.cpp */,
 			);
 			name = coolsb;
 			sourceTree = "<group>";
@@ -878,8 +875,6 @@
 				337ED5C910B7574B009528D7 /* swell-miscdlg.mm in Sources */,
 				337ED5CA10B7574B009528D7 /* swell-wnd.mm in Sources */,
 				337ED5CB10B7574B009528D7 /* swell.cpp in Sources */,
-				337ED5D110B7577A009528D7 /* coolsblib.cpp in Sources */,
-				337ED5D210B7577A009528D7 /* coolscroll.cpp in Sources */,
 				337ED5DE10B7579F009528D7 /* config.cpp in Sources */,
 				337ED5DF10B7579F009528D7 /* decode_thread.cpp in Sources */,
 				337ED5E010B7579F009528D7 /* export.cpp in Sources */,
@@ -891,6 +886,7 @@
 				337ED60A10B758E2009528D7 /* projectcontext.cpp in Sources */,
 				33E310FF10B78E07009F49F7 /* main_osx.cpp in Sources */,
 				33E3117610B7954B009F49F7 /* swellappmain.mm in Sources */,
+				33731F7910C494DA0084E77F /* coolscroll.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
