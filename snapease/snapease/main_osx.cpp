@@ -135,6 +135,10 @@ INT_PTR SWELLAppMain(int msg, INT_PTR parm1, INT_PTR parm2)
 }
 
 
+
+// if either of these files do not exist, or if you change snapease.rc, go to the place where snapease.rc is in Terminal, and run:
+//    ../WDL/swell/mac_resgen.php snapease.rc
+
 #include "../snapease.rc_mac_dlg"
 
 #undef BEGIN
