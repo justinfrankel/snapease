@@ -1,4 +1,4 @@
-#define VERSTRING "0.1"
+#define VERSTRING "0.11"
 /*
     SnapEase
     main_wnd.cpp -- main window dialogness
@@ -1161,7 +1161,7 @@ int WDL_STYLE_GetSliderDynamicCenterPos() { return 500; }
 
 
 // for coolsb
-void *GetIconThemePointer(const char *name)
+extern "C" void *GetIconThemePointer(const char *name)
 {
   if (!strcmp(name,"scrollbar"))
   {
@@ -1174,7 +1174,5 @@ void *GetIconThemePointer(const char *name)
   return NULL;
 }
 
-extern "C" {
-int GSC_mainwnd(int p) { return GetSysColor(p); }
-};
+extern "C" int GSC_mainwnd(int p) { return GetSysColor(p); }
 
