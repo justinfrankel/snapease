@@ -135,73 +135,78 @@ static int RunWork(DecodeThreadContext &ctx)
     }
   }
 
-  if (ctx.scanpos>=g_images.GetSize()*2)
+  int i;
+  bool didProc=false;
+  for (i= 0; i < 100 && !didProc; i ++)
   {
-    ctx.scanpos=0;
-    sleepAmt=30;
-  }
-
-
-  int center = ctx.last_visstart;
-  if (center<0) center=0;
-  else if (center>g_images.GetSize()) center=g_images.GetSize();
-
-  if (1)
-  {
-    if ((ctx.scanpos&3)==3) // every 4th, go backwards
-      center -= (ctx.scanpos+1)/4;
-    else
-      center += ctx.scanpos - (ctx.scanpos+1)/4;
-  }
-  else center+=ctx.scanpos;
-  
-//    if (center >= g_images.GetSize()) center-=g_images.GetSize();
-
-  ctx.scanpos++;
-
-  ImageRecord *rec = g_images.Get(center);
-
-  if (rec) 
-  {
-    if (rec->m_state == IR_STATE_NEEDLOAD)
+    if (ctx.scanpos>=g_images.GetSize()*2)
     {
-      LICE_IBitmap *bmDel = NULL;
-      if (rec->m_preview_image)
+      ctx.scanpos=0;
+      sleepAmt=30;
+      didProc=true;
+    }
+
+
+    int center = ctx.last_visstart;
+    if (center<0) center=0;
+    else if (center>g_images.GetSize()) center=g_images.GetSize();
+
+    if (1)
+    {
+      if ((ctx.scanpos&3)==3) // every 4th, go backwards
+        center -= (ctx.scanpos+1)/4;
+      else
+        center += ctx.scanpos - (ctx.scanpos+1)/4;
+    }
+    else center+=ctx.scanpos;
+  
+    ctx.scanpos++;
+
+    ImageRecord *rec = g_images.Get(center);
+
+    if (rec) 
+    {
+      if (rec->m_state == IR_STATE_NEEDLOAD)
       {
-        bmDel = ctx.bmOut;
-        ctx.bmOut = rec->m_preview_image;
-        rec->m_preview_image=0;
-      }
-
-      rec->m_state=IR_STATE_DECODING;
-      ctx.curfn.Set(rec->m_fn.Get());
-
-      g_DecodeDidSomething=true;
-
-      g_images_mutex.Leave();
-
-      if (!ctx.bmOut) ctx.bmOut = new LICE_MemBitmap;
-      delete bmDel;
-
-      // load/process image
-      bool success = DoProcessBitmap(ctx.bmOut, ctx.curfn.Get(),&ctx.bm);
-
-
-      g_images_mutex.Enter();
-
-      if (g_images.Find(rec)>=0 && rec->m_state == IR_STATE_DECODING)
-      {
-        rec->m_srcimage_w = ctx.bm.getWidth();
-        rec->m_srcimage_h = ctx.bm.getHeight();
-        if (!success) rec->m_state = IR_STATE_ERROR;
-        else if (strcmp(rec->m_fn.Get(),ctx.curfn.Get())) rec->m_state = IR_STATE_ERROR;
-        else
+        LICE_IBitmap *bmDel = NULL;
+        if (rec->m_preview_image)
         {
-          rec->m_state = IR_STATE_LOADED;
-          rec->m_preview_image = ctx.bmOut;
-          ctx.bmOut= 0;
+          bmDel = ctx.bmOut;
+          ctx.bmOut = rec->m_preview_image;
+          rec->m_preview_image=0;
         }
+
+        rec->m_state=IR_STATE_DECODING;
+        ctx.curfn.Set(rec->m_fn.Get());
+
         g_DecodeDidSomething=true;
+
+        g_images_mutex.Leave();
+
+        if (!ctx.bmOut) ctx.bmOut = new LICE_MemBitmap;
+        delete bmDel;
+
+        // load/process image
+        bool success = DoProcessBitmap(ctx.bmOut, ctx.curfn.Get(),&ctx.bm);
+
+        didProc=true;
+
+        g_images_mutex.Enter();
+
+        if (g_images.Find(rec)>=0 && rec->m_state == IR_STATE_DECODING)
+        {
+          rec->m_srcimage_w = ctx.bm.getWidth();
+          rec->m_srcimage_h = ctx.bm.getHeight();
+          if (!success) rec->m_state = IR_STATE_ERROR;
+          else if (strcmp(rec->m_fn.Get(),ctx.curfn.Get())) rec->m_state = IR_STATE_ERROR;
+          else
+          {
+            rec->m_state = IR_STATE_LOADED;
+            rec->m_preview_image = ctx.bmOut;
+            ctx.bmOut= 0;
+          }
+          g_DecodeDidSomething=true;
+        }
       }
     }
   }
@@ -215,7 +220,7 @@ static DWORD WINAPI DecodeThreadProc(LPVOID v)
   DecodeThreadContext ctx;
 
   ctx.last_visstart=g_firstvisible_startitem;
-  ctx.scanpos=g_firstvisible_startitem;
+  ctx.scanpos=0;
   while (!g_DecodeThreadQuit)
   {
     Sleep(RunWork(ctx));
