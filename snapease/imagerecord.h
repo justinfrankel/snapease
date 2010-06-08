@@ -37,6 +37,7 @@ public:
   virtual void SetPosition(const RECT *r);
   virtual INT_PTR SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_VWnd *src);
   virtual int OnMouseDown(int xpos, int ypos);
+  virtual bool OnMouseDblClick(int xpos, int ypos);
   virtual void OnMouseMove(int xpos, int ypos);
   virtual void OnMouseUp(int xpos, int ypos);
   virtual int UpdateCursor(int xpos, int ypos);

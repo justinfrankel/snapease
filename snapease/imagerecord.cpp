@@ -635,6 +635,18 @@ int ImageRecord::UpdateCursor(int xpos, int ypos)
   return -1;
 }
 
+bool ImageRecord::OnMouseDblClick(int xpos, int ypos)
+{
+  if (WDL_VWnd::OnMouseDblClick(xpos,ypos)) return true;
+
+  if (!RemoveFullItemView())
+  {
+    OpenFullItemView(this);
+  }
+
+  return true;
+}
+
 int ImageRecord::OnMouseDown(int xpos, int ypos)
 {
   int a = WDL_VWnd::OnMouseDown(xpos,ypos);
