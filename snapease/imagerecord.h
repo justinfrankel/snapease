@@ -23,6 +23,9 @@
 
 #include "../WDL/wdlstring.h"
 
+enum { EDIT_MODE_NONE=0, EDIT_MODE_CROP, EDIT_MODE_TRANSFORM, EDIT_MODE_BCHSV}; 
+extern int g_edit_mode;
+
 class ImageRecord : public WDL_VWnd
 {
 public:
@@ -70,8 +73,6 @@ public:
   float m_bchsv[5];
   char m_rot; // 90deg steps (0..3)
 
-  enum { EDIT_MODE_NONE=0, EDIT_MODE_CROP, EDIT_MODE_TRANSFORM, EDIT_MODE_BCHSV}; 
-  int m_edit_mode;
 
   RECT m_croprect;
 

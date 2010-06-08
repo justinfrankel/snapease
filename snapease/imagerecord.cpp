@@ -37,6 +37,7 @@
 #include "resource.h"
 
 #define TRANSFORM_PT_RADIUS 3.0
+int g_edit_mode=EDIT_MODE_NONE;
 
 enum
 {
@@ -170,6 +171,25 @@ public:
 
 static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state=0);
 
+static void UpdateAllButtonStates(WDL_VWnd *sf)
+{
+  WDL_VWnd *par = sf ? sf->GetParent():NULL;
+  if (!par) return;
+
+  int x;
+  for(x=0;;x++)
+  {
+    WDL_VWnd *vw = par->EnumChildren(x);
+    if (!vw) break;
+    if (!strcmp(vw->GetType(),"ImageRecord"))
+    {
+      ((ImageRecord*)vw)->UpdateButtonStates();
+    }
+  }
+  par->RequestRedraw(NULL);
+}
+
+
 static int GetNearestVWndToPoint(WDL_VWnd *par, int x, int y)
 {
   RECT parr;
@@ -230,7 +250,6 @@ ImageRecord::ImageRecord(const char *fn)
   m_is_fs=false;
   m_fullimage_scaled=m_fullimage_final=NULL;
   m_fullimage_cachevalid=0;
-  m_edit_mode=EDIT_MODE_NONE;
   m_fullimage=0;
   m_want_fullimage=0;
   memset(m_bchsv,0,sizeof(m_bchsv));
@@ -273,7 +292,7 @@ void ImageRecord::UpdateButtonStates()
       char st=0;
       switch (x)
       {
-        case BUTTONID_CROP: st = m_edit_mode==EDIT_MODE_CROP; break;
+        case BUTTONID_CROP: st = g_edit_mode==EDIT_MODE_CROP; break;
         case BUTTONID_FULLSCREEN: st = m_is_fs; break;
       }
       b->SetIcon(GetButtonIcon(x,st));
@@ -284,7 +303,7 @@ void ImageRecord::UpdateButtonStates()
     WDL_VirtualIconButton *b = (WDL_VirtualIconButton*)GetChildByID(x);
     if (b)
     {
-      b->SetVisible(m_edit_mode==EDIT_MODE_BCHSV); // todo: set visible if mode=bw
+      b->SetVisible(g_edit_mode==EDIT_MODE_BCHSV); // todo: set visible if mode=bw
     }
   }
 }
@@ -313,7 +332,6 @@ ImageRecord *ImageRecord ::Duplicate()
   rec->m_srcimage_h=m_srcimage_h;
   memcpy(rec->m_bchsv,m_bchsv,sizeof(m_bchsv));
   rec->m_rot=m_rot;
-  rec->m_edit_mode=m_edit_mode;
   rec->m_croprect=m_croprect;
 
   rec->UpdateButtonStates();
@@ -460,21 +478,17 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
     switch (src->GetID())
     {
       case BUTTONID_CROP:
-        if (m_edit_mode==EDIT_MODE_CROP) m_edit_mode=EDIT_MODE_NONE;
-        else m_edit_mode=EDIT_MODE_CROP;
+        if (g_edit_mode==EDIT_MODE_CROP) g_edit_mode=EDIT_MODE_NONE;
+        else g_edit_mode=EDIT_MODE_CROP;
 
         m_fullimage_cachevalid=0;
-        UpdateButtonStates();
-        RequestRedraw(NULL);
-        SetImageListIsDirty();
+        UpdateAllButtonStates(this);
       break;
 
       case BUTTONID_BW:
-        if (m_edit_mode==EDIT_MODE_BCHSV) m_edit_mode=EDIT_MODE_NONE;
-        else m_edit_mode=EDIT_MODE_BCHSV;
-        UpdateButtonStates();
-        RequestRedraw(NULL);
-        SetImageListIsDirty();
+        if (g_edit_mode==EDIT_MODE_BCHSV) g_edit_mode=EDIT_MODE_NONE;
+        else g_edit_mode=EDIT_MODE_BCHSV;
+        UpdateAllButtonStates(this);
       break;
 
       case BUTTONID_ROTCCW:
@@ -589,36 +603,13 @@ void ImageRecord::SetPosition(const RECT *r)
 
 static void BCfunc(LICE_pixel *p, void *parm)
 {
-  float *parms = (float *)parm;
-
+  unsigned char *tab = (unsigned char *)parm;
   LICE_pixel_chan *pp = (LICE_pixel_chan*)p;
-  float r = (pp[LICE_PIXEL_R]-128)*parms[0]+parms[1];
-  float g = (pp[LICE_PIXEL_G]-128)*parms[0]+parms[1];
-  float b = (pp[LICE_PIXEL_B]-128)*parms[0]+parms[1];
-  _LICE_MakePixelClamp(pp,(int)(r+0.5), (int)(g+0.5),(int)(b+0.5), pp[LICE_PIXEL_A]);
+  pp[LICE_PIXEL_R] = tab[pp[LICE_PIXEL_R]];
+  pp[LICE_PIXEL_G] = tab[pp[LICE_PIXEL_G]];
+  pp[LICE_PIXEL_B] = tab[pp[LICE_PIXEL_B]];
   
 }
-
-
-static void BCfuncBW(LICE_pixel *p, void *parm)
-{
-  float *parms = (float *)parm;
-
-  LICE_pixel_chan *pp = (LICE_pixel_chan*)p;
-  float a = ((int)pp[LICE_PIXEL_R] + (int)pp[LICE_PIXEL_G] + (int)pp[LICE_PIXEL_B] - 384)*parms[0]+parms[1];
-
-  int v = (int) (a+0.5);
-  _LICE_MakePixelClamp(pp,v,v,v, pp[LICE_PIXEL_A]);
-  
-}
-
-static void makeBWFunc(LICE_pixel *p, void *parm)
-{
-  LICE_pixel pix = *p;
-  int v = (LICE_GETR(pix) + LICE_GETG(pix) + LICE_GETB(pix))/3;
-  *p = LICE_RGBA(v,v,v,255);
-}
-
 
 
 bool ImageRecord::SetCropRectFromScreen(int w, int h, const RECT *cr)
@@ -760,7 +751,7 @@ bool ImageRecord::GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutS
       case BUTTONID_CROP:
         {
           WDL_String s;
-          s.Set(m_edit_mode==EDIT_MODE_CROP ? "Leave crop mode" : "Crop");
+          s.Set(g_edit_mode==EDIT_MODE_CROP ? "Leave crop mode" : "Crop");
           char buf[512];
           GetSizeInfoString(buf,sizeof(buf));
           s.Append(" [image: ");
@@ -770,7 +761,7 @@ bool ImageRecord::GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutS
         }
       return true;
       case BUTTONID_BW:
-        lstrcpyn(bufOut,m_edit_mode==EDIT_MODE_BCHSV? "Leave BC/HSV adjust mode" : "BC/HSV adjust mode",bufOutSz);
+        lstrcpyn(bufOut,g_edit_mode==EDIT_MODE_BCHSV? "Leave BC/HSV adjust mode" : "BC/HSV adjust mode",bufOutSz);
       return true;
       case BUTTONID_REMOVE:
         lstrcpyn(bufOut,"Remove image from list",bufOutSz);
@@ -817,7 +808,7 @@ int ImageRecord::UpdateCursor(int xpos, int ypos)
   if (VirtWndFromPoint(xpos,ypos,0)) return -1; // force default cursor for any children
 
 
-  if (m_edit_mode==EDIT_MODE_CROP)
+  if (g_edit_mode==EDIT_MODE_CROP)
   {
     int cm=0,f=0;
     if (ypos >= m_last_crop_drawrect.top-3 && ypos <= m_last_crop_drawrect.bottom+3)
@@ -885,7 +876,7 @@ int ImageRecord::OnMouseDown(int xpos, int ypos)
   if (!a)
   {
 #ifdef ENABLE_FUN_TRANSFORM_TEST
-    if (m_edit_mode==EDIT_MODE_TRANSFORM)
+    if (g_edit_mode==EDIT_MODE_TRANSFORM)
     {
       m_captureidx= LOCAL_CAP_TRANSFORM;
 
@@ -1046,7 +1037,7 @@ int ImageRecord::OnMouseDown(int xpos, int ypos)
     }
     else 
 #endif
-      if (m_edit_mode==EDIT_MODE_CROP)
+      if (g_edit_mode==EDIT_MODE_CROP)
     {
       m_capture_state = 0;
       int f=0;
@@ -1413,7 +1404,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
   {
     int cropw=0,croph=0,cropl=0,cropt=0;
 
-    if (m_edit_mode!=EDIT_MODE_CROP && m_croprect.right > m_croprect.left && m_croprect.bottom > m_croprect.top)
+    if (g_edit_mode!=EDIT_MODE_CROP && m_croprect.right > m_croprect.left && m_croprect.bottom > m_croprect.top)
     {
       // scale coordinates to match this image
 
@@ -1466,9 +1457,9 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
 
 
 #ifdef ENABLE_FUN_TRANSFORM_TEST
-    if (m_edit_mode!=EDIT_MODE_TRANSFORM)
+    if (g_edit_mode!=EDIT_MODE_TRANSFORM)
     {
-      m_edit_mode=EDIT_MODE_TRANSFORM;
+      g_edit_mode=EDIT_MODE_TRANSFORM;
       UpdateButtonStates();
       m_transform.Add(new TransformTriangle(0,0,      m_srcimage_w,0,0,m_srcimage_h));
       m_transform.Add(new TransformTriangle(m_srcimage_w,m_srcimage_h,m_srcimage_w,0,0,m_srcimage_h));
@@ -1614,7 +1605,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
 
 
 #ifdef ENABLE_FUN_TRANSFORM_TEST
-    if (m_edit_mode==EDIT_MODE_TRANSFORM)
+    if (g_edit_mode==EDIT_MODE_TRANSFORM)
     {
       int x;
       LICE_pixel col = LICE_RGBA(255,255,255,255);
@@ -1625,7 +1616,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
       double hscale = h / (double) m_srcimage_h;
       double cr=TRANSFORM_PT_RADIUS;
 
-      if (m_edit_mode!=EDIT_MODE_CROP) for(x=0;x<m_transform.GetSize();x++)
+      if (g_edit_mode!=EDIT_MODE_CROP) for(x=0;x<m_transform.GetSize();x++)
       {
         TransformTriangle *t = m_transform.Get(x);
         int x1 = (int) (xoffs + t->x[0] * wscale + 0.5);
@@ -1657,7 +1648,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     }
     else 
 #endif
-      if (m_edit_mode==EDIT_MODE_CROP)
+      if (g_edit_mode==EDIT_MODE_CROP)
     {
 
       RECT cr;
@@ -1789,7 +1780,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
 
   m_lastlbl_rect = tr;
 
-  if (m_edit_mode==EDIT_MODE_BCHSV)
+  if (g_edit_mode==EDIT_MODE_BCHSV)
   {
     WDL_VWnd *v1 = GetChildByID(KNOBBUTTON_BASE);
     WDL_VWnd *v2 = GetChildByID(KNOBBUTTON_END-1);
@@ -1873,34 +1864,26 @@ bool ImageRecord::ProcessRect(LICE_IBitmap *destimage, int x, int y, int w, int 
       if (fabs(m_bchsv[3])<KNOB_EPS) hsvmode=0;
   }
 
-  float bcparms[2] = 
-  {
-    pow(10.0,m_bchsv[1]*m_bchsv[1]*m_bchsv[1]*3.0),
-    m_bchsv[0] * 256.0f+128.0f
-  };
-//  bcparms[1] *= bcparms[0];
-
 
   if (hsvmode)
   {
-    if (hsvmode==2) 
-    {
-      if (want_bc)
-      {
-        bcparms[0]*=1.0/3.0;
-        LICE_ProcessRect(destimage,x,y,w,h,BCfuncBW,bcparms);
-      }
-      else
-        LICE_ProcessRect(destimage,x,y,w,h,makeBWFunc,NULL);
-    }
-    else 
-    {
-      LICE_AlterRectHSV(destimage,x,y,w,h,m_bchsv[2],m_bchsv[3],m_bchsv[4]);
-    }
+    LICE_AlterRectHSV(destimage,x,y,w,h,m_bchsv[2],m_bchsv[3],m_bchsv[4]);
   }
-  if (want_bc && hsvmode!=2)
+  if (want_bc)
   {
-    LICE_ProcessRect(destimage,x,y,w,h,BCfunc,bcparms);
+    unsigned char tab[256];
+    int a;
+    double sc=pow(10.0,m_bchsv[1]*m_bchsv[1]*m_bchsv[1]*3.0);
+    double offs=m_bchsv[0] * 256.0f;
+    for(a=0;a<256;a++)
+    {
+      int aa = (int) (((a-128)+offs)*sc + 128.5f);
+      if (aa<0)aa=0;
+      else if (aa>255)aa=255;
+      tab[a]=aa;
+    }
+    
+    LICE_ProcessRect(destimage,x,y,w,h,BCfunc,tab);
   }
  
   return want_bc||hsvmode;
