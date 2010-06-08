@@ -909,6 +909,19 @@ void ImageRecord::OnMouseMove(int xpos, int ypos)
     case LOCAL_CAP_DRAGIMAGE:
       if (!m_is_fs && GetParent())
       {
+        static DWORD last_scroll_t;
+        DWORD now=GetTickCount();
+        if (now > last_scroll_t+100)
+        {
+          last_scroll_t=now;
+          POINT p;
+          GetCursorPos(&p);
+          RECT r;
+          GetClientRect(g_hwnd,&r);
+          ScreenToClient(g_hwnd,&p);
+          if (p.y < r.top || p.y > r.bottom)
+            SetMainScrollPosition(p.y > r.bottom ? 0.3 : -0.3,2);
+        }
         int newidx= GetNearestVWndToPoint(GetParent(),xpos+m_position.left,ypos+m_position.top);
         if (newidx>=0)
         {

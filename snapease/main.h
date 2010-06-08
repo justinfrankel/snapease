@@ -48,6 +48,7 @@ void UpdateMainWindowWithSizeChanged();
 bool RemoveFullItemView(bool refresh=true); // if in full view, removes full view (and returns true)
 void OpenFullItemView(ImageRecord *w);
 void EnsureImageRecVisible(ImageRecord *rec);
+void SetMainScrollPosition(float pos, int relative=0); // relative=1 for lines, 2 for pages
 
 LICE_IBitmap *LoadThemeElement(int idx, const char *name);
 

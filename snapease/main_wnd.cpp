@@ -410,7 +410,7 @@ bool RemoveFullItemView(bool refresh)
 }
 
 
-void SetMainScrollPosition(float pos, int relative=0) // relative=1 for lines, 2 for pages
+void SetMainScrollPosition(float pos, int relative) // relative=1 for lines, 2 for pages
 {
   if (relative)
   {
