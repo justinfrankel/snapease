@@ -19,6 +19,7 @@
 */
 
 #include "main.h"
+#include <math.h>
 #include "../WDL/projectcontext.h"
 #include "../WDL/lineparse.h"
 
@@ -154,19 +155,27 @@ bool importImageListFromFile(const char *fn, bool addToCurrent)
             !stricmp(lp.gettoken_str(0),"IMAGE_FULL"))
         {
           bool activate = !addToCurrent && !stricmp(lp.gettoken_str(0),"IMAGE_FULL");
-          if (lp.getnumtokens()>=10)
+          if (lp.getnumtokens()>9)
           {
             char resfn[4096];
             resolve_fn_fromrelative(leadpath.Get(),lp.gettoken_str(1),resfn,sizeof(resfn));
             ImageRecord *rec= new ImageRecord(resfn);
             rec->m_outname.Set(lp.gettoken_str(2));
-            rec->m_bw = !! lp.gettoken_int(3);
+            if (lp.gettoken_int(3)) rec->m_bchsv[3]=-1.0; // desaturate
             rec->m_rot = lp.gettoken_int(4)&3;
             rec->m_edit_mode = lp.gettoken_int(5);
             rec->m_croprect.left = lp.gettoken_int(6);
             rec->m_croprect.top = lp.gettoken_int(7);
             rec->m_croprect.right = lp.gettoken_int(8);
             rec->m_croprect.bottom = lp.gettoken_int(9);
+            if (lp.getnumtokens()>14)
+            {
+              rec->m_bchsv[0] = (float)lp.gettoken_float(10);
+              rec->m_bchsv[1] = (float)lp.gettoken_float(11);
+              rec->m_bchsv[2] = (float)lp.gettoken_float(12);
+              rec->m_bchsv[3] = (float)lp.gettoken_float(13);
+              rec->m_bchsv[4] = (float)lp.gettoken_float(14);
+            }
 
             rec->UpdateButtonStates();
 
@@ -245,17 +254,29 @@ bool saveImageListToFile(const char *fn)
     char buf[4096];
     make_fn_relative(leadpath.Get(),rec->m_fn.Get(),buf,sizeof(buf));
     makeEscapedConfigString(rec->m_outname.Get(),&tbuf);
-    ctx->AddLine("%s \"%s\" %s %d %d %d %d %d %d %d",
+
+    bool isbw = fabs(rec->m_bchsv[3]- (-1.0))<0.001 &&
+                fabs(rec->m_bchsv[0])<0.001 &&
+                fabs(rec->m_bchsv[1])<0.001 &&
+                fabs(rec->m_bchsv[2])<0.001 &&
+                fabs(rec->m_bchsv[4])<0.001;
+
+    ctx->AddLine("%s \"%s\" %s %d %d %d %d %d %d %d %f %f %f %f %f",
         rec == g_fullmode_item ? "IMAGE_FULL" : "IMAGE", 
         buf,
         tbuf.Get(),
-        rec->m_bw,
+        isbw,
         rec->m_rot,
         rec->m_edit_mode,
         rec->m_croprect.left,
         rec->m_croprect.top,
         rec->m_croprect.right,
-        rec->m_croprect.bottom
+        rec->m_croprect.bottom,
+        rec->m_bchsv[0],
+        rec->m_bchsv[1],
+        rec->m_bchsv[2],
+        rec->m_bchsv[3],
+        rec->m_bchsv[4]
         );
         
   }

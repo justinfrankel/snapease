@@ -58,6 +58,8 @@ public:
 
   void SetDefaultTitle();
   void UpdateButtonStates();
+
+  void ProcessRect(LICE_IBitmap *destimage, int x, int y, int w, int h);
   ///
 
   WDL_String m_fn;
@@ -65,10 +67,10 @@ public:
 
   enum { IR_STATE_NEEDLOAD=0, IR_STATE_DECODING, IR_STATE_LOADED, IR_STATE_ERROR };
 
-  bool m_bw;
+  float m_bchsv[5];
   char m_rot; // 90deg steps (0..3)
 
-  enum { EDIT_MODE_NONE=0, EDIT_MODE_CROP, EDIT_MODE_TRANSFORM}; 
+  enum { EDIT_MODE_NONE=0, EDIT_MODE_CROP, EDIT_MODE_TRANSFORM, EDIT_MODE_BCHSV}; 
   int m_edit_mode;
 
   RECT m_croprect;

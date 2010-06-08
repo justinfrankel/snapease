@@ -22,6 +22,7 @@
 #include <math.h>
 
 #include "../WDL/lice/lice.h"
+#include "../WDL/lice/lice_combine.h"
 #include "../WDL/lice/lice_text.h"
 #include "../WDL/wingui/virtwnd-controls.h"
 
@@ -50,7 +51,81 @@ enum
 
   BUTTONID_REMOVE, // goes on upper right
 
-  BUTTONID_END
+  BUTTONID_END,
+
+  KNOBBUTTON_BASE,
+
+  KNOBBUTTON_BRIGHTNESS=KNOBBUTTON_BASE,
+  KNOBBUTTON_CONTRAST,
+  KNOBBUTTON_H,
+  KNOBBUTTON_S,
+  KNOBBUTTON_V,
+  KNOBBUTTON_END,
+};
+
+#define KNOB_EPS 0.001
+#define KNOB_MESSAGE 0xf00db00f
+// used for H,S,V, B, C
+static int m_knob_capx,m_knob_capy;
+class KnobButton : public WDL_VWnd
+{
+public:
+  KnobButton(float *valedit, float knobmax, float user) {  m_val=valedit; m_knobmax=knobmax; m_knobuserange=user; }
+  ~KnobButton() { }
+
+  virtual const char *GetType() { return "KnobButton"; }
+  virtual int OnMouseDown(int xpos, int ypos) // return -1 to eat, >0 to capture
+  {
+    m_knob_capy=ypos;
+    m_knob_capx=xpos;
+    return 1;
+  }
+  virtual bool OnMouseDblClick(int xpos, int ypos)
+  {
+    SendCommand(WM_COMMAND,0,0,this);
+    return true;
+  }
+  virtual bool OnMouseWheel(int xpos, int ypos, int amt)
+  {
+    SendCommand(KNOB_MESSAGE,-amt,0,this);
+    return true;
+  }
+
+  virtual void OnMouseMove(int xpos, int ypos)
+  {
+    if (GetCapture())
+    {
+      if (xpos!=m_knob_capx||ypos!=m_knob_capy)
+      {
+        int diff = (xpos-m_knob_capx) + (m_knob_capy-ypos);
+        m_knob_capx=xpos;
+        m_knob_capy=ypos;
+        SendCommand(KNOB_MESSAGE,diff,0,this);
+      }
+    }
+  }
+  virtual void OnMouseUp(int xpos, int ypos)
+  {
+  }
+
+  virtual void OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect)
+  {
+    int cx = origin_x + (m_position.right+m_position.left)/2;
+    int cy = origin_y + (m_position.bottom+m_position.top)/2;
+    float r = min(m_position.bottom-m_position.top,m_position.right-m_position.left)/2 - 1;
+    LICE_Circle(drawbm,cx,cy,r,LICE_RGBA(255,255,255,255),1.0f,LICE_BLIT_MODE_COPY,true);
+
+    double ang = m_val ? *m_val : 0.0;
+    ang *= 3.14159 * m_knobuserange / m_knobmax;
+    int x2=cx + r*sin(ang);
+    int y2=cy - r*cos(ang);
+    LICE_Line(drawbm,cx,cy,x2,y2,LICE_RGBA(255,255,255,255),1.0f,LICE_BLIT_MODE_COPY,true);
+  }
+
+  float m_knobmax;
+  float m_knobuserange;
+  float *m_val;
+
 };
 
 static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state=0);
@@ -118,7 +193,7 @@ ImageRecord::ImageRecord(const char *fn)
   m_edit_mode=EDIT_MODE_NONE;
   m_fullimage=0;
   m_want_fullimage=0;
-  m_bw=false;
+  memset(m_bchsv,0,sizeof(m_bchsv));
   m_rot=0;
   m_state=IR_STATE_NEEDLOAD;
   m_preview_image=NULL;
@@ -131,6 +206,13 @@ ImageRecord::ImageRecord(const char *fn)
   for(x=BUTTONID_BASE;x<BUTTONID_END;x++)
   {
     WDL_VirtualIconButton *b = new WDL_VirtualIconButton;
+    b->SetID(x);
+    AddChild(b);
+  }
+  for (x=KNOBBUTTON_BASE;x<KNOBBUTTON_END;x++)
+  {
+    KnobButton *b = new KnobButton(m_bchsv+x-KNOBBUTTON_BASE,
+      x<KNOBBUTTON_H ? 2.0 : x==KNOBBUTTON_H ? 0.5 : 1.0,x==KNOBBUTTON_H ? 1.0:0.85);
     b->SetID(x);
     AddChild(b);
   }
@@ -149,11 +231,18 @@ void ImageRecord::UpdateButtonStates()
       char st=0;
       switch (x)
       {
-        case BUTTONID_BW: st = m_bw; break;
         case BUTTONID_CROP: st = m_edit_mode==EDIT_MODE_CROP; break;
         case BUTTONID_FULLSCREEN: st = m_is_fs; break;
       }
       b->SetIcon(GetButtonIcon(x,st));
+    }
+  }
+  for (x=KNOBBUTTON_BASE;x<KNOBBUTTON_END;x++)
+  {
+    WDL_VirtualIconButton *b = (WDL_VirtualIconButton*)GetChildByID(x);
+    if (b)
+    {
+      b->SetVisible(m_edit_mode==EDIT_MODE_BCHSV); // todo: set visible if mode=bw
     }
   }
 }
@@ -179,7 +268,7 @@ ImageRecord *ImageRecord ::Duplicate()
   }
   rec->m_srcimage_w=m_srcimage_w;
   rec->m_srcimage_h=m_srcimage_h;
-  rec->m_bw=m_bw;
+  memcpy(rec->m_bchsv,m_bchsv,sizeof(m_bchsv));
   rec->m_rot=m_rot;
   rec->m_edit_mode=m_edit_mode;
   rec->m_croprect=m_croprect;
@@ -298,6 +387,31 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state)
 
 INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_VWnd *src)
 {
+  if (command == KNOB_MESSAGE) // knob
+  {
+    int idx=src ? src->GetID() : 0;
+    if (idx>=KNOBBUTTON_BASE && idx<KNOBBUTTON_END && !strcmp(src->GetType(),"KnobButton"))
+    {
+      float v = m_bchsv[idx-KNOBBUTTON_BASE]+parm1/100.0;
+      float maxknob = ((KnobButton*)src)->m_knobmax;
+
+      if (idx == KNOBBUTTON_H)
+      {
+        while (v<-maxknob) v+=maxknob*2.0;
+        while (v>maxknob) v-=maxknob*2.0;
+      }
+      else
+      {
+        if (v<-maxknob) v=-maxknob;
+        else if (v>maxknob) v=maxknob;
+      }
+      m_bchsv[idx-KNOBBUTTON_BASE]=v;
+      m_fullimage_rendercached_valid=false;
+      RequestRedraw(NULL);
+      SetImageListIsDirty();
+    }
+    return 0;
+  }
   if (command == WM_COMMAND && src)
   {
     switch (src->GetID())
@@ -307,15 +421,16 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
         else m_edit_mode=EDIT_MODE_CROP;
 
         m_fullimage_rendercached_valid=false;
-        ((WDL_VirtualIconButton *)src)->SetIcon(GetButtonIcon(src->GetID(),m_edit_mode==EDIT_MODE_CROP));
+        UpdateButtonStates();
         RequestRedraw(NULL);
         SetImageListIsDirty();
       break;
 
       case BUTTONID_BW:
-        m_bw=!m_bw;
-        m_fullimage_rendercached_valid=false;
-        ((WDL_VirtualIconButton *)src)->SetIcon(GetButtonIcon(src->GetID(),!!m_bw));
+        if (m_edit_mode==EDIT_MODE_BCHSV) m_edit_mode=EDIT_MODE_NONE;
+        else m_edit_mode=EDIT_MODE_BCHSV;
+  //      m_fullimage_rendercached_valid=false;
+        UpdateButtonStates();
         RequestRedraw(NULL);
         SetImageListIsDirty();
       break;
@@ -359,6 +474,21 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
         }
 
       break;
+      default:
+        if (src->GetID()>=KNOBBUTTON_BASE && src->GetID()<KNOBBUTTON_END)
+        {
+          int w = src->GetID();
+          float v = m_bchsv[w-KNOBBUTTON_BASE];
+          
+          if (fabs(v)>KNOB_EPS)v=0.0;
+          else if (w == KNOBBUTTON_S && fabs(v-(-1.0))>KNOB_EPS) v=-1.0;
+
+          m_bchsv[w-KNOBBUTTON_BASE] = v;
+          m_fullimage_rendercached_valid=false;
+          RequestRedraw(NULL);
+          SetImageListIsDirty();
+        }
+      break;
     }   
   }
   // dont allow anything upstream
@@ -393,14 +523,51 @@ void ImageRecord::SetPosition(const RECT *r)
           }
           RECT tr={xpos, toppos, xpos+BUTTON_SIZE, toppos+BUTTON_SIZE};
           b->SetPosition(&tr);
-          if (x == BUTTONID_FULLSCREEN||x==BUTTONID_BW) xpos += 8;
+          if (x == BUTTONID_FULLSCREEN) xpos += 8;
           xpos += BUTTON_SIZE+2;
         }
+      }
+    }
+    toppos += BUTTON_SIZE+2;
+    xpos = 6+BUTTON_SIZE+2+8; 
+    for (x=KNOBBUTTON_BASE;x<KNOBBUTTON_END;x++)
+    {
+      WDL_VWnd *b = GetChildByID(x);
+      if (b)
+      {
+        RECT tr={xpos,toppos,xpos+BUTTON_SIZE,toppos+BUTTON_SIZE};
+        b->SetPosition(&tr);
+        xpos+=BUTTON_SIZE+2;
       }
     }
   }
 
   WDL_VWnd::SetPosition(r);
+}
+
+static void BCfunc(LICE_pixel *p, void *parm)
+{
+  float *parms = (float *)parm;
+
+  LICE_pixel_chan *pp = (LICE_pixel_chan*)p;
+  float r = (pp[LICE_PIXEL_R]-128)*parms[0]+parms[1];
+  float g = (pp[LICE_PIXEL_G]-128)*parms[0]+parms[1];
+  float b = (pp[LICE_PIXEL_B]-128)*parms[0]+parms[1];
+  _LICE_MakePixelClamp(pp,(int)(r+0.5), (int)(g+0.5),(int)(b+0.5), pp[LICE_PIXEL_A]);
+  
+}
+
+
+static void BCfuncBW(LICE_pixel *p, void *parm)
+{
+  float *parms = (float *)parm;
+
+  LICE_pixel_chan *pp = (LICE_pixel_chan*)p;
+  float a = ((int)pp[LICE_PIXEL_R] + (int)pp[LICE_PIXEL_G] + (int)pp[LICE_PIXEL_B] - 384)*parms[0]+parms[1];
+
+  int v = (int) (a+0.5);
+  _LICE_MakePixelClamp(pp,v,v,v, pp[LICE_PIXEL_A]);
+  
 }
 
 static void makeBWFunc(LICE_pixel *p, void *parm)
@@ -561,7 +728,7 @@ bool ImageRecord::GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutS
         }
       return true;
       case BUTTONID_BW:
-        lstrcpyn(bufOut,m_bw ? "Remove black & white" : "Set black & white",bufOutSz);
+        lstrcpyn(bufOut,m_edit_mode==EDIT_MODE_BCHSV? "Leave BC/HSV adjust mode" : "BC/HSV adjust mode",bufOutSz);
       return true;
       case BUTTONID_REMOVE:
         lstrcpyn(bufOut,"Remove image from list",bufOutSz);
@@ -1139,10 +1306,8 @@ bool ImageRecord::ProcessImageToBitmap(LICE_IBitmap *srcimage, LICE_IBitmap *des
             0,0,false,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
 
   }
-  if (m_bw)
-  {
-    LICE_ProcessRect(destimage,0,0,w,h,makeBWFunc,NULL);
-  }
+
+  ProcessRect(destimage,0,0,w,h);
 
 
   return true;
@@ -1249,6 +1414,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     if (m_edit_mode!=EDIT_MODE_TRANSFORM)
     {
       m_edit_mode=EDIT_MODE_TRANSFORM;
+      UpdateButtonStates();
       m_transform.Add(new TransformTriangle(0,0,      m_srcimage_w,0,0,m_srcimage_h));
       m_transform.Add(new TransformTriangle(m_srcimage_w,m_srcimage_h,m_srcimage_w,0,0,m_srcimage_h));
     }
@@ -1342,11 +1508,8 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
                 0,0,false,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
 
       }
-      if (m_bw)
-      {
-        LICE_ProcessRect(drawbm,xoffs,yoffs,w,h,makeBWFunc,NULL);
-        //LICE_FillRect(drawbm,xoffs,yoffs,w,h,LICE_RGBA(128,0,128,255),1.0f,LICE_BLIT_MODE_HSVADJ);
-      }
+
+      ProcessRect(drawbm,xoffs,yoffs,w,h);
 
       if (usedFullImage)
       {
@@ -1540,6 +1703,28 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
 
   m_lastlbl_rect = tr;
 
+  if (m_edit_mode==EDIT_MODE_BCHSV)
+  {
+    WDL_VWnd *v1 = GetChildByID(KNOBBUTTON_BASE);
+    WDL_VWnd *v2 = GetChildByID(KNOBBUTTON_END-1);
+    if (v1 && v2)
+    {
+      RECT r1,r2;
+      v1->GetPosition(&r1);
+      v2->GetPosition(&r2);
+      LICE_FillRect(drawbm,origin_x+m_position.left+r1.left,origin_y+m_position.top+r1.top,r2.right-r1.left+1,
+        r2.bottom-r1.top+1,LICE_RGBA(0,0,0,255),0.25f,LICE_BLIT_MODE_COPY);
+
+      v2 = GetChildByID(BUTTONID_BW);
+      if (v2)
+      {
+        v2->GetPosition(&r2);
+        LICE_FillRect(drawbm,origin_x+m_position.left+r2.left-1,origin_y+m_position.top+r2.top,
+            r2.right-r2.left+2,
+            r1.top-r2.top,LICE_RGBA(0,0,0,255),0.25f,LICE_BLIT_MODE_COPY);
+      }
+    }
+  }
   WDL_VWnd::OnPaint(drawbm,origin_x,origin_y,cliprect);
 }
 
@@ -1563,4 +1748,47 @@ void ImageRecord::GetSizeInfoString(char *buf, int bufsz) // WxH or WxH cropped 
   if (w!=srcw||h!=srch) sprintf(str+strlen(str)," cropped to %dx%d",w,h);
 
   lstrcpyn(buf,str,bufsz);
+}
+
+void ImageRecord::ProcessRect(LICE_IBitmap *destimage, int x, int y, int w, int h)
+{
+  bool want_bc=fabs(m_bchsv[0])>=KNOB_EPS || fabs(m_bchsv[1])>=KNOB_EPS;
+
+  int hsvmode = 1; // full hsv adjust=1, 2 = just bw
+  if (fabs(m_bchsv[2])<KNOB_EPS && fabs(m_bchsv[4])<KNOB_EPS)
+  {
+    if (fabs(m_bchsv[3]- (-1.0))<KNOB_EPS) hsvmode = 2;
+    else if (fabs(m_bchsv[3])<KNOB_EPS) hsvmode=0;
+  }
+
+  float bcparms[2] = 
+  {
+    pow(2.0,m_bchsv[1]),
+    m_bchsv[0] * 128.0f+128.0f
+  };
+
+
+  if (hsvmode)
+  {
+    if (hsvmode==2) 
+    {
+      if (want_bc)
+      {
+        bcparms[0]*=1.0/3.0;
+        LICE_ProcessRect(destimage,x,y,w,h,BCfuncBW,bcparms);
+      }
+      else
+        LICE_ProcessRect(destimage,x,y,w,h,makeBWFunc,NULL);
+    }
+    else 
+    {
+      LICE_AlterRectHSV(destimage,x,y,w,h,m_bchsv[2],m_bchsv[3],m_bchsv[4]);
+    }
+  }
+  if (want_bc && hsvmode!=2)
+  {
+    LICE_ProcessRect(destimage,x,y,w,h,BCfunc,bcparms);
+  }
+ 
+
 }
