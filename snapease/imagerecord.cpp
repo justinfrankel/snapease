@@ -903,9 +903,13 @@ void ImageRecord::OnMouseMove(int xpos, int ypos)
           WDL_VWnd *vw = GetParent()->EnumChildren(newidx);
           if (vw)
           {
-            RECT r;
-            vw->GetPosition(&r);
-            if (xpos+m_position.left >= r.left+(r.right-r.left)/2) newidx++;
+            if (vw==this) newidx=-1;
+            else
+            {
+              RECT r;
+              vw->GetPosition(&r);
+              if (xpos+m_position.left >= r.left+(r.right-r.left)/2) newidx++;
+            }
           }
         }
 
@@ -974,6 +978,7 @@ void ImageRecord::OnMouseUp(int xpos, int ypos)
 
       // reorder with parent, then invalidate parent
       m_captureidx= -1;
+      m_capture_state=-1;
       if (!m_is_fs && GetParent()) 
       {
         int newidx= GetNearestVWndToPoint(GetParent(),xpos+m_position.left,ypos+m_position.top);
@@ -982,9 +987,13 @@ void ImageRecord::OnMouseUp(int xpos, int ypos)
           WDL_VWnd *vw = GetParent()->EnumChildren(newidx);
           if (vw)
           {
-            RECT r;
-            vw->GetPosition(&r);
-            if (xpos+m_position.left >= r.left+(r.right-r.left)/2) newidx++;
+            if (vw==this) newidx=-1;
+            else
+            { 
+              RECT r;
+              vw->GetPosition(&r);
+              if (xpos+m_position.left >= r.left+(r.right-r.left)/2) newidx++;
+            }
           }
         }
 
@@ -999,8 +1008,8 @@ void ImageRecord::OnMouseUp(int xpos, int ypos)
             ImageRecord *newrec=NULL;
             if (doCopy)
             {
-              ImageRecord *rec = Duplicate();
-              AddImageRec(rec,newidx);
+              newrec = Duplicate();
+              AddImageRec(newrec,newidx);
             }
             else
             {
