@@ -128,7 +128,7 @@ static int RunWork(DecodeThreadContext &ctx)
         g_fullmode_item->m_srcimage_w = ctx.bmOut->getWidth();
         g_fullmode_item->m_srcimage_h = ctx.bmOut->getHeight();
         g_fullmode_item->m_fullimage = ctx.bmOut;
-        g_fullmode_item->m_fullimage_rendercached_valid=false;
+        g_fullmode_item->m_fullimage_cachevalid=0;
         ctx.bmOut=NULL;
       }
       g_DecodeDidSomething=true;

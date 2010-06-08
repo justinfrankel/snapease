@@ -374,8 +374,10 @@ void OpenFullItemView(ImageRecord *w)
   g_fullmode_item=w;
   g_images_mutex.Leave();
   delete old;
-  delete w->m_fullimage_rendercached;
-  w->m_fullimage_rendercached=0;
+  delete w->m_fullimage_scaled;
+  w->m_fullimage_scaled=0;
+  delete w->m_fullimage_final;
+  w->m_fullimage_final=0;
   UpdateMainWindowWithSizeChanged();
 
   // tell thread to background-load full quality imagea for this
@@ -393,8 +395,10 @@ bool RemoveFullItemView(bool refresh)
       g_fullmode_item->m_want_fullimage = false;
       g_fullmode_item->m_fullimage = 0;
       delete old;
-      delete g_fullmode_item->m_fullimage_rendercached;
-      g_fullmode_item->m_fullimage_rendercached=0;
+      delete g_fullmode_item->m_fullimage_scaled;
+      delete g_fullmode_item->m_fullimage_final;
+      g_fullmode_item->m_fullimage_scaled=0;
+      g_fullmode_item->m_fullimage_final=0;
 
     }
     g_fullmode_item=0;

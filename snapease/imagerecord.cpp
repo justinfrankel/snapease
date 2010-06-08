@@ -228,8 +228,8 @@ ImageRecord::ImageRecord(const char *fn)
   memset(&m_croprect,0,sizeof(m_croprect));
 
   m_is_fs=false;
-  m_fullimage_rendercached=0;
-  m_fullimage_rendercached_valid=0;
+  m_fullimage_scaled=m_fullimage_final=NULL;
+  m_fullimage_cachevalid=0;
   m_edit_mode=EDIT_MODE_NONE;
   m_fullimage=0;
   m_want_fullimage=0;
@@ -253,7 +253,7 @@ ImageRecord::ImageRecord(const char *fn)
   for (x=KNOBBUTTON_BASE;x<KNOBBUTTON_END;x++)
   {
     KnobButton *b = new KnobButton(m_bchsv+x-KNOBBUTTON_BASE,
-      x<KNOBBUTTON_H ? 2.0 : x==KNOBBUTTON_H ? 0.5 : 1.0,x==KNOBBUTTON_H ? 1.0:0.85,
+      x==KNOBBUTTON_H ? 0.5 : 1.0,x==KNOBBUTTON_H ? 1.0:0.85,
       ctab[x-KNOBBUTTON_BASE]);
     b->SetID(x);
     AddChild(b);
@@ -295,7 +295,8 @@ ImageRecord::~ImageRecord()
 
   delete m_preview_image;
   delete m_fullimage;
-  delete m_fullimage_rendercached;
+  delete m_fullimage_scaled;
+  delete m_fullimage_final;
   m_transform.Empty(true);
 }
 
@@ -448,7 +449,7 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
         else if (v>maxknob) v=maxknob;
       }
       m_bchsv[idx-KNOBBUTTON_BASE]=v;
-      m_fullimage_rendercached_valid=false;
+      m_fullimage_cachevalid&=~1;
       RequestRedraw(NULL);
       SetImageListIsDirty();
     }
@@ -462,7 +463,7 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
         if (m_edit_mode==EDIT_MODE_CROP) m_edit_mode=EDIT_MODE_NONE;
         else m_edit_mode=EDIT_MODE_CROP;
 
-        m_fullimage_rendercached_valid=false;
+        m_fullimage_cachevalid=0;
         UpdateButtonStates();
         RequestRedraw(NULL);
         SetImageListIsDirty();
@@ -471,7 +472,6 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
       case BUTTONID_BW:
         if (m_edit_mode==EDIT_MODE_BCHSV) m_edit_mode=EDIT_MODE_NONE;
         else m_edit_mode=EDIT_MODE_BCHSV;
-  //      m_fullimage_rendercached_valid=false;
         UpdateButtonStates();
         RequestRedraw(NULL);
         SetImageListIsDirty();
@@ -481,7 +481,7 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
       case BUTTONID_ROTCW:
 
         m_rot= (m_rot+ (src->GetID() == BUTTONID_ROTCCW ? -1 : 1 ))&3;
-        m_fullimage_rendercached_valid=false;
+        m_fullimage_cachevalid=0;
 
         RequestRedraw(NULL);
 
@@ -526,7 +526,7 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
           else if (w == KNOBBUTTON_S && fabs(v-(-1.0))>KNOB_EPS) v=-1.0;
 
           m_bchsv[w-KNOBBUTTON_BASE] = v;
-          m_fullimage_rendercached_valid=false;
+          m_fullimage_cachevalid&=~1;
           RequestRedraw(NULL);
           SetImageListIsDirty();
         }
@@ -1035,7 +1035,7 @@ int ImageRecord::OnMouseDown(int xpos, int ypos)
               t->cap_offs[0].x=t->cap_offs[0].y=0;
             }
 
-            m_fullimage_rendercached=false;
+            m_fullimage_cachevalid=0;
           }
 
         }
@@ -1122,7 +1122,7 @@ void ImageRecord::OnMouseMove(int xpos, int ypos)
         }
         if (cnt)
         {
-          m_fullimage_rendercached=false;
+          m_fullimage_cachevalid=0;
           RequestRedraw(NULL);
         }
       }
@@ -1477,106 +1477,137 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
 
     // todo: cache scaled/rotated version in global cache if srcimage == m_fullimage?
 
+    LICE_IBitmap *cacheSrc=NULL;
     if (usedFullImage &&
-        m_fullimage_rendercached && m_fullimage_rendercached_valid && 
-        m_fullimage_rendercached->getWidth() == w && m_fullimage_rendercached->getHeight() == h)
+        m_fullimage_cachevalid==3 &&
+        (cacheSrc = m_fullimage_final?m_fullimage_final:m_fullimage_scaled) &&
+        cacheSrc->getWidth() == w && 
+        cacheSrc->getHeight() == h)
     {
-      LICE_Blit(drawbm,m_fullimage_rendercached,xoffs,yoffs,0,0,w,h,1.0f,LICE_BLIT_MODE_COPY);
+      LICE_Blit(drawbm,cacheSrc,xoffs,yoffs,0,0,w,h,1.0f,LICE_BLIT_MODE_COPY);
     }
     else
     {
-      m_fullimage_rendercached_valid=false;
-
-#ifdef ENABLE_FUN_TRANSFORM_TEST
-      if (m_transform.GetSize())
+      if (!usedFullImage || 
+          !m_fullimage_scaled || 
+          !(m_fullimage_cachevalid&2) || 
+          m_fullimage_scaled->getWidth()!=w||
+          m_fullimage_scaled->getHeight()!=h)
       {
-        pl_Cam cam;
-        cam.WantZBuffer=false;
-        cam.Begin(drawbm);
-
-        double xsc = w / (double)m_srcimage_w;
-        double ysc = h / (double)m_srcimage_h;
-        double wsc = 1.0 / (double)m_srcimage_w;
-        double hsc = 1.0 / (double)m_srcimage_h;
-        pl_Mat mat;
-        mat.SolidOpacity=0.0;
-        mat.Texture = srcimage;
-        mat.TexCombineMode=LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR;
-
-        pl_Face tmp;
-        memset(&tmp,0,sizeof(tmp));
-        tmp.Material = &mat;
-
-        int x;
-        for(x=0;x<m_transform.GetSize();x++)
+  #ifdef ENABLE_FUN_TRANSFORM_TEST
+        if (m_transform.GetSize())
         {
-          TransformTriangle *t = m_transform.Get(x);
-          int a;
-          for(a=0;a<3;a++)
+          pl_Cam cam;
+          cam.WantZBuffer=false;
+          cam.Begin(drawbm);
+
+          double xsc = w / (double)m_srcimage_w;
+          double ysc = h / (double)m_srcimage_h;
+          double wsc = 1.0 / (double)m_srcimage_w;
+          double hsc = 1.0 / (double)m_srcimage_h;
+          pl_Mat mat;
+          mat.SolidOpacity=0.0;
+          mat.Texture = srcimage;
+          mat.TexCombineMode=LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR;
+
+          pl_Face tmp;
+          memset(&tmp,0,sizeof(tmp));
+          tmp.Material = &mat;
+
+          int x;
+          for(x=0;x<m_transform.GetSize();x++)
           {
-            tmp.MappingU[0][a] = t->u[a] * wsc;
-            tmp.MappingV[0][a] = t->v[a] * hsc;
-            tmp.Scrx[a]=xoffs + t->x[a]*xsc;
-            tmp.Scry[a]=yoffs + t->y[a]*ysc;
-            tmp.Scrz[a] = 100.0;
-            if (tmp.Scrx[a]<0||tmp.Scrx[a]>=drawbm->getWidth()) break;
-            if (tmp.Scry[a]<0||tmp.Scry[a]>=drawbm->getHeight()) break;
+            TransformTriangle *t = m_transform.Get(x);
+            int a;
+            for(a=0;a<3;a++)
+            {
+              tmp.MappingU[0][a] = t->u[a] * wsc;
+              tmp.MappingV[0][a] = t->v[a] * hsc;
+              tmp.Scrx[a]=xoffs + t->x[a]*xsc;
+              tmp.Scry[a]=yoffs + t->y[a]*ysc;
+              tmp.Scrz[a] = 100.0;
+              if (tmp.Scrx[a]<0||tmp.Scrx[a]>=drawbm->getWidth()) break;
+              if (tmp.Scry[a]<0||tmp.Scry[a]>=drawbm->getHeight()) break;
+            }
+            if (a>=3)
+              cam.PutFace(&tmp);
+
           }
-          if (a>=3)
-            cam.PutFace(&tmp);
+
+          cam.End();
+          // draw as triangles
+        }
+        else 
+  #endif  
+        if (!rot)
+          LICE_ScaledBlit(drawbm,srcimage,xoffs,yoffs,w,h,0,0,srcimage->getWidth(),srcimage->getHeight(),1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
+        else
+        {
+
+          double dsdx=0, dsdy=0,dtdx=0,dtdy=0;
+
+          int sx = rot != 1 ? srcimage->getWidth() - 1 : 0;
+          int sy = rot != 3 ? srcimage->getHeight() - 1 : 0;
+
+          if (rot!=2)
+          {
+            dtdx = srcimage->getHeight() / (double) w;
+            dsdy = srcimage->getWidth() / (double) h;
+            if (rot==1) dtdx=-dtdx;
+            else dsdy=-dsdy;
+          }
+          else // flip
+          {
+            dsdx=-srcimage->getWidth() / (double) w;
+            dtdy=-srcimage->getHeight() / (double) h;
+          }
+
+          LICE_DeltaBlit(drawbm,srcimage,xoffs,yoffs,w,h,
+                    sx,sy, // start x,y
+                srcimage->getWidth(),srcimage->getHeight(),
+                  dsdx, dtdx,
+                  dsdy, dtdy,
+                  0,0,false,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
 
         }
 
-        cam.End();
-        // draw as triangles
-      }
-      else 
-#endif  
-      if (!rot)
-        LICE_ScaledBlit(drawbm,srcimage,xoffs,yoffs,w,h,0,0,srcimage->getWidth(),srcimage->getHeight(),1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
+        if (usedFullImage)
+        {
+          m_fullimage_cachevalid|=2;
+          if (!m_fullimage_scaled) m_fullimage_scaled=new LICE_MemBitmap;
+          m_fullimage_scaled->resize(w,h);
+          LICE_Blit(m_fullimage_scaled,drawbm,0,0,xoffs,yoffs,w,h,1.0f,LICE_BLIT_MODE_COPY);
+        }
+      } // end of scaling process
       else
       {
-
-        double dsdx=0, dsdy=0,dtdx=0,dtdy=0;
-
-        int sx = rot != 1 ? srcimage->getWidth() - 1 : 0;
-        int sy = rot != 3 ? srcimage->getHeight() - 1 : 0;
-
-        if (rot!=2)
-        {
-          dtdx = srcimage->getHeight() / (double) w;
-          dsdy = srcimage->getWidth() / (double) h;
-          if (rot==1) dtdx=-dtdx;
-          else dsdy=-dsdy;
-        }
-        else // flip
-        {
-          dsdx=-srcimage->getWidth() / (double) w;
-          dtdy=-srcimage->getHeight() / (double) h;
-        }
-
-        LICE_DeltaBlit(drawbm,srcimage,xoffs,yoffs,w,h,
-                  sx,sy, // start x,y
-              srcimage->getWidth(),srcimage->getHeight(),
-                dsdx, dtdx,
-                dsdy, dtdy,
-                0,0,false,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
-
+        LICE_Blit(drawbm,m_fullimage_scaled,xoffs,yoffs,0,0,w,h,1.0f,LICE_BLIT_MODE_COPY);
       }
 
-      ProcessRect(drawbm,xoffs,yoffs,w,h);
+      bool didProcess = ProcessRect(drawbm,xoffs,yoffs,w,h);
 
       if (usedFullImage)
       {
-        if (!m_fullimage_rendercached) m_fullimage_rendercached=new LICE_MemBitmap;
-        m_fullimage_rendercached->resize(w,h);
-        LICE_Blit(m_fullimage_rendercached,drawbm,0,0,xoffs,yoffs,w,h,1.0f,LICE_BLIT_MODE_COPY);
-        m_fullimage_rendercached_valid=true;
+        m_fullimage_cachevalid=3;
+        if (didProcess)
+        {
+          if (!m_fullimage_final) m_fullimage_final=new LICE_MemBitmap;
+          m_fullimage_final->resize(w,h);
+          LICE_Blit(m_fullimage_final,drawbm,0,0,xoffs,yoffs,w,h,1.0f,LICE_BLIT_MODE_COPY);
+        }
+        else
+        {
+          delete m_fullimage_final;
+          m_fullimage_final=0;
+        }
       }
       else
       {
-        delete m_fullimage_rendercached;
-        m_fullimage_rendercached=0;
+        m_fullimage_cachevalid=0;
+        delete m_fullimage_scaled;
+        m_fullimage_scaled=0;
+        delete m_fullimage_final;
+        m_fullimage_final=0;
       }
 
     }
@@ -1829,22 +1860,25 @@ void ImageRecord::GetSizeInfoString(char *buf, int bufsz) // WxH or WxH cropped 
   lstrcpyn(buf,str,bufsz);
 }
 
-void ImageRecord::ProcessRect(LICE_IBitmap *destimage, int x, int y, int w, int h)
+bool ImageRecord::ProcessRect(LICE_IBitmap *destimage, int x, int y, int w, int h)
 {
   bool want_bc=fabs(m_bchsv[0])>=KNOB_EPS || fabs(m_bchsv[1])>=KNOB_EPS;
 
   int hsvmode = 1; // full hsv adjust=1, 2 = just bw
   if (fabs(m_bchsv[2])<KNOB_EPS && fabs(m_bchsv[4])<KNOB_EPS)
   {
-    if (fabs(m_bchsv[3]- (-1.0))<KNOB_EPS) hsvmode = 2;
-    else if (fabs(m_bchsv[3])<KNOB_EPS) hsvmode=0;
+    // the channel sum (hsvmode=2) should be done differently, we want proper desaturate?
+//    if (fabs(m_bchsv[3]- (-1.0))<KNOB_EPS) hsvmode = 2;
+//    else 
+      if (fabs(m_bchsv[3])<KNOB_EPS) hsvmode=0;
   }
 
   float bcparms[2] = 
   {
-    pow(2.0,m_bchsv[1]),
-    m_bchsv[0] * 128.0f+128.0f
+    pow(10.0,m_bchsv[1]*m_bchsv[1]*m_bchsv[1]*3.0),
+    m_bchsv[0] * 256.0f+128.0f
   };
+//  bcparms[1] *= bcparms[0];
 
 
   if (hsvmode)
@@ -1869,5 +1903,6 @@ void ImageRecord::ProcessRect(LICE_IBitmap *destimage, int x, int y, int w, int 
     LICE_ProcessRect(destimage,x,y,w,h,BCfunc,bcparms);
   }
  
+  return want_bc||hsvmode;
 
 }

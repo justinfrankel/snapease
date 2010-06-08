@@ -59,7 +59,7 @@ public:
   void SetDefaultTitle();
   void UpdateButtonStates();
 
-  void ProcessRect(LICE_IBitmap *destimage, int x, int y, int w, int h);
+  bool ProcessRect(LICE_IBitmap *destimage, int x, int y, int w, int h);
   ///
 
   WDL_String m_fn;
@@ -108,8 +108,9 @@ public:
   bool m_want_fullimage;
   LICE_IBitmap *m_fullimage;
 
-  LICE_IBitmap *m_fullimage_rendercached;
-  bool m_fullimage_rendercached_valid;
+  LICE_IBitmap *m_fullimage_scaled, 
+               *m_fullimage_final;
+  char m_fullimage_cachevalid; // 1=final, 2=intermediate(scaled)
   bool m_is_fs;
 
   RECT m_last_drawrect; // set by drawing
