@@ -1,0 +1,6 @@
+v0.2 - June ? 2009
+  + Drag and drop reordering/duplicating of images
+  + Remove clone button (use ctrl+drag and drop to duplicate)
+
+v0.11 - December 1 2009
+  + First release
