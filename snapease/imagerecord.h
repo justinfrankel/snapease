@@ -59,18 +59,16 @@ public:
   WDL_String m_fn;
   WDL_String m_outname;
 
-#define IR_STATE_NEEDLOAD 0
-#define IR_STATE_DECODING 1
-#define IR_STATE_LOADED 2
-#define IR_STATE_ERROR 3
+  enum { IR_STATE_NEEDLOAD=0, IR_STATE_DECODING, IR_STATE_LOADED, IR_STATE_ERROR };
 
   bool m_bw;
   char m_rot; // 90deg steps (0..3)
-  bool m_crop_active;
+
+  enum { EDIT_MODE_NONE=0, EDIT_MODE_CROP, EDIT_MODE_TRANSFORM}; 
+  int m_edit_mode;
 
   RECT m_croprect;
 
-  bool m_transform_active;
   class TransformTriangle
   {
     public:

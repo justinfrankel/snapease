@@ -69,8 +69,7 @@ ImageRecord::ImageRecord(const char *fn)
   m_is_fs=false;
   m_fullimage_rendercached=0;
   m_fullimage_rendercached_valid=0;
-  m_crop_active=false;
-  m_transform_active=false;
+  m_edit_mode=EDIT_MODE_NONE;
   m_fullimage=0;
   m_want_fullimage=0;
   m_bw=false;
@@ -105,7 +104,7 @@ void ImageRecord::UpdateButtonStates()
       switch (x)
       {
         case BUTTONID_BW: st = m_bw; break;
-        case BUTTONID_CROP: st = m_crop_active; break;
+        case BUTTONID_CROP: st = m_edit_mode==EDIT_MODE_CROP; break;
         case BUTTONID_FULLSCREEN: st = m_is_fs; break;
       }
       b->SetIcon(GetButtonIcon(x,st));
@@ -136,7 +135,7 @@ ImageRecord *ImageRecord ::Duplicate()
   rec->m_srcimage_h=m_srcimage_h;
   rec->m_bw=m_bw;
   rec->m_rot=m_rot;
-  rec->m_crop_active=m_crop_active;
+  rec->m_edit_mode=m_edit_mode;
   rec->m_croprect=m_croprect;
 
   rec->UpdateButtonStates();
@@ -259,9 +258,11 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
     switch (src->GetID())
     {
       case BUTTONID_CROP:
-        m_crop_active=!m_crop_active;
+        if (m_edit_mode==EDIT_MODE_CROP) m_edit_mode=EDIT_MODE_NONE;
+        else m_edit_mode=EDIT_MODE_CROP;
+
         m_fullimage_rendercached_valid=false;
-        ((WDL_VirtualIconButton *)src)->SetIcon(GetButtonIcon(src->GetID(),!!m_crop_active));
+        ((WDL_VirtualIconButton *)src)->SetIcon(GetButtonIcon(src->GetID(),m_edit_mode==EDIT_MODE_CROP));
         RequestRedraw(NULL);
         SetImageListIsDirty();
       break;
@@ -517,7 +518,7 @@ bool ImageRecord::GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutS
       case BUTTONID_CROP:
         {
           WDL_String s;
-          s.Set(m_crop_active ? "Leave crop mode" : "Crop");
+          s.Set(m_edit_mode==EDIT_MODE_CROP ? "Leave crop mode" : "Crop");
           char buf[512];
           GetSizeInfoString(buf,sizeof(buf));
           s.Append(" [image: ");
@@ -564,7 +565,7 @@ int ImageRecord::UpdateCursor(int xpos, int ypos)
   if (VirtWndFromPoint(xpos,ypos,0)) return -1; // force default cursor for any children
 
 
-  if (m_crop_active)
+  if (m_edit_mode==EDIT_MODE_CROP)
   {
     int cm=0,f=0;
     if (ypos >= m_last_crop_drawrect.top-3 && ypos <= m_last_crop_drawrect.bottom+3)
@@ -620,7 +621,7 @@ int ImageRecord::OnMouseDown(int xpos, int ypos)
   if (!a)
   {
 #ifdef ENABLE_FUN_TRANSFORM_TEST
-    if (m_transform_active)
+    if (m_edit_mode==EDIT_MODE_TRANSFORM)
     {
       m_captureidx= LOCAL_CAP_TRANSFORM;
 
@@ -781,7 +782,7 @@ int ImageRecord::OnMouseDown(int xpos, int ypos)
     }
     else 
 #endif
-      if (m_crop_active)
+      if (m_edit_mode==EDIT_MODE_CROP)
     {
       m_crop_capmode = 0;
       int f=0;
@@ -1033,7 +1034,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
   {
     int cropw=0,croph=0,cropl=0,cropt=0;
 
-    if (!m_crop_active && m_croprect.right > m_croprect.left && m_croprect.bottom > m_croprect.top)
+    if (m_edit_mode!=EDIT_MODE_CROP && m_croprect.right > m_croprect.left && m_croprect.bottom > m_croprect.top)
     {
       // scale coordinates to match this image
 
@@ -1086,9 +1087,9 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
 
 
 #ifdef ENABLE_FUN_TRANSFORM_TEST
-    if (!m_transform_active)
+    if (m_edit_mode!=EDIT_MODE_TRANSFORM)
     {
-      m_transform_active=true;
+      m_edit_mode=EDIT_MODE_TRANSFORM;
       m_transform.Add(new TransformTriangle(0,0,      m_srcimage_w,0,0,m_srcimage_h));
       m_transform.Add(new TransformTriangle(m_srcimage_w,m_srcimage_h,m_srcimage_w,0,0,m_srcimage_h));
     }
@@ -1205,7 +1206,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
 
 
 #ifdef ENABLE_FUN_TRANSFORM_TEST
-    if (m_transform_active)
+    if (m_edit_mode==EDIT_MODE_TRANSFORM)
     {
       int x;
       LICE_pixel col = LICE_RGBA(255,255,255,255);
@@ -1216,7 +1217,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
       double hscale = h / (double) m_srcimage_h;
       double cr=TRANSFORM_PT_RADIUS;
 
-      if (!m_crop_active) for(x=0;x<m_transform.GetSize();x++)
+      if (m_edit_mode!=EDIT_MODE_CROP) for(x=0;x<m_transform.GetSize();x++)
       {
         TransformTriangle *t = m_transform.Get(x);
         int x1 = (int) (xoffs + t->x[0] * wscale + 0.5);
@@ -1248,7 +1249,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     }
     else 
 #endif
-      if (m_crop_active)
+      if (m_edit_mode==EDIT_MODE_CROP)
     {
 
       RECT cr;

@@ -166,7 +166,7 @@ static int RunWork(DecodeThreadContext &ctx)
 
     if (rec) 
     {
-      if (rec->m_state == IR_STATE_NEEDLOAD)
+      if (rec->m_state == ImageRecord::IR_STATE_NEEDLOAD)
       {
         LICE_IBitmap *bmDel = NULL;
         if (rec->m_preview_image)
@@ -176,7 +176,7 @@ static int RunWork(DecodeThreadContext &ctx)
           rec->m_preview_image=0;
         }
 
-        rec->m_state=IR_STATE_DECODING;
+        rec->m_state=ImageRecord::IR_STATE_DECODING;
         ctx.curfn.Set(rec->m_fn.Get());
 
         g_DecodeDidSomething=true;
@@ -193,15 +193,15 @@ static int RunWork(DecodeThreadContext &ctx)
 
         g_images_mutex.Enter();
 
-        if (g_images.Find(rec)>=0 && rec->m_state == IR_STATE_DECODING)
+        if (g_images.Find(rec)>=0 && rec->m_state == ImageRecord::IR_STATE_DECODING)
         {
           rec->m_srcimage_w = ctx.bm.getWidth();
           rec->m_srcimage_h = ctx.bm.getHeight();
-          if (!success) rec->m_state = IR_STATE_ERROR;
-          else if (strcmp(rec->m_fn.Get(),ctx.curfn.Get())) rec->m_state = IR_STATE_ERROR;
+          if (!success) rec->m_state = ImageRecord::IR_STATE_ERROR;
+          else if (strcmp(rec->m_fn.Get(),ctx.curfn.Get())) rec->m_state = ImageRecord::IR_STATE_ERROR;
           else
           {
-            rec->m_state = IR_STATE_LOADED;
+            rec->m_state = ImageRecord::IR_STATE_LOADED;
             rec->m_preview_image = ctx.bmOut;
             ctx.bmOut= 0;
           }

@@ -162,7 +162,7 @@ bool importImageListFromFile(const char *fn, bool addToCurrent)
             rec->m_outname.Set(lp.gettoken_str(2));
             rec->m_bw = !! lp.gettoken_int(3);
             rec->m_rot = lp.gettoken_int(4)&3;
-            rec->m_crop_active = !!lp.gettoken_int(5);
+            rec->m_edit_mode = lp.gettoken_int(5);
             rec->m_croprect.left = lp.gettoken_int(6);
             rec->m_croprect.top = lp.gettoken_int(7);
             rec->m_croprect.right = lp.gettoken_int(8);
@@ -251,7 +251,7 @@ bool saveImageListToFile(const char *fn)
         tbuf.Get(),
         rec->m_bw,
         rec->m_rot,
-        rec->m_crop_active,
+        rec->m_edit_mode,
         rec->m_croprect.left,
         rec->m_croprect.top,
         rec->m_croprect.right,
