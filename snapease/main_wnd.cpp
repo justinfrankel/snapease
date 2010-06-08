@@ -856,19 +856,20 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     return 0;
     case WM_LBUTTONDBLCLK:
-      if (g_vwnd.OnMouseDown(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam)))
+      // if didnt doubleclick on a control (directly on the image), then
+      // toggle fs
       {
-        g_vwnd.OnMouseUp(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
-      }
-      else
-      {
-        if (!RemoveFullItemView())
+        WDL_VWnd *w = g_vwnd.VirtWndFromPoint(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
+        if (!w || g_images.Find((ImageRecord*)w)>=0)
         {
-          WDL_VWnd *w = g_vwnd.VirtWndFromPoint(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
-          if (w && g_images.Find((ImageRecord*)w)>=0)
+          if (!RemoveFullItemView())
           {
-            OpenFullItemView((ImageRecord*)w);
+            if (w) OpenFullItemView((ImageRecord*)w);
           }
+        }
+        else if (g_vwnd.OnMouseDown(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam)))
+        {
+          g_vwnd.OnMouseUp(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
         }
       }
     return 0;
