@@ -1,8 +1,8 @@
-#define VERSTRING "0.11"
+#define VERSTRING "0.2"
 /*
     SnapEase
     main_wnd.cpp -- main window dialogness
-    Copyright (C) 2009  Cockos Incorporated
+    Copyright (C) 2009-2010  Cockos Incorporated
 
     PathSync is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -537,7 +537,7 @@ static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
         RECT tr={xo - g_lastSplashRect.left,yo+splash->getHeight()+5,xo - g_lastSplashRect.left + r.right,yo+r.bottom};
         int h = tmpfont.DrawText(bm,
               "Version " VERSTRING " - "
-              "Copyright (C) 2009, Cockos Incorporated",-1,&tr,DT_CENTER|DT_TOP);
+              "Copyright (C) 2009-2010 Cockos Incorporated",-1,&tr,DT_CENTER|DT_TOP);
 
         tr.top += h + 32;
 
