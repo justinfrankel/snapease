@@ -63,6 +63,15 @@ enum
   KNOBBUTTON_END,
 };
 
+static const char *knob_labels[]={
+  "Brightness",
+    "Contrast",
+    "Hue",
+    "Saturation",
+    "Value"
+};
+
+
 #define KNOB_EPS 0.001
 #define KNOB_MESSAGE 0xf00db00f
 // used for H,S,V, B, C
@@ -70,7 +79,7 @@ static int m_knob_capx,m_knob_capy;
 class KnobButton : public WDL_VWnd
 {
 public:
-  KnobButton(float *valedit, float knobmax, float user) {  m_val=valedit; m_knobmax=knobmax; m_knobuserange=user; }
+  KnobButton(float *valedit, float knobmax, float user, char labelc) {  m_val=valedit; m_knobmax=knobmax; m_knobuserange=user; m_labelc=labelc; }
   ~KnobButton() { }
 
   virtual const char *GetType() { return "KnobButton"; }
@@ -106,12 +115,19 @@ public:
   }
   virtual void OnMouseUp(int xpos, int ypos)
   {
+    OnMouseMove(xpos,ypos);
+    GetParent()->RequestRedraw(NULL);
   }
 
   virtual void OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect)
   {
     int cx = origin_x + (m_position.right+m_position.left)/2;
     int cy = origin_y + (m_position.bottom+m_position.top)/2;
+
+
+    char b[2]={m_labelc,0};
+    LICE_DrawText(drawbm,cx-3,cy-3,b,LICE_RGBA(255,128,0,255),1.0f,LICE_BLIT_MODE_COPY);
+
     float r = min(m_position.bottom-m_position.top,m_position.right-m_position.left)/2 - 1;
     LICE_Circle(drawbm,cx,cy,r,LICE_RGBA(255,255,255,255),1.0f,LICE_BLIT_MODE_COPY,true);
 
@@ -120,11 +136,15 @@ public:
     int x2=cx + r*sin(ang);
     int y2=cy - r*cos(ang);
     LICE_Line(drawbm,cx,cy,x2,y2,LICE_RGBA(255,255,255,255),1.0f,LICE_BLIT_MODE_COPY,true);
+
+
   }
 
   float m_knobmax;
   float m_knobuserange;
   float *m_val;
+
+  char m_labelc;
 
 };
 
@@ -209,10 +229,12 @@ ImageRecord::ImageRecord(const char *fn)
     b->SetID(x);
     AddChild(b);
   }
+  char ctab[]={'B','C','H','S','V'};
   for (x=KNOBBUTTON_BASE;x<KNOBBUTTON_END;x++)
   {
     KnobButton *b = new KnobButton(m_bchsv+x-KNOBBUTTON_BASE,
-      x<KNOBBUTTON_H ? 2.0 : x==KNOBBUTTON_H ? 0.5 : 1.0,x==KNOBBUTTON_H ? 1.0:0.85);
+      x<KNOBBUTTON_H ? 2.0 : x==KNOBBUTTON_H ? 0.5 : 1.0,x==KNOBBUTTON_H ? 1.0:0.85,
+      ctab[x-KNOBBUTTON_BASE]);
     b->SetID(x);
     AddChild(b);
   }
@@ -732,6 +754,19 @@ bool ImageRecord::GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutS
       return true;
       case BUTTONID_REMOVE:
         lstrcpyn(bufOut,"Remove image from list",bufOutSz);
+      return true;
+      case KNOBBUTTON_BRIGHTNESS:
+      case KNOBBUTTON_CONTRAST:
+      case KNOBBUTTON_H:
+      case KNOBBUTTON_S:
+      case KNOBBUTTON_V:
+        {
+          char buf[512];
+          sprintf(buf,"%s: %s%.2f",knob_labels[idx-KNOBBUTTON_BASE],
+            m_bchsv[idx-KNOBBUTTON_BASE]>=0?"+":"",
+            m_bchsv[idx-KNOBBUTTON_BASE]);
+          lstrcpyn(bufOut,buf,bufOutSz);
+        }
       return true;
     }
   }
@@ -1712,6 +1747,30 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
       RECT r1,r2;
       v1->GetPosition(&r1);
       v2->GetPosition(&r2);
+
+      if (GetCapture())
+      {
+        WDL_VWnd *vw = EnumChildren(m_captureidx);
+        int idx = vw ? vw->GetID() : 0;
+        if (idx >= KNOBBUTTON_BASE && idx <KNOBBUTTON_END)
+        {
+          char buf[512];
+          sprintf(buf,"%s: %s%.2f",knob_labels[idx-KNOBBUTTON_BASE],
+            m_bchsv[idx-KNOBBUTTON_BASE]>=0?"+":"",
+            m_bchsv[idx-KNOBBUTTON_BASE]);
+
+          RECT r={
+            origin_x+m_position.left+r1.left,
+              origin_y+m_position.top+r2.bottom+2,
+              origin_x+m_position.right,
+              origin_y+m_position.bottom};
+
+          g_imagerecord_font.SetTextColor(LICE_RGBA(255,255,255,0));
+          g_imagerecord_font.SetEffectColor(LICE_RGBA(0,0,0,0));
+          g_imagerecord_font.DrawText(drawbm,buf,-1,&r,DT_SINGLELINE|DT_TOP|DT_LEFT);
+
+        }
+      }
       LICE_FillRect(drawbm,origin_x+m_position.left+r1.left,origin_y+m_position.top+r1.top,r2.right-r1.left+1,
         r2.bottom-r1.top+1,LICE_RGBA(0,0,0,255),0.25f,LICE_BLIT_MODE_COPY);
 
