@@ -73,7 +73,7 @@ IDD_EXPORT_CONFIG DIALOGEX 0, 0, 338, 231
 STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_CONTROLPARENT
 CAPTION "Export images"
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0, 0x1
 BEGIN
     CONTROL         "Constrain image size to a maximum of:",IDC_CHECK1,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,8,132,10
@@ -128,7 +128,7 @@ END
 IDD_ULCFG_POST DIALOGEX 0, 0, 257, 57
 STYLE DS_CONTROL | WS_CHILD
 EXSTYLE WS_EX_CONTROLPARENT
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0, 0x1
 BEGIN
     LTEXT           "Upload URL:",IDC_STATIC,1,2,42,8
     EDITTEXT        IDC_EDIT1,47,0,205,14,ES_AUTOHSCROLL
@@ -220,7 +220,6 @@ IDR_REMOVE              PNG     DISCARDABLE     "images\\remove.png"
 IDR_ROTL                PNG     DISCARDABLE     "images\\rot_left.png"
 IDR_ROTR                PNG     DISCARDABLE     "images\\rot_right.png"
 IDR_SPLASH              PNG     DISCARDABLE     "images\\snapease.png"
-IDR_CLONE               PNG     DISCARDABLE     "images\\clone.png"
 
 #ifndef _MAC
 /////////////////////////////////////////////////////////////////////////////

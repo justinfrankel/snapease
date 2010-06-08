@@ -32,6 +32,7 @@ public:
   ImageRecord *Duplicate();
   ////// WDL_VWnd impl
 
+  virtual const char *GetType() { return "ImageRecord"; }
   virtual void OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect);
   virtual void SetPosition(const RECT *r);
   virtual INT_PTR SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_VWnd *src);
@@ -42,6 +43,8 @@ public:
   virtual bool GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutSz);
 
   //////
+
+  int UserIsDraggingImageToPosition(int *typeOut); // typeOut=0 for none, 1 for move, 2 for copy
 
   bool ProcessImageToBitmap(LICE_IBitmap *srcimage, LICE_IBitmap *destimage, int max_w, int max_h); // resizes destimage, return false on error
 
@@ -108,9 +111,13 @@ public:
 
   RECT m_last_drawrect; // set by drawing
   RECT m_last_crop_drawrect; // set by drawing, read by UI code
-  int m_crop_capmode; // 1=left,2=top,4=right,8=bottom, only certain combinations will be used, obviously
   POINT m_crop_capmode_lastpos; // offsets from actual pt
 
+  // used depending on capture state.
+  // cropping: 1=left,2=top,4=right,8=bottom, only certain combinations will be used, obviously
+  // drag and drop -- last index of where it would end up (or -1 if invalid)
+  int m_capture_state; 
+  
   RECT m_lastlbl_rect; // last rect of text label (for editing)
 
   static int sortByFN(const void *a, const void *b)

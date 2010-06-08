@@ -78,7 +78,71 @@ WDL_Mutex g_images_mutex;
 
 HWND g_hwnd;
 WDL_VWnd_Painter g_hwnd_painter;
-WDL_VWnd g_vwnd; // owns all children windows
+
+
+class MainWindowVwnd : public WDL_VWnd
+{
+public:
+  MainWindowVwnd() { }
+  ~MainWindowVwnd()  { }
+
+  virtual void OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect)
+  {
+    WDL_VWnd::OnPaint(drawbm,origin_x,origin_y,cliprect);
+    if (!m_children) return;
+
+    WDL_VWnd *capwnd = m_children->Get(m_captureidx);
+    if (capwnd && !strcmp(capwnd->GetType(),"ImageRecord"))
+    {
+      int to=0;
+      int a = ((ImageRecord*)capwnd)->UserIsDraggingImageToPosition(&to);
+      if (to>0 && a>=0)
+      {
+        bool doright=false;
+        WDL_VWnd *nextwnd = m_children->Get(a);
+        if (!nextwnd) 
+        {
+          nextwnd = m_children->Get(a-1);
+          doright=true;
+        }
+        if (nextwnd)
+        {
+          RECT r;
+          nextwnd->GetPosition(&r);
+          int xp = doright ? r.right : r.left;
+
+          if (!doright && xp > 4) xp-=4;
+
+          bool wantDraw=true;
+
+          if (to != 2)
+          {
+            if (nextwnd==capwnd) wantDraw=false;
+            else
+              if (m_children->Get(a+ (doright?1:-1))==capwnd) wantDraw=false;
+          }
+
+          if (wantDraw)
+          {
+            LICE_pixel col= to==2 ? LICE_RGBA(0,255,0,255) : LICE_RGBA(255,255,0,255);
+            LICE_Line(drawbm,origin_x+xp-3,origin_y+r.top,origin_x+xp+3,origin_y+r.top,col,1.0f,LICE_BLIT_MODE_COPY,false);
+            LICE_Line(drawbm,origin_x+xp-3,origin_y+r.bottom,origin_x+xp+3,origin_y+r.bottom,col,1.0f,LICE_BLIT_MODE_COPY,false);
+            LICE_Line(drawbm,origin_x+xp,origin_y+r.top,origin_x+xp,origin_y+r.bottom,col,1.0f,LICE_BLIT_MODE_COPY,false);
+            if (to == 2)
+            {
+              int cx = origin_x+xp+5;
+              int cy = origin_y+(r.top+r.bottom)/2;
+              LICE_Line(drawbm,cx,cy-2,cx,cy+2,col,1.0f,LICE_BLIT_MODE_COPY,false);
+              LICE_Line(drawbm,cx-2,cy,cx+2,cy,col,1.0f,LICE_BLIT_MODE_COPY,false);
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
+MainWindowVwnd g_vwnd; // owns all children windows
 
 int g_firstvisible_startitem;
 
@@ -1041,6 +1105,11 @@ int MainProcessMessage(MSG *msg)
 
   if (msg->hwnd == g_hwnd||IsChild(g_hwnd,msg->hwnd))
   {
+    if (msg->wParam == VK_CONTROL && (msg->message == WM_KEYDOWN || msg->message == WM_KEYUP))
+    {
+      if (GetCapture()==g_hwnd)
+        InvalidateRect(g_hwnd,NULL,FALSE);
+    }
     if (msg->message == WM_KEYDOWN||msg->message==WM_CHAR)
     {
       // todo: kbd table etc? :)

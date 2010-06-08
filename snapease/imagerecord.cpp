@@ -48,15 +48,61 @@ enum
   BUTTONID_CROP,
   BUTTONID_BW,
 
-  BUTTONID_CLONE,
-
-
   BUTTONID_REMOVE, // goes on upper right
 
   BUTTONID_END
 };
 
 static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state=0);
+
+static int GetNearestVWndToPoint(WDL_VWnd *par, int x, int y)
+{
+  RECT parr;
+  par->GetPosition(&parr);
+  if (x<parr.left||y<parr.top || x>=parr.right || y>=parr.bottom) return -1;
+
+  int n=par->GetNumChildren(),a;
+  int nearest1=-1, nearest1_xdiff=1<<20;
+  int nearest2=-1, nearest2_diff=1<<30;
+
+  for(a=0;a<n;a++)
+  {
+    WDL_VWnd *vw = par->EnumChildren(a);
+    if (vw)
+    {
+      RECT r;
+      vw->GetPosition(&r);
+      int ydiff=0;
+      if (y < r.top) ydiff=r.top-y;
+      else if (y>r.bottom) ydiff=y-r.bottom;
+      
+      if (!ydiff)
+      {
+        int xdiff;
+        if (x < r.left) xdiff=r.left-x;
+        else if (x>r.right)xdiff=x-r.right;
+        else return a;
+
+        if (xdiff < nearest1_xdiff) { nearest1 = a; nearest1_xdiff=xdiff; }
+      }
+      else
+      {
+        int xdiff=0;
+        if (x < r.left) xdiff=r.left-x;
+        else if (x>r.right)xdiff=x-r.right;
+
+        int diff = ydiff*ydiff + xdiff*xdiff;
+        if (diff < nearest2_diff) 
+        { 
+          nearest2 = a; 
+          nearest2_diff=diff;
+        }
+      }
+    }
+  }   
+  if (nearest1>=0) return nearest1;
+  return nearest2;
+}
 
 ImageRecord::ImageRecord(const char *fn)
 {
@@ -227,7 +273,6 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state)
     ASSIGN(BUTTONID_CROP,1,"crop_on.png",IDR_CROPON);
     
 
-    ASSIGN(BUTTONID_CLONE,0,"clone.png",IDR_CLONE);
     ASSIGN(BUTTONID_ROTCW,0,"rot_right.png",IDR_ROTR);
     ASSIGN(BUTTONID_ROTCCW,0,"rot_left.png",IDR_ROTL);
     ASSIGN(BUTTONID_REMOVE,0,"remove.png",IDR_REMOVE);
@@ -267,19 +312,6 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
         SetImageListIsDirty();
       break;
 
-      case BUTTONID_CLONE:
-        {
-          ImageRecord *rec = Duplicate();
-          int idx=g_images.Find(this);
-          AddImageRec(rec,idx<0?-1:idx+1);
-
-          SetImageListIsDirty(true);
-
-          UpdateMainWindowWithSizeChanged();
-          EnsureImageRecVisible(rec);
-        }
-
-      break;
       case BUTTONID_BW:
         m_bw=!m_bw;
         m_fullimage_rendercached_valid=false;
@@ -491,6 +523,7 @@ void ImageRecord::GetCropRectForScreen(int w, int h, RECT *cr)
 enum
 {
   LOCAL_CAP_CROP=-1000,
+  LOCAL_CAP_DRAGIMAGE,
   LOCAL_CAP_TRANSFORM,
 
 };
@@ -526,9 +559,6 @@ bool ImageRecord::GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutS
           s.Append("]");
           lstrcpyn(bufOut,s.Get(),bufOutSz);
         }
-      return true;
-      case BUTTONID_CLONE:
-        lstrcpyn(bufOut,"Duplicate this image",bufOutSz);
       return true;
       case BUTTONID_BW:
         lstrcpyn(bufOut,m_bw ? "Remove black & white" : "Set black & white",bufOutSz);
@@ -784,34 +814,52 @@ int ImageRecord::OnMouseDown(int xpos, int ypos)
 #endif
       if (m_edit_mode==EDIT_MODE_CROP)
     {
-      m_crop_capmode = 0;
+      m_capture_state = 0;
       int f=0;
       if (ypos >= m_last_crop_drawrect.top-3 && ypos <= m_last_crop_drawrect.bottom+3)
       {
-        if (xpos >= m_last_crop_drawrect.left-3 && xpos <= m_last_crop_drawrect.left+3) m_crop_capmode|=1;
-        else if (xpos >= m_last_crop_drawrect.right-3 && xpos <= m_last_crop_drawrect.right+3) m_crop_capmode|=4;
+        if (xpos >= m_last_crop_drawrect.left-3 && xpos <= m_last_crop_drawrect.left+3) m_capture_state|=1;
+        else if (xpos >= m_last_crop_drawrect.right-3 && xpos <= m_last_crop_drawrect.right+3) m_capture_state|=4;
         else f|=1;
       }
       if (xpos >= m_last_crop_drawrect.left-3 && xpos <= m_last_crop_drawrect.right+3)
       {
-        if (ypos >= m_last_crop_drawrect.top-3 && ypos <= m_last_crop_drawrect.top+3) m_crop_capmode|=2;
-        else if (ypos >= m_last_crop_drawrect.bottom-3 && ypos <= m_last_crop_drawrect.bottom+3) m_crop_capmode|=8;
+        if (ypos >= m_last_crop_drawrect.top-3 && ypos <= m_last_crop_drawrect.top+3) m_capture_state|=2;
+        else if (ypos >= m_last_crop_drawrect.bottom-3 && ypos <= m_last_crop_drawrect.bottom+3) m_capture_state|=8;
         else f|=2;
       }
 
-      if (f==3)  m_crop_capmode=0xf;
-      m_crop_capmode_lastpos.x = xpos - ((m_crop_capmode & 1) ? m_last_crop_drawrect.left : m_last_crop_drawrect.right);
-      m_crop_capmode_lastpos.y = ypos - ((m_crop_capmode & 2) ? m_last_crop_drawrect.top : m_last_crop_drawrect.bottom);
+      if (f==3)  m_capture_state=0xf;
+      m_crop_capmode_lastpos.x = xpos - ((m_capture_state & 1) ? m_last_crop_drawrect.left : m_last_crop_drawrect.right);
+      m_crop_capmode_lastpos.y = ypos - ((m_capture_state & 2) ? m_last_crop_drawrect.top : m_last_crop_drawrect.bottom);
     
-      if (m_crop_capmode)
+      if (m_capture_state)
       {
         m_captureidx = LOCAL_CAP_CROP;
         return 1;
       }
       // hit test
     }
+
+    if (!m_is_fs)
+    {
+      m_capture_state = -1;
+      m_captureidx = LOCAL_CAP_DRAGIMAGE;
+      return 1;
+    }
   }
   return a;
+}
+
+int ImageRecord::UserIsDraggingImageToPosition(int *typeOut)
+{
+  if (!m_is_fs && m_captureidx==LOCAL_CAP_DRAGIMAGE)
+  {
+    *typeOut = (GetAsyncKeyState(VK_CONTROL)&0x8000) ? 2 : 1;
+    return m_capture_state;
+  }
+  *typeOut=0;
+  return -1;
 }
 
 void ImageRecord::OnMouseMove(int xpos, int ypos)
@@ -846,14 +894,36 @@ void ImageRecord::OnMouseMove(int xpos, int ypos)
       }
 #endif
     return;
+    case LOCAL_CAP_DRAGIMAGE:
+      if (!m_is_fs && GetParent())
+      {
+        int newidx= GetNearestVWndToPoint(GetParent(),xpos+m_position.left,ypos+m_position.top);
+        if (newidx>=0)
+        {
+          WDL_VWnd *vw = GetParent()->EnumChildren(newidx);
+          if (vw)
+          {
+            RECT r;
+            vw->GetPosition(&r);
+            if (xpos+m_position.left >= r.left+(r.right-r.left)/2) newidx++;
+          }
+        }
+
+        if (newidx!=m_capture_state)
+        {
+          m_capture_state=newidx;
+          GetParent()->RequestRedraw(NULL);
+        }        
+      }
+    return;
     case LOCAL_CAP_CROP:
-      if (m_crop_capmode)
+      if (m_capture_state)
       {
         RECT r;
         GetCropRectForScreen(m_last_drawrect.right-m_last_drawrect.left,m_last_drawrect.bottom-m_last_drawrect.top,&r);
 
 
-        if (m_crop_capmode==0xf) // move all
+        if (m_capture_state==0xf) // move all
         {
           int dx = (xpos - m_crop_capmode_lastpos.x) - r.left  - m_last_drawrect.left;
           if (r.left+dx<0) dx=-r.left;
@@ -870,10 +940,10 @@ void ImageRecord::OnMouseMove(int xpos, int ypos)
         }
         else
         {
-          if (m_crop_capmode&1) r.left = xpos - m_crop_capmode_lastpos.x - m_last_drawrect.left;
-          if (m_crop_capmode&4) r.right = xpos - m_crop_capmode_lastpos.x - m_last_drawrect.left;
-          if (m_crop_capmode&2) r.top = ypos - m_crop_capmode_lastpos.y - m_last_drawrect.top;
-          if (m_crop_capmode&8) r.bottom = ypos - m_crop_capmode_lastpos.y - m_last_drawrect.top;
+          if (m_capture_state&1) r.left = xpos - m_crop_capmode_lastpos.x - m_last_drawrect.left;
+          if (m_capture_state&4) r.right = xpos - m_crop_capmode_lastpos.x - m_last_drawrect.left;
+          if (m_capture_state&2) r.top = ypos - m_crop_capmode_lastpos.y - m_last_drawrect.top;
+          if (m_capture_state&8) r.bottom = ypos - m_crop_capmode_lastpos.y - m_last_drawrect.top;
         }
         if (SetCropRectFromScreen(m_last_drawrect.right-m_last_drawrect.left,m_last_drawrect.bottom-m_last_drawrect.top,&r))
         {
@@ -900,6 +970,61 @@ void ImageRecord::OnMouseUp(int xpos, int ypos)
       m_captureidx= -1;
 
     return; 
+    case LOCAL_CAP_DRAGIMAGE:
+
+      // reorder with parent, then invalidate parent
+      m_captureidx= -1;
+      if (!m_is_fs && GetParent()) 
+      {
+        int newidx= GetNearestVWndToPoint(GetParent(),xpos+m_position.left,ypos+m_position.top);
+        if (newidx>=0)
+        {
+          WDL_VWnd *vw = GetParent()->EnumChildren(newidx);
+          if (vw)
+          {
+            RECT r;
+            vw->GetPosition(&r);
+            if (xpos+m_position.left >= r.left+(r.right-r.left)/2) newidx++;
+          }
+        }
+
+        bool didmove=false;
+        if (newidx>=0)
+        {
+          // reorder self to newidx
+          int idx=g_images.Find(this);
+          bool doCopy = !!(GetAsyncKeyState(VK_CONTROL)&0x8000);
+          if (newidx!=idx||doCopy)
+          {
+            ImageRecord *newrec=NULL;
+            if (doCopy)
+            {
+              ImageRecord *rec = Duplicate();
+              AddImageRec(rec,newidx);
+            }
+            else
+            {
+              if (newidx>idx) newidx--;
+              WDL_VWnd *par=GetParent();
+              par->RemoveChild(this,false);
+              par->AddChild(this,newidx);
+              g_images_mutex.Enter();
+              g_images.Delete(idx);
+              g_images.Insert(newidx,this);
+              g_images_mutex.Leave();
+            }
+
+            SetImageListIsDirty(true);
+
+            UpdateMainWindowWithSizeChanged();
+            EnsureImageRecVisible(newrec ? newrec : this);
+            didmove=true;
+          }
+        }
+        if (!didmove) GetParent()->RequestRedraw(NULL);
+      }
+
+    return;
   }
   WDL_VWnd::OnMouseUp(xpos,ypos);
 }
