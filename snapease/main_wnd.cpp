@@ -863,6 +863,16 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_LBUTTONDBLCLK:
       g_vwnd.OnMouseDblClick(GET_X_LPARAM(lParam),GET_Y_LPARAM(lParam));
     return 0;
+#ifndef _WIN32 // win32 happens in our message proc
+    case WM_KEYDOWN:
+    case WM_KEYUP:
+      if (wParam == VK_CONTROL)
+      {
+        if (GetCapture()==hwndDlg)
+          InvalidateRect(hwndDlg,NULL,FALSE);
+      }
+    return 0;
+#endif
     case WM_SETCURSOR:
       {
         POINT p;
@@ -1098,8 +1108,8 @@ int MainProcessMessage(MSG *msg)
   {
     if (msg->wParam == VK_CONTROL && (msg->message == WM_KEYDOWN || msg->message == WM_KEYUP))
     {
-      if (GetCapture()==g_hwnd)
-        InvalidateRect(g_hwnd,NULL,FALSE);
+      // win32-only, OSX checks in wndproc
+      if (GetCapture()==g_hwnd) InvalidateRect(g_hwnd,NULL,FALSE);
     }
     if (msg->message == WM_KEYDOWN||msg->message==WM_CHAR)
     {
@@ -1110,7 +1120,7 @@ int MainProcessMessage(MSG *msg)
             !(GetAsyncKeyState(VK_MENU)&0x8000) &&
             !(GetAsyncKeyState(VK_SHIFT)&0x8000))
         {
-          SendMessage(g_hwnd,WM_COMMAND,ID_IMPORT,0);
+          if (!GetCapture()) SendMessage(g_hwnd,WM_COMMAND,ID_IMPORT,0);
           return 1;
         }
       }
@@ -1120,7 +1130,7 @@ int MainProcessMessage(MSG *msg)
             !(GetAsyncKeyState(VK_MENU)&0x8000) &&
             !(GetAsyncKeyState(VK_SHIFT)&0x8000))
         {
-          SendMessage(g_hwnd,WM_COMMAND,ID_QUIT,0);
+          if (!GetCapture()) SendMessage(g_hwnd,WM_COMMAND,ID_QUIT,0);
           return 1;
         }
       }
@@ -1130,7 +1140,7 @@ int MainProcessMessage(MSG *msg)
             !(GetAsyncKeyState(VK_MENU)&0x8000) &&
             !(GetAsyncKeyState(VK_SHIFT)&0x8000))
         {
-          SendMessage(g_hwnd,WM_COMMAND,ID_NEWLIST,0);
+          if (!GetCapture()) SendMessage(g_hwnd,WM_COMMAND,ID_NEWLIST,0);
           return 1;
         }
       }
@@ -1140,7 +1150,7 @@ int MainProcessMessage(MSG *msg)
             !(GetAsyncKeyState(VK_MENU)&0x8000) &&
             !(GetAsyncKeyState(VK_SHIFT)&0x8000))
         {
-          SendMessage(g_hwnd,WM_COMMAND,ID_EXPORT,0);
+          if (!GetCapture()) SendMessage(g_hwnd,WM_COMMAND,ID_EXPORT,0);
           return 1;
         }
       }      else if (msg->wParam == 'O')
@@ -1148,7 +1158,7 @@ int MainProcessMessage(MSG *msg)
         if ((GetAsyncKeyState(VK_CONTROL)&0x8000) && 
             !(GetAsyncKeyState(VK_MENU)&0x8000))
         {
-          SendMessage(g_hwnd,WM_COMMAND,(GetAsyncKeyState(VK_SHIFT)&0x8000) ? ID_LOAD_ADD : ID_LOAD,0);
+          if (!GetCapture()) SendMessage(g_hwnd,WM_COMMAND,(GetAsyncKeyState(VK_SHIFT)&0x8000) ? ID_LOAD_ADD : ID_LOAD,0);
           return 1;
         }
       }
@@ -1157,7 +1167,7 @@ int MainProcessMessage(MSG *msg)
         if ((GetAsyncKeyState(VK_CONTROL)&0x8000) && 
             !(GetAsyncKeyState(VK_MENU)&0x8000))
         {
-          SendMessage(g_hwnd,WM_COMMAND,(GetAsyncKeyState(VK_SHIFT)&0x8000) ? ID_SAVEAS : ID_SAVE,0);
+          if (!GetCapture()) SendMessage(g_hwnd,WM_COMMAND,(GetAsyncKeyState(VK_SHIFT)&0x8000) ? ID_SAVEAS : ID_SAVE,0);
           return 1;
         }
       }
