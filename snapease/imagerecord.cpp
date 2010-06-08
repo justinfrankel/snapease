@@ -75,7 +75,8 @@ static const char *knob_labels[]={
 #define KNOB_EPS 0.001
 #define KNOB_MESSAGE 0xf00db00f
 // used for H,S,V, B, C
-static int m_knob_capx,m_knob_capy;
+static int s_knob_capx,s_knob_capy;
+static bool m_cursor_hidden;
 class KnobButton : public WDL_VWnd
 {
 public:
@@ -85,8 +86,13 @@ public:
   virtual const char *GetType() { return "KnobButton"; }
   virtual int OnMouseDown(int xpos, int ypos) // return -1 to eat, >0 to capture
   {
-    m_knob_capy=ypos;
-    m_knob_capx=xpos;
+    if (!m_cursor_hidden)
+    {
+      m_cursor_hidden=true;
+      ShowCursor(FALSE);
+    }
+    s_knob_capy=ypos;
+    s_knob_capx=xpos;
     return 1;
   }
   virtual bool OnMouseDblClick(int xpos, int ypos)
@@ -104,11 +110,20 @@ public:
   {
     if (GetCapture())
     {
-      if (xpos!=m_knob_capx||ypos!=m_knob_capy)
+      if (xpos!=s_knob_capx||ypos!=s_knob_capy)
       {
-        int diff = (xpos-m_knob_capx) + (m_knob_capy-ypos);
-        m_knob_capx=xpos;
-        m_knob_capy=ypos;
+        int diff = (xpos-s_knob_capx) + (s_knob_capy-ypos);
+        POINT p;
+        GetCursorPos(&p);
+        p.x-=(xpos-s_knob_capx);
+        p.y-=(ypos-s_knob_capy);
+
+
+        if (!SetCursorPos(p.x,p.y)) 
+        {
+          s_knob_capx=xpos;
+          s_knob_capy=ypos;
+        }
         SendCommand(KNOB_MESSAGE,diff,0,this);
       }
     }
@@ -117,6 +132,11 @@ public:
   {
     OnMouseMove(xpos,ypos);
     GetParent()->RequestRedraw(NULL);
+    if (m_cursor_hidden)
+    {
+      m_cursor_hidden=false;
+      ShowCursor(TRUE);
+    }
   }
 
   virtual void OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect)
