@@ -896,13 +896,12 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         POINT p;
         GetCursorPos(&p);
         ScreenToClient(hwndDlg,&p);
-        if (g_vwnd.UpdateCursor(p.x,p.y)>0)
+        RECT r;
+        GetClientRect(hwndDlg,&r);
+        if (PtInRect(&r,p))
         {
-          return TRUE;
-        }
-        else 
-        {
-          SetCursor(LoadCursor(NULL,MAKEINTRESOURCE(IDC_ARROW)));
+          if (!g_vwnd.UpdateCursor(p.x,p.y)>0)
+            SetCursor(LoadCursor(NULL,MAKEINTRESOURCE(IDC_ARROW)));
           return TRUE;
         }
       }

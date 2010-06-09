@@ -7,7 +7,7 @@
 #define IDD_EXPORT_CONFIG               103
 #define IDI_ICON1                       104
 #define IDD_EXPORT_RUN                  104
-#define IDR_BWOFF                       105
+#define IDR_COLOR                       105
 #define IDR_BWON                        106
 #define IDR_CROPOFF                     107
 #define IDR_CROPON                      108

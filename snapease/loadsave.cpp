@@ -161,7 +161,7 @@ bool importImageListFromFile(const char *fn, bool addToCurrent)
             resolve_fn_fromrelative(leadpath.Get(),lp.gettoken_str(1),resfn,sizeof(resfn));
             ImageRecord *rec= new ImageRecord(resfn);
             rec->m_outname.Set(lp.gettoken_str(2));
-            if (lp.gettoken_int(3)) rec->m_bchsv[3]=-1.0; // desaturate
+            rec->m_bw = !!lp.gettoken_int(3);
             rec->m_rot = lp.gettoken_int(4)&3;
             if (activate) g_edit_mode = lp.gettoken_int(5);
             rec->m_croprect.left = lp.gettoken_int(6);
@@ -255,17 +255,11 @@ bool saveImageListToFile(const char *fn)
     make_fn_relative(leadpath.Get(),rec->m_fn.Get(),buf,sizeof(buf));
     makeEscapedConfigString(rec->m_outname.Get(),&tbuf);
 
-    bool isbw = fabs(rec->m_bchsv[3]- (-1.0))<0.001 &&
-                fabs(rec->m_bchsv[0])<0.001 &&
-                fabs(rec->m_bchsv[1])<0.001 &&
-                fabs(rec->m_bchsv[2])<0.001 &&
-                fabs(rec->m_bchsv[4])<0.001;
-
     ctx->AddLine("%s \"%s\" %s %d %d %d %d %d %d %d %f %f %f %f %f",
         rec == g_fullmode_item ? "IMAGE_FULL" : "IMAGE", 
         buf,
         tbuf.Get(),
-        isbw,
+        rec->m_bw,
         rec->m_rot,
         g_edit_mode,
         rec->m_croprect.left,

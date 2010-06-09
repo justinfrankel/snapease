@@ -48,11 +48,14 @@ enum
   BUTTONID_ROTCCW,
   BUTTONID_ROTCW,
   BUTTONID_CROP,
-  BUTTONID_BW,
+  BUTTONID_COLORCORRECTION,
+  BUTTONID_COLORCORRECTION_BW,
+  
 
   BUTTONID_REMOVE, // goes on upper right
 
   BUTTONID_END,
+
 
   KNOBBUTTON_BASE,
 
@@ -62,6 +65,8 @@ enum
   KNOBBUTTON_S,
   KNOBBUTTON_V,
   KNOBBUTTON_END,
+
+  BUTTONID_
 };
 
 static const char *knob_labels[]={
@@ -416,8 +421,10 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state)
     ASSIGN(BUTTONID_FULLSCREEN,0,"full_off.png",IDR_FULLOFF);
     ASSIGN(BUTTONID_FULLSCREEN,1,"full_on.png",IDR_FULLON);
 
-    ASSIGN(BUTTONID_BW,0,"bw_off.png",IDR_BWOFF);
-    ASSIGN(BUTTONID_BW,1,"bw_on.png",IDR_BWON);
+    ASSIGN(BUTTONID_COLORCORRECTION,0,"color.png",IDR_COLOR);
+
+    ASSIGN(BUTTONID_COLORCORRECTION_BW,0,"bw_on.png",IDR_BWON);
+    ASSIGN(BUTTONID_COLORCORRECTION_BW,1,"bw_on.png",IDR_BWON);
 
     ASSIGN(BUTTONID_CROP,0,"crop_off.png",IDR_CROPOFF);
     ASSIGN(BUTTONID_CROP,1,"crop_on.png",IDR_CROPON);
@@ -485,7 +492,13 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
         UpdateAllButtonStates(this);
       break;
 
-      case BUTTONID_BW:
+      case BUTTONID_COLORCORRECTION_BW:
+        m_bw=!m_bw;
+        m_fullimage_cachevalid&=~1;
+        RequestRedraw(NULL);
+        SetImageListIsDirty();
+      break;
+      case BUTTONID_COLORCORRECTION:
         if (g_edit_mode==EDIT_MODE_BCHSV) g_edit_mode=EDIT_MODE_NONE;
         else g_edit_mode=EDIT_MODE_BCHSV;
         UpdateAllButtonStates(this);
@@ -567,12 +580,13 @@ void ImageRecord::SetPosition(const RECT *r)
       {
         if (x==BUTTONID_REMOVE) 
         {
-          RECT tr={r->right-r->left - 4 - BUTTON_SIZE, 2, r->right-r->left - 4 , toppos+BUTTON_SIZE};
+          RECT tr={r->right-r->left - 4 - BUTTON_SIZE, 2, 
+            r->right-r->left - 4 , 2+BUTTON_SIZE};
           b->SetPosition(&tr);
         }
         else
         {
-          if (xpos>6 && xpos+BUTTON_SIZE >= r->right-r->left - 4 - BUTTON_SIZE-4)
+          if (xpos>6 && xpos+BUTTON_SIZE >= r->right-r->left - 4 - (toppos==2 ? BUTTON_SIZE-4 : 0))
           {
             xpos = 2;
             toppos += BUTTON_SIZE+2;
@@ -586,6 +600,12 @@ void ImageRecord::SetPosition(const RECT *r)
     }
     toppos += BUTTON_SIZE+2;
     xpos = 6+BUTTON_SIZE+2+8; 
+
+    int cw=(KNOBBUTTON_END-KNOBBUTTON_BASE)*(BUTTON_SIZE+2)-2;
+    if (xpos + cw >= r->right-r->left)
+      xpos=r->right-r->left-cw;
+        
+    if (xpos<0)xpos=0;
     for (x=KNOBBUTTON_BASE;x<KNOBBUTTON_END;x++)
     {
       WDL_VWnd *b = GetChildByID(x);
@@ -601,6 +621,13 @@ void ImageRecord::SetPosition(const RECT *r)
   WDL_VWnd::SetPosition(r);
 }
 
+static void BWfunc(LICE_pixel *p, void *parm)
+{
+  LICE_pixel pix=*p;
+  unsigned char s = (LICE_GETR(pix)+LICE_GETG(pix)+LICE_GETB(pix))/3;
+  *p = LICE_RGBA(s,s,s,LICE_GETA(pix));
+}
+
 static void BCfunc(LICE_pixel *p, void *parm)
 {
   unsigned char *tab = (unsigned char *)parm;
@@ -609,6 +636,14 @@ static void BCfunc(LICE_pixel *p, void *parm)
   pp[LICE_PIXEL_G] = tab[pp[LICE_PIXEL_G]];
   pp[LICE_PIXEL_B] = tab[pp[LICE_PIXEL_B]];
   
+}
+
+static void BCBWfunc(LICE_pixel *p, void *parm)
+{
+  unsigned char *tab = (unsigned char *)parm;
+  LICE_pixel pix=*p;
+  unsigned char s = tab[(LICE_GETR(pix)+LICE_GETG(pix)+LICE_GETB(pix))/3];
+  *p = LICE_RGBA(s,s,s,LICE_GETA(pix));  
 }
 
 
@@ -760,7 +795,7 @@ bool ImageRecord::GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutS
           lstrcpyn(bufOut,s.Get(),bufOutSz);
         }
       return true;
-      case BUTTONID_BW:
+      case BUTTONID_COLORCORRECTION:
         lstrcpyn(bufOut,g_edit_mode==EDIT_MODE_BCHSV? "Leave BC/HSV adjust mode" : "BC/HSV adjust mode",bufOutSz);
       return true;
       case BUTTONID_REMOVE:
@@ -1816,7 +1851,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
       LICE_FillRect(drawbm,origin_x+m_position.left+r1.left,origin_y+m_position.top+r1.top,r2.right-r1.left+1,
         r2.bottom-r1.top+1,LICE_RGBA(0,0,0,255),0.25f,LICE_BLIT_MODE_COPY);
 
-      v2 = GetChildByID(BUTTONID_BW);
+      v2 = GetChildByID(BUTTONID_COLORCORRECTION);
       if (v2)
       {
         v2->GetPosition(&r2);
@@ -1853,22 +1888,13 @@ void ImageRecord::GetSizeInfoString(char *buf, int bufsz) // WxH or WxH cropped 
 
 bool ImageRecord::ProcessRect(LICE_IBitmap *destimage, int x, int y, int w, int h)
 {
-  bool want_bc=fabs(m_bchsv[0])>=KNOB_EPS || fabs(m_bchsv[1])>=KNOB_EPS;
 
-  int hsvmode = 1; // full hsv adjust=1, 2 = just bw
-  if (fabs(m_bchsv[2])<KNOB_EPS && fabs(m_bchsv[4])<KNOB_EPS)
-  {
-    // the channel sum (hsvmode=2) should be done differently, we want proper desaturate?
-//    if (fabs(m_bchsv[3]- (-1.0))<KNOB_EPS) hsvmode = 2;
-//    else 
-      if (fabs(m_bchsv[3])<KNOB_EPS) hsvmode=0;
-  }
-
+  bool hsvmode = fabs(m_bchsv[2])>=KNOB_EPS || fabs(m_bchsv[4])>=KNOB_EPS || fabs(m_bchsv[3])>=KNOB_EPS;
 
   if (hsvmode)
-  {
     LICE_AlterRectHSV(destimage,x,y,w,h,m_bchsv[2],m_bchsv[3],m_bchsv[4]);
-  }
+
+  bool want_bc=fabs(m_bchsv[0])>=KNOB_EPS || fabs(m_bchsv[1])>=KNOB_EPS;
   if (want_bc)
   {
     unsigned char tab[256];
@@ -1883,9 +1909,14 @@ bool ImageRecord::ProcessRect(LICE_IBitmap *destimage, int x, int y, int w, int 
       tab[a]=aa;
     }
     
-    LICE_ProcessRect(destimage,x,y,w,h,BCfunc,tab);
+    if (m_bw)
+      LICE_ProcessRect(destimage,x,y,w,h,BCBWfunc,tab);
+    else
+      LICE_ProcessRect(destimage,x,y,w,h,BCfunc,tab);
   }
+  else if (m_bw)
+    LICE_ProcessRect(destimage,x,y,w,h,BWfunc,NULL);
  
-  return want_bc||hsvmode;
+  return want_bc||hsvmode||m_bw;
 
 }

@@ -72,6 +72,7 @@ public:
 
   float m_bchsv[5];
   char m_rot; // 90deg steps (0..3)
+  bool m_bw;
 
 
   RECT m_croprect;
