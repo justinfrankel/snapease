@@ -1,10 +1,10 @@
 v0.2 - June ? 2009
   + Drag and drop reordering/duplicating of images
   + Removed clone button (use ctrl+drag and drop to duplicate)
-  + Instead of simple black/white button, color controls panel
-  + Doubleclick saturation button to toggle full desaturate
+  + Added color controls panel (HSV, brightness/contrast adjust)
   + Crop mode is now a global setting (rather than per image)
   + Automatically remember last image list on exit, load on start
+  + Lots of little bug fixes
 
 v0.11 - December 1 2009
   + First release

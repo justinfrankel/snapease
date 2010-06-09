@@ -19,6 +19,7 @@
 #define IDR_SPLASH                      114
 #define IDR_CLONE                       115
 #define IDD_ULCFG_POST                  116
+#define IDR_BWOFF                       117
 #define IDC_CHECK1                      1001
 #define IDC_EDIT1                       1002
 #define IDC_EDIT2                       1004

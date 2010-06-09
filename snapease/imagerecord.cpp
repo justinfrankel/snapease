@@ -49,7 +49,7 @@ enum
   BUTTONID_ROTCW,
   BUTTONID_CROP,
   BUTTONID_COLORCORRECTION,
-  BUTTONID_COLORCORRECTION_BW,
+  BUTTONID_BW,
   
 
   BUTTONID_REMOVE, // goes on upper right
@@ -297,6 +297,7 @@ void ImageRecord::UpdateButtonStates()
       char st=0;
       switch (x)
       {
+        case BUTTONID_BW: st = !!m_bw; break;
         case BUTTONID_CROP: st = g_edit_mode==EDIT_MODE_CROP; break;
         case BUTTONID_FULLSCREEN: st = m_is_fs; break;
       }
@@ -423,8 +424,8 @@ static WDL_VirtualIconButton_SkinConfig *GetButtonIcon(int idx, char state)
 
     ASSIGN(BUTTONID_COLORCORRECTION,0,"color.png",IDR_COLOR);
 
-    ASSIGN(BUTTONID_COLORCORRECTION_BW,0,"bw_on.png",IDR_BWON);
-    ASSIGN(BUTTONID_COLORCORRECTION_BW,1,"bw_on.png",IDR_BWON);
+    ASSIGN(BUTTONID_BW,0,"bw_off.png",IDR_BWOFF);
+    ASSIGN(BUTTONID_BW,1,"bw_on.png",IDR_BWON);
 
     ASSIGN(BUTTONID_CROP,0,"crop_off.png",IDR_CROPOFF);
     ASSIGN(BUTTONID_CROP,1,"crop_on.png",IDR_CROPON);
@@ -492,9 +493,10 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
         UpdateAllButtonStates(this);
       break;
 
-      case BUTTONID_COLORCORRECTION_BW:
+      case BUTTONID_BW:
         m_bw=!m_bw;
         m_fullimage_cachevalid&=~1;
+        UpdateButtonStates();
         RequestRedraw(NULL);
         SetImageListIsDirty();
       break;
@@ -794,6 +796,9 @@ bool ImageRecord::GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutS
           s.Append("]");
           lstrcpyn(bufOut,s.Get(),bufOutSz);
         }
+      return true;
+      case BUTTONID_BW:
+        lstrcpyn(bufOut,m_bw? "Black and white" : "Click to set black and white",bufOutSz);
       return true;
       case BUTTONID_COLORCORRECTION:
         lstrcpyn(bufOut,g_edit_mode==EDIT_MODE_BCHSV? "Leave BC/HSV adjust mode" : "BC/HSV adjust mode",bufOutSz);

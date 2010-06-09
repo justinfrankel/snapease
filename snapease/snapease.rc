@@ -212,6 +212,7 @@ IDI_ICON1               ICON    DISCARDABLE     "images\\snapease.ico"
 
 IDR_COLOR               PNG     DISCARDABLE     "images\\color.png"
 IDR_BWON                PNG     DISCARDABLE     "images\\bw_on.png"
+IDR_BWOFF               PNG     DISCARDABLE     "images\\bw_off.png"
 IDR_CROPOFF             PNG     DISCARDABLE     "images\\crop_off.png"
 IDR_CROPON              PNG     DISCARDABLE     "images\\crop_on.png"
 IDR_FULLOFF             PNG     DISCARDABLE     "images\\full_off.png"
