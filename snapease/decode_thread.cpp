@@ -107,11 +107,13 @@ static int RunWork(DecodeThreadContext &ctx)
     ctx.last_visstart=g_firstvisible_startitem;
     ctx.scanpos=0;
   }
+  bool didProc=false;
 
   if (g_fullmode_item && g_images.Find(g_fullmode_item)>=0) // prioritize any full image loads
   {
     if (g_fullmode_item->m_want_fullimage && !g_fullmode_item->m_fullimage)
     {
+      ImageRecord *olditem = g_fullmode_item;
       ctx.curfn.Set(g_fullmode_item->m_fn.Get());
       g_fullmode_item->m_want_fullimage=false;
       g_images_mutex.Leave();
@@ -122,7 +124,9 @@ static int RunWork(DecodeThreadContext &ctx)
 
       g_images_mutex.Enter();
 
-      if (suc && g_fullmode_item && g_images.Find(g_fullmode_item)>=0 && !g_fullmode_item->m_fullimage &&
+      if (suc && g_fullmode_item==olditem && 
+          g_images.Find(g_fullmode_item)>=0 && 
+          !g_fullmode_item->m_fullimage &&
           !strcmp(g_fullmode_item->m_fn.Get(),ctx.curfn.Get()))
       {
         g_fullmode_item->m_srcimage_w = ctx.bmOut->getWidth();
@@ -131,12 +135,13 @@ static int RunWork(DecodeThreadContext &ctx)
         g_fullmode_item->m_fullimage_cachevalid=0;
         ctx.bmOut=NULL;
       }
+      else didProc=true;
+
       g_DecodeDidSomething=true;
     }
   }
 
   int i;
-  bool didProc=false;
   for (i= 0; i < 100 && !didProc; i ++)
   {
     if (ctx.scanpos>=g_images.GetSize()*2)

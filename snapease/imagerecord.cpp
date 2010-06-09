@@ -337,6 +337,7 @@ ImageRecord *ImageRecord ::Duplicate()
   rec->m_srcimage_w=m_srcimage_w;
   rec->m_srcimage_h=m_srcimage_h;
   memcpy(rec->m_bchsv,m_bchsv,sizeof(m_bchsv));
+  rec->m_bw = m_bw;
   rec->m_rot=m_rot;
   rec->m_croprect=m_croprect;
 
