@@ -4,6 +4,7 @@ v0.2 - June ? 2009
   + Instead of simple black/white button, color controls panel
   + Doubleclick saturation button to toggle full desaturate
   + Crop mode is now a global setting (rather than per image)
+  + Automatically remember last image list on exit, load on start
 
 v0.11 - December 1 2009
   + First release

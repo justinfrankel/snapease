@@ -622,11 +622,25 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       DecodeThread_Init();
 
       SetTimer(hwndDlg,GENERAL_TIMER,30,NULL);
+
+      if (!(GetAsyncKeyState(VK_SHIFT)&0x8000))
+      {
+        char buf[512];
+        buf[0]=0;
+        config_readstr("lastlist",buf,sizeof(buf));
+        if (buf[0])
+        {
+          importImageListFromFile(buf,false);
+          config_writestr("lastlist","");
+        }
+      }
+
     return 0;
     case WM_DESTROY:
 
       DecodeThread_Quit();
 
+      config_writestr("lastlist",g_imagelist_fn.Get());
 
       {
         RECT r;
