@@ -258,6 +258,7 @@ ImageRecord::ImageRecord(const char *fn)
   m_fullimage=0;
   m_want_fullimage=0;
   memset(m_bchsv,0,sizeof(m_bchsv));
+  m_bw=false;
   m_rot=0;
   m_state=IR_STATE_NEEDLOAD;
   m_preview_image=NULL;
