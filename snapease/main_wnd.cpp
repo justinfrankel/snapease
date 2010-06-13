@@ -970,8 +970,13 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_MOUSEWHEEL:
       if (!g_fullmode_item)
       {
-        int l=(short)HIWORD(wParam);
-        SetMainScrollPosition(-l/400.0,2);
+        POINT p = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+        ScreenToClient(hwndDlg, &p);
+        if (!g_vwnd.OnMouseWheel(p.x, p.y, -(short)HIWORD(wParam)/120))
+        {
+          int l=(short)HIWORD(wParam);
+          SetMainScrollPosition(-l/400.0,2);
+        }
       }
       else
       {

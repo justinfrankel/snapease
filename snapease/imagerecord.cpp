@@ -109,6 +109,7 @@ public:
   virtual bool OnMouseWheel(int xpos, int ypos, int amt)
   {
     SendCommand(KNOB_MESSAGE,-amt,0,this);
+    SendMessage(g_hwnd, WM_TIMER, 2, 0);
     return true;
   }
 
