@@ -1266,5 +1266,5 @@ extern "C" void *GetIconThemePointer(const char *name)
   return NULL;
 }
 
-extern "C" int GSC_mainwnd(int p) { return GetSysColor(p); }
+extern "C" int CoolSB_GetSysColor(HWND h, int p) { return GetSysColor(p); }
 
