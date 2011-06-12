@@ -29,6 +29,9 @@ extern HMENU SWELL_app_stocksysmenu;
 
 char g_exepath[4096];
 
+extern "C"
+{
+
 INT_PTR SWELLAppMain(int msg, INT_PTR parm1, INT_PTR parm2)
 {
   switch (msg)
@@ -133,6 +136,8 @@ INT_PTR SWELLAppMain(int msg, INT_PTR parm1, INT_PTR parm2)
   }
   return 0;
 }
+
+};
 
 
 
