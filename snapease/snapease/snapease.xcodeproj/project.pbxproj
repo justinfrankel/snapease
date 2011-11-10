@@ -99,7 +99,6 @@
 		337ED57410B75637009528D7 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED56810B75637009528D7 /* zutil.c */; };
 		337ED58910B75652009528D7 /* png.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED57510B75652009528D7 /* png.c */; settings = {COMPILER_FLAGS = "-DPNG_WRITE_SUPPORTED"; }; };
 		337ED58A10B75652009528D7 /* pngerror.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED57810B75652009528D7 /* pngerror.c */; settings = {COMPILER_FLAGS = "-DPNG_WRITE_SUPPORTED"; }; };
-		337ED58B10B75652009528D7 /* pnggccrd.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED57910B75652009528D7 /* pnggccrd.c */; settings = {COMPILER_FLAGS = "-DPNG_WRITE_SUPPORTED"; }; };
 		337ED58C10B75652009528D7 /* pngget.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED57A10B75652009528D7 /* pngget.c */; settings = {COMPILER_FLAGS = "-DPNG_WRITE_SUPPORTED"; }; };
 		337ED58D10B75652009528D7 /* pngmem.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED57B10B75652009528D7 /* pngmem.c */; settings = {COMPILER_FLAGS = "-DPNG_WRITE_SUPPORTED"; }; };
 		337ED58E10B75652009528D7 /* pngpread.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED57C10B75652009528D7 /* pngpread.c */; settings = {COMPILER_FLAGS = "-DPNG_WRITE_SUPPORTED"; }; };
@@ -109,7 +108,6 @@
 		337ED59210B75652009528D7 /* pngrutil.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED58010B75652009528D7 /* pngrutil.c */; settings = {COMPILER_FLAGS = "-DPNG_WRITE_SUPPORTED"; }; };
 		337ED59310B75652009528D7 /* pngset.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED58110B75652009528D7 /* pngset.c */; settings = {COMPILER_FLAGS = "-DPNG_WRITE_SUPPORTED"; }; };
 		337ED59510B75652009528D7 /* pngtrans.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED58310B75652009528D7 /* pngtrans.c */; settings = {COMPILER_FLAGS = "-DPNG_WRITE_SUPPORTED"; }; };
-		337ED59610B75652009528D7 /* pngvcrd.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED58410B75652009528D7 /* pngvcrd.c */; settings = {COMPILER_FLAGS = "-DPNG_WRITE_SUPPORTED"; }; };
 		337ED59710B75652009528D7 /* pngwio.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED58510B75652009528D7 /* pngwio.c */; settings = {COMPILER_FLAGS = "-DPNG_WRITE_SUPPORTED"; }; };
 		337ED59810B75652009528D7 /* pngwrite.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED58610B75652009528D7 /* pngwrite.c */; settings = {COMPILER_FLAGS = "-DPNG_WRITE_SUPPORTED"; }; };
 		337ED59910B75652009528D7 /* pngwtran.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED58710B75652009528D7 /* pngwtran.c */; settings = {COMPILER_FLAGS = "-DPNG_WRITE_SUPPORTED"; }; };
@@ -281,7 +279,6 @@
 		337ED57610B75652009528D7 /* png.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = png.h; path = ../../WDL/libpng/png.h; sourceTree = SOURCE_ROOT; };
 		337ED57710B75652009528D7 /* pngconf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = pngconf.h; path = ../../WDL/libpng/pngconf.h; sourceTree = SOURCE_ROOT; };
 		337ED57810B75652009528D7 /* pngerror.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = pngerror.c; path = ../../WDL/libpng/pngerror.c; sourceTree = SOURCE_ROOT; };
-		337ED57910B75652009528D7 /* pnggccrd.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = pnggccrd.c; path = ../../WDL/libpng/pnggccrd.c; sourceTree = SOURCE_ROOT; };
 		337ED57A10B75652009528D7 /* pngget.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = pngget.c; path = ../../WDL/libpng/pngget.c; sourceTree = SOURCE_ROOT; };
 		337ED57B10B75652009528D7 /* pngmem.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = pngmem.c; path = ../../WDL/libpng/pngmem.c; sourceTree = SOURCE_ROOT; };
 		337ED57C10B75652009528D7 /* pngpread.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = pngpread.c; path = ../../WDL/libpng/pngpread.c; sourceTree = SOURCE_ROOT; };
@@ -291,7 +288,6 @@
 		337ED58010B75652009528D7 /* pngrutil.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = pngrutil.c; path = ../../WDL/libpng/pngrutil.c; sourceTree = SOURCE_ROOT; };
 		337ED58110B75652009528D7 /* pngset.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = pngset.c; path = ../../WDL/libpng/pngset.c; sourceTree = SOURCE_ROOT; };
 		337ED58310B75652009528D7 /* pngtrans.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = pngtrans.c; path = ../../WDL/libpng/pngtrans.c; sourceTree = SOURCE_ROOT; };
-		337ED58410B75652009528D7 /* pngvcrd.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = pngvcrd.c; path = ../../WDL/libpng/pngvcrd.c; sourceTree = SOURCE_ROOT; };
 		337ED58510B75652009528D7 /* pngwio.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = pngwio.c; path = ../../WDL/libpng/pngwio.c; sourceTree = SOURCE_ROOT; };
 		337ED58610B75652009528D7 /* pngwrite.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = pngwrite.c; path = ../../WDL/libpng/pngwrite.c; sourceTree = SOURCE_ROOT; };
 		337ED58710B75652009528D7 /* pngwtran.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = pngwtran.c; path = ../../WDL/libpng/pngwtran.c; sourceTree = SOURCE_ROOT; };
@@ -520,7 +516,6 @@
 				337ED57610B75652009528D7 /* png.h */,
 				337ED57710B75652009528D7 /* pngconf.h */,
 				337ED57810B75652009528D7 /* pngerror.c */,
-				337ED57910B75652009528D7 /* pnggccrd.c */,
 				337ED57A10B75652009528D7 /* pngget.c */,
 				337ED57B10B75652009528D7 /* pngmem.c */,
 				337ED57C10B75652009528D7 /* pngpread.c */,
@@ -530,7 +525,6 @@
 				337ED58010B75652009528D7 /* pngrutil.c */,
 				337ED58110B75652009528D7 /* pngset.c */,
 				337ED58310B75652009528D7 /* pngtrans.c */,
-				337ED58410B75652009528D7 /* pngvcrd.c */,
 				337ED58510B75652009528D7 /* pngwio.c */,
 				337ED58610B75652009528D7 /* pngwrite.c */,
 				337ED58710B75652009528D7 /* pngwtran.c */,
@@ -723,7 +717,14 @@
 			isa = PBXProject;
 			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "snapease" */;
 			compatibilityVersion = "Xcode 3.1";
+			developmentRegion = English;
 			hasScannedForEncodings = 1;
+			knownRegions = (
+				English,
+				Japanese,
+				French,
+				German,
+			);
 			mainGroup = 29B97314FDCFA39411CA2CEA /* snapease */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -854,7 +855,6 @@
 				337ED57410B75637009528D7 /* zutil.c in Sources */,
 				337ED58910B75652009528D7 /* png.c in Sources */,
 				337ED58A10B75652009528D7 /* pngerror.c in Sources */,
-				337ED58B10B75652009528D7 /* pnggccrd.c in Sources */,
 				337ED58C10B75652009528D7 /* pngget.c in Sources */,
 				337ED58D10B75652009528D7 /* pngmem.c in Sources */,
 				337ED58E10B75652009528D7 /* pngpread.c in Sources */,
@@ -864,7 +864,6 @@
 				337ED59210B75652009528D7 /* pngrutil.c in Sources */,
 				337ED59310B75652009528D7 /* pngset.c in Sources */,
 				337ED59510B75652009528D7 /* pngtrans.c in Sources */,
-				337ED59610B75652009528D7 /* pngvcrd.c in Sources */,
 				337ED59710B75652009528D7 /* pngwio.c in Sources */,
 				337ED59810B75652009528D7 /* pngwrite.c in Sources */,
 				337ED59910B75652009528D7 /* pngwtran.c in Sources */,
@@ -953,6 +952,7 @@
 				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_VERSION = 4.0;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -966,6 +966,7 @@
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_VERSION = 4.0;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				PREBINDING = NO;
