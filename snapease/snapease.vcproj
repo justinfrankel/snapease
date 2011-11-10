@@ -4,6 +4,7 @@
 	Version="8.00"
 	Name="snapease"
 	ProjectGUID="{A16C53C2-D6FD-474D-9B10-62B98CBEA9C4}"
+	RootNamespace="snapease"
 	>
 	<Platforms>
 		<Platform
@@ -143,6 +144,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
+				AdditionalIncludeDirectories="../WDL/zlib"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -333,6 +335,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
+				AdditionalIncludeDirectories="../WDL/zlib"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;USE_ICC"
 				StringPooling="true"
 				RuntimeLibrary="0"
@@ -1388,14 +1391,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1408,7 +1403,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
@@ -1432,14 +1427,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1452,43 +1439,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-						</File>
-						<File
-							RelativePath="..\WDL\libpng\pnggccrd.c"
-							>
-							<FileConfiguration
-								Name="Debug|Win32"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
-								Name="Release|Win32"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_USE_PNGVCRD;PNG_LIBPNG_SPECIALBUILD;__MMX__;PNG_HAVE_MMX_COMBINE_ROW;PNG_HAVE_MMX_READ_INTERLACE;PNG_HAVE_MMX_READ_FILTER_ROW;PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
-								Name="Release|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
@@ -1504,14 +1455,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1524,7 +1467,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
@@ -1540,14 +1483,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1560,7 +1495,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
@@ -1576,14 +1511,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1596,7 +1523,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
@@ -1612,14 +1539,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1632,7 +1551,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
@@ -1648,14 +1567,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1668,7 +1579,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
@@ -1684,14 +1595,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1704,7 +1607,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
@@ -1720,14 +1623,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1740,7 +1635,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
@@ -1756,14 +1651,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1776,7 +1663,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
@@ -1792,14 +1679,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1812,43 +1691,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-						</File>
-						<File
-							RelativePath="..\WDL\libpng\pngvcrd.c"
-							>
-							<FileConfiguration
-								Name="Debug|Win32"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
-								Name="Release|Win32"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_USE_PNGVCRD;PNG_LIBPNG_SPECIALBUILD;__MMX__;PNG_HAVE_MMX_COMBINE_ROW;PNG_HAVE_MMX_READ_INTERLACE;PNG_HAVE_MMX_READ_FILTER_ROW;PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
-								Name="Release|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
@@ -1864,14 +1707,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1884,7 +1719,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
@@ -1900,14 +1735,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1920,7 +1747,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
@@ -1936,14 +1763,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1956,7 +1775,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
@@ -1972,14 +1791,6 @@
 								/>
 							</FileConfiguration>
 							<FileConfiguration
-								Name="Debug|x64"
-								>
-								<Tool
-									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_WRITE_SUPPORTED"
-								/>
-							</FileConfiguration>
-							<FileConfiguration
 								Name="Release|Win32"
 								>
 								<Tool
@@ -1992,7 +1803,7 @@
 								>
 								<Tool
 									Name="VCCLCompilerTool"
-									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD;PNG_WRITE_SUPPORTED"
+									PreprocessorDefinitions="PNG_LIBPNG_SPECIALBUILD"
 								/>
 							</FileConfiguration>
 						</File>
