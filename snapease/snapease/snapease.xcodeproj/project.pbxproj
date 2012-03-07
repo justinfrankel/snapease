@@ -89,7 +89,6 @@
 		337ED56A10B75637009528D7 /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED55410B75637009528D7 /* compress.c */; };
 		337ED56B10B75637009528D7 /* crc32.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED55510B75637009528D7 /* crc32.c */; };
 		337ED56C10B75637009528D7 /* deflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED55710B75637009528D7 /* deflate.c */; };
-		337ED56D10B75637009528D7 /* gzio.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED55910B75637009528D7 /* gzio.c */; };
 		337ED56E10B75637009528D7 /* infback.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED55A10B75637009528D7 /* infback.c */; };
 		337ED56F10B75637009528D7 /* inffast.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED55B10B75637009528D7 /* inffast.c */; };
 		337ED57010B75637009528D7 /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 337ED55E10B75637009528D7 /* inflate.c */; };
@@ -259,7 +258,6 @@
 		337ED55610B75637009528D7 /* crc32.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = crc32.h; path = ../../WDL/zlib/crc32.h; sourceTree = SOURCE_ROOT; };
 		337ED55710B75637009528D7 /* deflate.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = deflate.c; path = ../../WDL/zlib/deflate.c; sourceTree = SOURCE_ROOT; };
 		337ED55810B75637009528D7 /* deflate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = deflate.h; path = ../../WDL/zlib/deflate.h; sourceTree = SOURCE_ROOT; };
-		337ED55910B75637009528D7 /* gzio.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = gzio.c; path = ../../WDL/zlib/gzio.c; sourceTree = SOURCE_ROOT; };
 		337ED55A10B75637009528D7 /* infback.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = infback.c; path = ../../WDL/zlib/infback.c; sourceTree = SOURCE_ROOT; };
 		337ED55B10B75637009528D7 /* inffast.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = inffast.c; path = ../../WDL/zlib/inffast.c; sourceTree = SOURCE_ROOT; };
 		337ED55C10B75637009528D7 /* inffast.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = inffast.h; path = ../../WDL/zlib/inffast.h; sourceTree = SOURCE_ROOT; };
@@ -542,7 +540,6 @@
 				337ED55610B75637009528D7 /* crc32.h */,
 				337ED55710B75637009528D7 /* deflate.c */,
 				337ED55810B75637009528D7 /* deflate.h */,
-				337ED55910B75637009528D7 /* gzio.c */,
 				337ED55A10B75637009528D7 /* infback.c */,
 				337ED55B10B75637009528D7 /* inffast.c */,
 				337ED55C10B75637009528D7 /* inffast.h */,
@@ -717,7 +714,6 @@
 			isa = PBXProject;
 			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "snapease" */;
 			compatibilityVersion = "Xcode 3.1";
-			developmentRegion = English;
 			hasScannedForEncodings = 1;
 			knownRegions = (
 				English,
@@ -845,7 +841,6 @@
 				337ED56A10B75637009528D7 /* compress.c in Sources */,
 				337ED56B10B75637009528D7 /* crc32.c in Sources */,
 				337ED56C10B75637009528D7 /* deflate.c in Sources */,
-				337ED56D10B75637009528D7 /* gzio.c in Sources */,
 				337ED56E10B75637009528D7 /* infback.c in Sources */,
 				337ED56F10B75637009528D7 /* inffast.c in Sources */,
 				337ED57010B75637009528D7 /* inflate.c in Sources */,
