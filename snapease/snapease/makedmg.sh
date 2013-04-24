@@ -51,6 +51,7 @@ system("mkdir $workdir");
 system("mkdir $workdir/SnapEase");
 
 system("cp -R 'build/$src_build_dir/SnapEase.app' $workdir/SnapEase/");
+system("lipo -create build/Release/snapease.app/Contents/MacOS/snapease -arch x86_64 build/Release64/snapease.app/Contents/MacOS/snapease -output $workdir/SnapEase/SnapEase.app/Contents/MacOS/snapease");
 
 copy_text_replace_line("build/$src_build_dir/SnapEase.app/Contents/Info.plist",
 		       "$workdir/SnapEase/SnapEase.app/Contents/Info.plist",
