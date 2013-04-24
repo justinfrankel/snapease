@@ -27,27 +27,6 @@
     (tabs for image lists along top ?)
     disk-based thumbnail cache? sqlite?
 
-      facebook?
-
-
-
-                                      http://api.facebook.com/restserver.php
-
-                                      if no session key:
-
-                                        auth.createToken
-                                        launch browser to  login.php with this token
-                                        when user hits OK, Auth.getSession
-
-                                        upload.
-                                           photos.getAlbums...
-                                           Photos.createAlbum
-
-                                           Photos.upload : aid : caption 
-
-                                          - fail, reset session key, repeat
-
-                                      save session key in ini?
 
     
     slideshows etc?
@@ -245,7 +224,6 @@ int OrganizeWindow(HWND hwndDlg)
   RECT r;
   GetClientRect(hwndDlg,&r);
 
-  bool hasScrollBar=false;
   // decide whether we will need a scrollbar?
 
   int border_size_x = 8, border_size_y=8;
@@ -341,6 +319,12 @@ void UpdateMainWindowWithSizeChanged()
   RECT r;
   GetClientRect(hwndDlg,&r);
   if (g_vwnd_scrollpos<0)g_vwnd_scrollpos=0;
+  if (g_fullmode_item)
+  {
+    SCROLLINFO si={sizeof(si),SIF_PAGE|SIF_POS|SIF_RANGE,0,0,0, 0,};
+    CoolSB_SetScrollInfo(hwndDlg,SB_VERT,&si,TRUE);
+  }
+
   int wh = OrganizeWindow(hwndDlg);
 
   if (!g_fullmode_item)
@@ -352,11 +336,6 @@ void UpdateMainWindowWithSizeChanged()
     }
 
     SCROLLINFO si={sizeof(si),SIF_PAGE|SIF_POS|SIF_RANGE,0,wh, r.bottom, g_vwnd_scrollpos,};
-    CoolSB_SetScrollInfo(hwndDlg,SB_VERT,&si,TRUE);
-  }
-  else
-  {
-    SCROLLINFO si={sizeof(si),SIF_PAGE|SIF_POS|SIF_RANGE,0,0,0, 0,};
     CoolSB_SetScrollInfo(hwndDlg,SB_VERT,&si,TRUE);
   }
   InvalidateRect(hwndDlg,NULL,FALSE);

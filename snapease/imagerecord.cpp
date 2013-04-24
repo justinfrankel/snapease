@@ -355,9 +355,6 @@ void ImageRecord::SetIsFullscreen(bool isFS)
     m_is_fs = isFS;
     WDL_VirtualIconButton *c = (WDL_VirtualIconButton *)GetChildByID(BUTTONID_FULLSCREEN);
     if (c) c->SetIcon(GetButtonIcon(BUTTONID_FULLSCREEN,!!m_is_fs));
-
-    c = (WDL_VirtualIconButton *)GetChildByID(BUTTONID_REMOVE);
-    if (c) c->SetVisible(!m_is_fs);
   }
 }
 
@@ -532,16 +529,21 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
           WDL_VWnd *par = GetParent();
           if (par)
           {
-            if (!RemoveFullItemView())
+            const int fmi=this == g_fullmode_item ? g_images.Find(g_fullmode_item) : -1;
+            g_images_mutex.Enter();
+            g_images.Delete(g_images.Find(this));
+            g_images_mutex.Leave();
+
+            par->RemoveChild(this,true);
+            // do nothing after this, "this" not valid anymore!
+            ImageRecord *r=g_images.Get(fmi < g_images.GetSize() ? fmi : fmi-1);
+            if (r) 
             {
-              g_images_mutex.Enter();
-              g_images.Delete(g_images.Find(this));
-              g_images_mutex.Leave();
-
-              par->RemoveChild(this,true);
-              // do nothing after this, "this" not valid anymore!
+              OpenFullItemView(r);
+            }
+            else
+            {
               UpdateMainWindowWithSizeChanged();
-
               SetImageListIsDirty();
             }
           }
