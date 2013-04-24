@@ -1,7 +1,7 @@
 /*
     SnapEase
     imagerecord.cpp -- image thumbnail/button/info/etc entry interface
-    Copyright (C) 2009-2010  Cockos Incorporated
+    Copyright (C) 2009-2013  Cockos Incorporated
 
     PathSync is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -107,7 +107,6 @@ public:
 
   LICE_IBitmap *m_preview_image;
 
-  bool m_want_fullimage;
   LICE_IBitmap *m_fullimage;
 
   LICE_IBitmap *m_fullimage_scaled, 

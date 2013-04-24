@@ -109,35 +109,57 @@ static int RunWork(DecodeThreadContext &ctx)
   }
   bool didProc=false;
 
-  if (g_fullmode_item && g_images.Find(g_fullmode_item)>=0) // prioritize any full image loads
+  int fmi;
+  if (g_fullmode_item && (fmi=g_images.Find(g_fullmode_item))>=0) // prioritize any full image loads
   {
-    if (g_fullmode_item->m_want_fullimage && !g_fullmode_item->m_fullimage)
+    int x;
+    const int divpt1 = fmi-2,divpt2=fmi+2; // try to keep 5 images loaded, plus allow another 10 of history (before/after current 5), but don't actively try to load them
+    for (x=0;x<divpt1 - 5;x++)
     {
-      ImageRecord *olditem = g_fullmode_item;
-      ctx.curfn.Set(g_fullmode_item->m_fn.Get());
-      g_fullmode_item->m_want_fullimage=false;
-      g_images_mutex.Leave();
-
-      if (!ctx.bmOut) ctx.bmOut = new LICE_MemBitmap;
-
-      bool suc = LoadFullBitmap(ctx.bmOut,ctx.curfn.Get());
-
-      g_images_mutex.Enter();
-
-      if (suc && g_fullmode_item==olditem && 
-          g_images.Find(g_fullmode_item)>=0 && 
-          !g_fullmode_item->m_fullimage &&
-          !strcmp(g_fullmode_item->m_fn.Get(),ctx.curfn.Get()))
+      ImageRecord *it = g_images.Get(x);
+      if (it && it->m_fullimage)
       {
-        g_fullmode_item->m_srcimage_w = ctx.bmOut->getWidth();
-        g_fullmode_item->m_srcimage_h = ctx.bmOut->getHeight();
-        g_fullmode_item->m_fullimage = ctx.bmOut;
-        g_fullmode_item->m_fullimage_cachevalid=0;
-        ctx.bmOut=NULL;
+        delete it->m_fullimage;
+        it->m_fullimage=0;
       }
-      else didProc=true;
+    }
+    for (x=divpt1;x<=divpt2; x++)
+    {
+      const int dpos = x - divpt1;
+      ImageRecord *it = g_images.Get(fmi + ((dpos&1)?(dpos+1)/2 : -(dpos/2))); // +0, +1, -1, +2, -2
+      if (it && !it->m_fullimage)
+      {
+        ctx.curfn.Set(it->m_fn.Get());
+        g_images_mutex.Leave();
 
-      g_DecodeDidSomething=true;
+        if (!ctx.bmOut) ctx.bmOut = new LICE_MemBitmap;
+
+        bool suc = LoadFullBitmap(ctx.bmOut,ctx.curfn.Get());
+
+        g_images_mutex.Enter();
+
+        if (suc && g_images.Find(it)>=0 && !strcmp(it->m_fn.Get(),ctx.curfn.Get()))
+        {
+          it->m_srcimage_w = ctx.bmOut->getWidth();
+          it->m_srcimage_h = ctx.bmOut->getHeight();
+          it->m_fullimage = ctx.bmOut;
+          it->m_fullimage_cachevalid=0;
+          ctx.bmOut=NULL;
+          didProc=true;
+        }
+
+        g_DecodeDidSomething=true;
+      }
+    }
+    x+=5;
+    for (;x<g_images.GetSize();x++)
+    {
+      ImageRecord *it = g_images.Get(x);
+      if (it && it->m_fullimage)
+      {
+        delete it->m_fullimage;
+        it->m_fullimage=0;
+      }
     }
   }
 

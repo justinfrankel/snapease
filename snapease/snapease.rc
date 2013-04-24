@@ -250,7 +250,7 @@ BEGIN
             VALUE "FileDescription", "SnapEase\0"
             VALUE "FileVersion", "0, 0, 2, 0\0"
             VALUE "InternalName", "SnapEase\0"
-            VALUE "LegalCopyright", "Copyright © 2009-2010 Cockos Incorporated\0"
+            VALUE "LegalCopyright", "Copyright © 2009-2013 Cockos Incorporated\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "snapease.exe\0"
             VALUE "PrivateBuild", "\0"

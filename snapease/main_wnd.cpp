@@ -2,7 +2,7 @@
 /*
     SnapEase
     main_wnd.cpp -- main window dialogness
-    Copyright (C) 2009-2010  Cockos Incorporated
+    Copyright (C) 2009-2013  Cockos Incorporated
 
     PathSync is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -347,12 +347,8 @@ void OpenFullItemView(ImageRecord *w)
   RemoveFullItemView(false);
 
   g_images_mutex.Enter();
-  w->m_want_fullimage=true;
-  LICE_IBitmap *old = w->m_fullimage;
-  w->m_fullimage = 0;
   g_fullmode_item=w;
   g_images_mutex.Leave();
-  delete old;
   delete w->m_fullimage_scaled;
   w->m_fullimage_scaled=0;
   delete w->m_fullimage_final;
@@ -370,15 +366,10 @@ bool RemoveFullItemView(bool refresh)
     ImageRecord *r = g_fullmode_item;
     if (g_images.Find(g_fullmode_item)>=0)
     {
-      LICE_IBitmap *old = g_fullmode_item->m_fullimage;
-      g_fullmode_item->m_want_fullimage = false;
-      g_fullmode_item->m_fullimage = 0;
-      delete old;
       delete g_fullmode_item->m_fullimage_scaled;
       delete g_fullmode_item->m_fullimage_final;
       g_fullmode_item->m_fullimage_scaled=0;
       g_fullmode_item->m_fullimage_final=0;
-
     }
     g_fullmode_item=0;
     g_images_mutex.Leave();
@@ -520,7 +511,7 @@ static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
         RECT tr={xo - g_lastSplashRect.left,yo+splash->getHeight()+5,xo - g_lastSplashRect.left + r.right,yo+r.bottom};
         int h = tmpfont.DrawText(bm,
               "Version " VERSTRING " - "
-              "Copyright (C) 2009-2010 Cockos Incorporated",-1,&tr,DT_CENTER|DT_TOP);
+              "Copyright (C) 2009-2013 Cockos Incorporated",-1,&tr,DT_CENTER|DT_TOP);
 
         tr.top += h + 32;
 

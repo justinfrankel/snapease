@@ -1,7 +1,7 @@
 /*
     SnapEase
     imagerecord.cpp -- image thumbnail/button/info/etc entry implementation
-    Copyright (C) 2009-2010  Cockos Incorporated
+    Copyright (C) 2009-2013  Cockos Incorporated
 
     PathSync is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -259,7 +259,6 @@ ImageRecord::ImageRecord(const char *fn)
   m_fullimage_scaled=m_fullimage_final=NULL;
   m_fullimage_cachevalid=0;
   m_fullimage=0;
-  m_want_fullimage=0;
   memset(m_bchsv,0,sizeof(m_bchsv));
   m_bw=false;
   m_rot=0;
@@ -1443,7 +1442,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
   g_imagerecord_font.SetTextColor(LICE_RGBA(255,255,255,0));
   g_imagerecord_font.SetEffectColor(LICE_RGBA(0,0,0,0));
 
-  bool usedFullImage=(m_fullimage &&!m_want_fullimage) ;
+  const bool usedFullImage=!!m_fullimage;
 
 //  WDL_MutexLock tmp(usedFullImage ? &g_images_mutex : NULL);
   LICE_IBitmap *srcimage = usedFullImage ? m_fullimage : m_preview_image;
