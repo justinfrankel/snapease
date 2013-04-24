@@ -126,7 +126,9 @@ public:
         p.y-=(ypos-s_knob_capy);
 
 
+#ifdef _WIN32
         if (!SetCursorPos(p.x,p.y)) 
+#endif
         {
           s_knob_capx=xpos;
           s_knob_capy=ypos;
