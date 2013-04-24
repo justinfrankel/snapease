@@ -6,6 +6,7 @@ v0.2 - April 24 2013
   + Automatically remember last image list on exit, load on start
   + Improved full image caching/scheduling
   + Lots of little bug fixes, OSX 10.8 support
+  + 64 bit support
 
 v0.11 - December 1 2009
   + First release

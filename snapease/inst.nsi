@@ -42,14 +42,22 @@ RequestExecutionLevel highest
 
 ;--------------------------------
 ;Installer Sections
+var default_exe
 
 Section "SnapEase" SecSnapEase
+  strcpy $default_exe "SnapEase.exe"
+  ClearErrors
+  ReadRegStr $R0 HKLM "Software\WOW6432Node\Microsoft\Windows\CurrentVersion" "ProgramFilesPath"
+  IfErrors notx64
+    strcpy $default_exe "SnapEase64.exe"
+notx64:
 
   SetOutPath "$INSTDIR"
   
   File license.txt
   File whatsnew.txt
   File release\SnapEase.exe
+  File /oname=SnapEase64.exe release64\SnapEase.exe
   File generic_upload.php
 
   WriteRegStr HKCU "Software\SnapEase" "" $INSTDIR
@@ -61,7 +69,7 @@ SectionEnd
 
 Section "Start Menu Shortcuts" SecStart
   SetOutPath $SMPROGRAMS\SnapEase
-  CreateShortcut "$OUTDIR\SnapEase.lnk" "$INSTDIR\SnapEase.exe"
+  CreateShortcut "$OUTDIR\SnapEase.lnk" "$INSTDIR\$default_exe"
   CreateShortcut "$OUTDIR\SnapEase License.lnk" "$INSTDIR\license.txt"
   CreateShortcut "$OUTDIR\Whatsnew.txt.lnk" "$INSTDIR\whatsnew.txt"
   CreateShortcut "$OUTDIR\Uninstall SnapEase.lnk" "$INSTDIR\uninstall.exe"
@@ -70,7 +78,7 @@ SectionEnd
 
 Section "Desktop Shortcut" SecDesk
   SetOutPath $DESKTOP
-  CreateShortcut "$OUTDIR\SnapEase.lnk" "$INSTDIR\SnapEase.exe"
+  CreateShortcut "$OUTDIR\SnapEase.lnk" "$INSTDIR\$default_exe"
   
 SectionEnd
 
@@ -98,7 +106,7 @@ FunctionEnd
 ;Uninstaller Section
 
 Section "Uninstall"
-  DeletE "$DESKTOP\SnapEase.lnk"
+  Delete "$DESKTOP\SnapEase.lnk"
   Delete "$SMPROGRAMS\SnapEase\SnapEase.lnk"
   Delete "$SMPROGRAMS\SnapEase\SnapEase License.lnk"
   Delete "$SMPROGRAMS\SnapEase\Whatsnew.txt.lnk"
@@ -106,6 +114,7 @@ Section "Uninstall"
   RMDir "$SMPROGRAMS\SnapEase"
 
   Delete "$INSTDIR\snapease.exe"
+  Delete "$INSTDIR\snapease64.exe"
   Delete "$INSTDIR\license.txt"
   Delete "$INSTDIR\whatsnew.txt"
   Delete "$INSTDIR\generic_upload.php"
