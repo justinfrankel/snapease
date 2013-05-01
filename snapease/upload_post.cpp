@@ -218,7 +218,7 @@ bool PostUploader::SendFile(const char *srcfullfn, const char *destfn) // true i
                         "%s\r\n",
                         req,
                         hb.Get(),
-                        m_file_size_sending + strlen(initialcontent) + strlen(m_extrapost_content.Get()),
+                        (int) (m_file_size_sending + strlen(initialcontent) + strlen(m_extrapost_content.Get())),
                         lpbuf
                         );
 
