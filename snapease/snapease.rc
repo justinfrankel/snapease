@@ -162,6 +162,11 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Quit\tCtrl+Q",               ID_QUIT
     END
+    POPUP "&Options"
+    BEGIN
+    MENUITEM "Multiprocessor support",          ID_SMP
+    MENUITEM "Status line",                     ID_STATUS_LINE
+    END
     POPUP "&Help", HELP
     BEGIN
         MENUITEM "About SnapEase",              ID_ABOUT

@@ -321,7 +321,10 @@ void ImageRecord::UpdateButtonStates()
 ImageRecord::~ImageRecord()
 {
   EditImageLabelEnd();
-
+  g_ram_use_preview -= get_lice_bitmap_size(m_preview_image);
+  g_ram_use_full -= get_lice_bitmap_size(m_fullimage);
+  g_ram_use_fullscaled -= get_lice_bitmap_size(m_fullimage_scaled);
+  g_ram_use_fullfinal -= get_lice_bitmap_size(m_fullimage_final);
   delete m_preview_image;
   delete m_fullimage;
   delete m_fullimage_scaled;
@@ -337,6 +340,7 @@ ImageRecord *ImageRecord ::Duplicate()
   {
     rec->m_state=m_state;   
     LICE_Copy(rec->m_preview_image = new LICE_MemBitmap,m_preview_image);
+    g_ram_use_preview += get_lice_bitmap_size(rec->m_preview_image);
   }
   rec->m_srcimage_w=m_srcimage_w;
   rec->m_srcimage_h=m_srcimage_h;
@@ -535,7 +539,10 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
             const int fmi=this == g_fullmode_item ? g_images.Find(g_fullmode_item) : -1;
             g_images_mutex.Enter();
             g_images.Delete(g_images.Find(this));
+            if (m_state == ImageRecord::IR_STATE_ERROR) g_images_cnt_err--;
+            else if (m_state == ImageRecord::IR_STATE_LOADED) g_images_cnt_ok--;
             g_images_mutex.Leave();
+
 
             par->RemoveChild(this,true);
             // do nothing after this, "this" not valid anymore!
@@ -1613,9 +1620,11 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
         if (usedFullImage)
         {
           m_fullimage_cachevalid|=2;
-          if (!m_fullimage_scaled) m_fullimage_scaled=new LICE_MemBitmap;
+          g_ram_use_fullscaled -= get_lice_bitmap_size(m_fullimage_scaled);
+          if (!m_fullimage_scaled) m_fullimage_scaled = new LICE_MemBitmap;
           m_fullimage_scaled->resize(w,h);
-          LICE_Blit(m_fullimage_scaled,drawbm,0,0,xoffs,yoffs,w,h,1.0f,LICE_BLIT_MODE_COPY);
+          g_ram_use_fullscaled += get_lice_bitmap_size(m_fullimage_scaled);
+          LICE_Blit(m_fullimage_scaled, drawbm, 0, 0, xoffs, yoffs, w, h, 1.0f, LICE_BLIT_MODE_COPY);
         }
       } // end of scaling process
       else
@@ -1630,19 +1639,24 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
         m_fullimage_cachevalid=3;
         if (didProcess)
         {
-          if (!m_fullimage_final) m_fullimage_final=new LICE_MemBitmap;
+          g_ram_use_fullfinal -= get_lice_bitmap_size(m_fullimage_final);
+          if (!m_fullimage_final) m_fullimage_final = new LICE_MemBitmap;
           m_fullimage_final->resize(w,h);
-          LICE_Blit(m_fullimage_final,drawbm,0,0,xoffs,yoffs,w,h,1.0f,LICE_BLIT_MODE_COPY);
+          g_ram_use_fullfinal += get_lice_bitmap_size(m_fullimage_final);
+          LICE_Blit(m_fullimage_final, drawbm, 0, 0, xoffs, yoffs, w, h, 1.0f, LICE_BLIT_MODE_COPY);
         }
         else
         {
+          g_ram_use_fullfinal -= get_lice_bitmap_size(m_fullimage_final);
           delete m_fullimage_final;
           m_fullimage_final=0;
         }
       }
       else
       {
-        m_fullimage_cachevalid=0;
+        g_ram_use_fullscaled -= get_lice_bitmap_size(m_fullimage_scaled);
+        g_ram_use_fullfinal -= get_lice_bitmap_size(m_fullimage_final);
+        m_fullimage_cachevalid = 0;
         delete m_fullimage_scaled;
         m_fullimage_scaled=0;
         delete m_fullimage_final;
@@ -1932,4 +1946,9 @@ bool ImageRecord::ProcessRect(LICE_IBitmap *destimage, int x, int y, int w, int 
  
   return want_bc||hsvmode||m_bw;
 
+}
+
+INT_PTR get_lice_bitmap_size(LICE_IBitmap *bm)
+{
+  return bm ? (INT_PTR)(bm->getWidth()*bm->getHeight() * 4) : 0;
 }

@@ -43,6 +43,7 @@
 #include "../WDL/lice/lice.h"
 #include "../WDL/dirscan.h"
 #include "../WDL/lice/lice_text.h"
+#include "../WDL/wdlcstring.h"
 
 #include "../WDL/wingui/scrollbar/coolscroll.h"
 
@@ -53,11 +54,14 @@ WDL_String g_list_path;
 
 
 WDL_PtrList<ImageRecord> g_images;
+int g_images_cnt_err, g_images_cnt_ok, g_images_statcnt;
+INT_PTR g_ram_use_preview, g_ram_use_full, g_ram_use_fullscaled, g_ram_use_fullfinal;
 WDL_Mutex g_images_mutex;
 
 HWND g_hwnd;
 WDL_VWnd_Painter g_hwnd_painter;
 
+int g_config_smp, g_config_statusline;
 
 class MainWindowVwnd : public WDL_VWnd
 {
@@ -149,6 +153,7 @@ void ClearImageList()
 
   for(x=0;x<r.GetSize();x++)
     g_vwnd.RemoveChild(r.Get(x),true);
+  g_images_cnt_err = g_images_cnt_ok = 0;
 }
 
 
@@ -160,7 +165,6 @@ void DrawTooltipForPoint(LICE_IBitmap *bm, POINT mousePt, RECT *wndr, const char
     static LICE_CachedFont tmpfont;
     if (!tmpfont.GetHFont())
     {
-      bool doOutLine = true;
       LOGFONT lf = 
       {
           14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
@@ -349,6 +353,8 @@ void OpenFullItemView(ImageRecord *w)
   g_images_mutex.Enter();
   g_fullmode_item=w;
   g_images_mutex.Leave();
+  g_ram_use_fullscaled -= get_lice_bitmap_size(w->m_fullimage_scaled);
+  g_ram_use_fullfinal -= get_lice_bitmap_size(w->m_fullimage_final);
   delete w->m_fullimage_scaled;
   w->m_fullimage_scaled=0;
   delete w->m_fullimage_final;
@@ -366,6 +372,8 @@ bool RemoveFullItemView(bool refresh)
     ImageRecord *r = g_fullmode_item;
     if (g_images.Find(g_fullmode_item)>=0)
     {
+      g_ram_use_fullfinal -= get_lice_bitmap_size(g_fullmode_item->m_fullimage_final);
+      g_ram_use_fullscaled -= get_lice_bitmap_size(g_fullmode_item->m_fullimage_scaled);
       delete g_fullmode_item->m_fullimage_scaled;
       delete g_fullmode_item->m_fullimage_final;
       g_fullmode_item->m_fullimage_scaled=0;
@@ -491,7 +499,6 @@ static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
         static LICE_CachedFont tmpfont;
         if (!tmpfont.GetHFont())
         {
-          bool doOutLine = true;
           LOGFONT lf = 
           {
               14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
@@ -535,6 +542,7 @@ static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
 
 WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+  static char s_status_text[256];
 #ifdef _WIN32
   if (Scroll_Message && uMsg == Scroll_Message)
   {
@@ -571,6 +579,8 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       g_vwnd.SetRealParent(hwndDlg);
       
       UpdateMainWindowWithSizeChanged();
+      g_config_smp = config_readint("smp", 1);
+      g_config_statusline = config_readint("status", 1);
 
       {
         RECT r={config_readint("wndx",15),config_readint("wndy",15),};
@@ -606,6 +616,11 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
 
     return 0;
+    case WM_INITMENU:
+      CheckMenuItem((HMENU)wParam, ID_SMP, g_config_smp ? MF_CHECKED : MF_UNCHECKED);
+      CheckMenuItem((HMENU)wParam, ID_STATUS_LINE, g_config_statusline ? MF_CHECKED : MF_UNCHECKED);
+
+    break;
     case WM_DESTROY:
 
       DecodeThread_Quit();
@@ -633,6 +648,8 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       g_images_mutex.Leave();
 
       g_vwnd.RemoveAllChildren(true);
+
+      g_images_cnt_err = g_images_cnt_ok = 0;
 
 #ifndef _WIN32
       UninitializeCoolSB(hwndDlg);
@@ -671,15 +688,54 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       {
         DecodeThread_RunTimer();
 
-        if (!g_images.GetSize()||g_aboutwindow_open)
-          InvalidateRect(hwndDlg,&g_lastSplashRect,FALSE);
+        bool wantInvalidate = false;
+        if (!g_images.GetSize() || g_aboutwindow_open)
+        {
+          InvalidateRect(hwndDlg, &g_lastSplashRect, FALSE);
+        }
+        else
+        {
+          static DWORD last_status_time;
+          if (g_config_statusline)
+          {
+            const DWORD now = GetTickCount();
+            if (now > last_status_time + 1000)
+            {
+              char newbuf[256];
+              
+              snprintf(newbuf, sizeof(newbuf),
+                "%d/%d", g_images_cnt_ok + g_images_cnt_err, g_images.GetSize());
+              if (g_images_cnt_err) snprintf_append(newbuf, sizeof(newbuf), " [%d error]", g_images_cnt_err);
+
+              if (g_images_statcnt > 0)
+              {
+                snprintf_append(newbuf, sizeof(newbuf), " [%.1f load/sec]", (double)g_images_statcnt * 1000.0 / (now - last_status_time));
+                g_images_statcnt = 0;
+              }
+              snprintf_append(newbuf, sizeof(newbuf), " [%dMB thumbnails, fullcache: %d/%d/%dMB]", (int)(g_ram_use_preview / 1024 / 1024),
+                (int)(g_ram_use_full / 1024 / 1024),
+                (int)(g_ram_use_fullscaled / 1024 / 1024),
+                (int)(g_ram_use_fullfinal / 1024 / 1024)
+                );
+
+              last_status_time = now;
+
+              if (strcmp(newbuf, s_status_text))
+              {
+                lstrcpyn(s_status_text, newbuf, sizeof(s_status_text));
+                wantInvalidate = true;
+              }
+            }
+          }
+        }
 
         EditImageRunTimer();
         if (g_DecodeDidSomething)
         {
+          wantInvalidate = true;
           g_DecodeDidSomething=false;
-          InvalidateRect(hwndDlg,NULL,FALSE);
         }
+        if (wantInvalidate) InvalidateRect(hwndDlg, NULL, FALSE);
       }
     return 0;
     case WM_CLOSE:
@@ -838,6 +894,17 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
           }
 
         break;
+        case ID_SMP:
+          g_config_smp = !g_config_smp;
+          config_writeint("smp", g_config_smp);
+          DecodeThread_Quit();
+          DecodeThread_Init();
+        break;
+        case ID_STATUS_LINE:
+          g_config_statusline = !g_config_statusline;
+          config_writeint("status", g_config_statusline);
+          InvalidateRect(hwndDlg, NULL, FALSE);
+        break;
       }
     return 0;
     case WM_SIZE:
@@ -923,14 +990,44 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         else
         {
           g_hwnd_painter.PaintVirtWnd(&g_vwnd);
+          int xo = 0, yo = 0;
+          LICE_IBitmap *bm = g_hwnd_painter.GetBuffer(&xo, &yo);
 
           if (g_hwnd_tooltip[0])
           {
-            int xo=0,yo=0;
-            LICE_IBitmap *bm = g_hwnd_painter.GetBuffer(&xo,&yo);
             POINT p ={ g_hwnd_tooltip_pt.x + xo, g_hwnd_tooltip_pt.y + yo};
             RECT rr = { r.left+xo,r.top+yo,r.right+xo,r.bottom+yo};
             DrawTooltipForPoint(bm,p,&rr,g_hwnd_tooltip);
+          }
+          if (g_config_statusline)
+          {
+            static LICE_CachedFont tmpfont;
+            if (!tmpfont.GetHFont())
+            {
+              LOGFONT lf =
+              {
+                15, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH,
+                "Arial"
+              };
+
+              tmpfont.SetFromHFont(CreateFontIndirect(&lf), LICE_FONT_FLAG_OWNS_HFONT);
+            }
+            tmpfont.SetBkMode(TRANSPARENT);
+            tmpfont.SetTextColor(LICE_RGBA(255, 255, 255, 255));
+
+
+            RECT sz = { 0, };
+            tmpfont.DrawText(bm, s_status_text, -1, &sz, DT_CALCRECT | DT_SINGLELINE|DT_NOPREFIX);
+
+            LICE_FillRect(bm, xo, yo + r.bottom - sz.bottom-4, r.right, sz.bottom+4, LICE_RGBA(128, 128, 128, 255), 0.5, 0);
+
+            sz.left = xo + r.right - 4 - sz.right;
+            sz.right = xo + r.right;
+            sz.top = yo + r.bottom - 2 - sz.bottom;
+            sz.bottom = yo + r.bottom;
+            tmpfont.DrawText(bm, s_status_text, -1, &sz, DT_SINGLELINE | DT_NOPREFIX);
+
           }
         }
 

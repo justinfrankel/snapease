@@ -133,5 +133,6 @@ public:
   }
 };
 
+INT_PTR get_lice_bitmap_size(LICE_IBitmap *);
 
 #endif

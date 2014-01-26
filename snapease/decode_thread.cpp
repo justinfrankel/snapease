@@ -210,7 +210,7 @@ static char GetRotationForImage(const char *fn)
 }
 
 
-static int RunWork(DecodeThreadContext &ctx)
+static int RunWork(DecodeThreadContext &ctx, bool allowFullMode)
 {
   int sleepAmt=1;
   g_images_mutex.Enter();
@@ -225,7 +225,7 @@ static int RunWork(DecodeThreadContext &ctx)
   bool didProc=false;
 
   int fmi;
-  if (g_fullmode_item && (fmi=g_images.Find(g_fullmode_item))>=0) // prioritize any full image loads
+  if (allowFullMode && g_fullmode_item && (fmi = g_images.Find(g_fullmode_item)) >= 0) // prioritize any full image loads
   {
     int x;
     const int divpt1 = fmi-2,divpt2=fmi+2; // try to keep 5 images loaded, plus allow another 10 of history (before/after current 5), but don't actively try to load them
@@ -234,6 +234,7 @@ static int RunWork(DecodeThreadContext &ctx)
       ImageRecord *it = g_images.Get(x);
       if (it && it->m_fullimage)
       {
+        g_ram_use_full -= get_lice_bitmap_size(it->m_fullimage);
         delete it->m_fullimage;
         it->m_fullimage=0;
       }
@@ -245,20 +246,30 @@ static int RunWork(DecodeThreadContext &ctx)
       if (it && !it->m_fullimage)
       {
         ctx.curfn.Set(it->m_fn.Get());
+        const bool calc_rot = it->m_need_rotchk;
+        char calculated_rot = 0;
+
         g_images_mutex.Leave();
 
         if (!ctx.bmOut) ctx.bmOut = new LICE_MemBitmap;
 
         bool suc = LoadFullBitmap(ctx.bmOut,ctx.curfn.Get());
+        if (suc) calculated_rot = GetRotationForImage(ctx.curfn.Get());
 
         g_images_mutex.Enter();
 
         if (suc && g_images.Find(it)>=0 && !strcmp(it->m_fn.Get(),ctx.curfn.Get()))
         {
+          if (it->m_need_rotchk && calculated_rot)
+          {
+            it->m_rot = calculated_rot;
+            it->m_need_rotchk = false;
+          }
           it->m_srcimage_w = ctx.bmOut->getWidth();
           it->m_srcimage_h = ctx.bmOut->getHeight();
           it->m_fullimage = ctx.bmOut;
-          it->m_fullimage_cachevalid=0;
+          g_ram_use_full += get_lice_bitmap_size(it->m_fullimage);
+          it->m_fullimage_cachevalid = 0;
           ctx.bmOut=NULL;
           didProc=true;
         }
@@ -272,6 +283,7 @@ static int RunWork(DecodeThreadContext &ctx)
       ImageRecord *it = g_images.Get(x);
       if (it && it->m_fullimage)
       {
+        g_ram_use_full -= get_lice_bitmap_size(it->m_fullimage);
         delete it->m_fullimage;
         it->m_fullimage=0;
       }
@@ -313,6 +325,8 @@ static int RunWork(DecodeThreadContext &ctx)
         LICE_IBitmap *bmDel = NULL;
         if (rec->m_preview_image)
         {
+          g_ram_use_preview -= get_lice_bitmap_size(rec->m_preview_image);
+
           bmDel = ctx.bmOut;
           ctx.bmOut = rec->m_preview_image;
           rec->m_preview_image=0;
@@ -350,13 +364,20 @@ static int RunWork(DecodeThreadContext &ctx)
           }
           rec->m_srcimage_w = ctx.bm.getWidth();
           rec->m_srcimage_h = ctx.bm.getHeight();
-          if (!success) rec->m_state = ImageRecord::IR_STATE_ERROR;
+          if (!success)
+          {
+            rec->m_state = ImageRecord::IR_STATE_ERROR;
+            g_images_cnt_err++;
+          }
           else if (strcmp(rec->m_fn.Get(),ctx.curfn.Get())) rec->m_state = ImageRecord::IR_STATE_ERROR;
           else
           {
+            g_images_cnt_ok++;
+            g_images_statcnt++;
             rec->m_state = ImageRecord::IR_STATE_LOADED;
             rec->m_preview_image = ctx.bmOut;
-            ctx.bmOut= 0;
+            g_ram_use_preview += get_lice_bitmap_size(rec->m_preview_image);
+            ctx.bmOut = 0;
           }
           g_DecodeDidSomething=true;
         }
@@ -376,7 +397,7 @@ static DWORD WINAPI DecodeThreadProc(LPVOID v)
   ctx.scanpos=0;
   while (!g_DecodeThreadQuit)
   {
-    Sleep(RunWork(ctx));
+    Sleep(RunWork(ctx,!v));
   }
 
   return 0;
@@ -385,6 +406,40 @@ static DWORD WINAPI DecodeThreadProc(LPVOID v)
 
 static HANDLE hThread[MAX_THREADS]={0,};
 
+static int getCPUcount()
+{
+
+#ifdef WIN32
+  const int max_cpus = 16;
+
+  static int init = 0;
+  static int nbcpu = 1;
+  if (init) return nbcpu;
+  HKEY k;
+  if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Hardware\\Description\\System\\CentralProcessor", 0, KEY_READ, &k) == ERROR_SUCCESS)
+  {
+    int i;
+    for (i = 0; i<max_cpus; i++)
+    {
+      char keyname[512];
+      if (RegEnumKey(k, i, keyname, 511) != ERROR_SUCCESS) break;
+    }
+    if (i>0) nbcpu = i;
+    RegCloseKey(k);
+  }
+
+  init = 1;
+  return nbcpu;
+#elif defined(__APPLE__)
+
+  return MPProcessors();
+#else
+  int np = sysconf(_SC_NPROCESSORS_ONLN);
+  if (!np) np = 1;
+  return np;
+#endif
+}
+
 void DecodeThread_Init()
 {
   if (!g_DecodeThreadQuit) return;
@@ -392,8 +447,9 @@ void DecodeThread_Init()
   g_DecodeThreadQuit=false;
 
 
-  int numCPU = FORCE_THREADS; // todo: smp option?
+  int numCPU = g_config_smp ? getCPUcount() : 1;
 
+  if (numCPU<1) numCPU = 1;
   if (numCPU>sizeof(hThread)/sizeof(hThread[0])) numCPU=sizeof(hThread)/sizeof(hThread[0]);
 
   int x;
@@ -402,7 +458,7 @@ void DecodeThread_Init()
     DWORD tid;
     if (!hThread[x])
     {
-      hThread[x] = CreateThread(NULL,0,DecodeThreadProc,0,NULL,&tid);
+      hThread[x] = CreateThread(NULL,0,DecodeThreadProc,(LPVOID)x,NULL,&tid);
       SetThreadPriority(hThread[x],THREAD_PRIORITY_BELOW_NORMAL);
     }
   } 
@@ -436,7 +492,7 @@ void DecodeThread_RunTimer()
 
       static DecodeThreadContext *p;
       if (!p) p=new DecodeThreadContext;
-      if (p) RunWork(*p);
+      if (p) RunWork(*p,true);
 
       reent=false;
     }
