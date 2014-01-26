@@ -2,20 +2,20 @@
 /*
     SnapEase
     main_wnd.cpp -- main window dialogness
-    Copyright (C) 2009-2013  Cockos Incorporated
+    Copyright (C) 2009 and onward Cockos Incorporated
 
-    PathSync is free software; you can redistribute it and/or modify
+    SnapEase is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 
-    PathSync is distributed in the hope that it will be useful,
+    SnapEase is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with PathSync; if not, write to the Free Software
+    along with SnapEase; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
@@ -511,7 +511,7 @@ static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
         RECT tr={xo - g_lastSplashRect.left,yo+splash->getHeight()+5,xo - g_lastSplashRect.left + r.right,yo+r.bottom};
         int h = tmpfont.DrawText(bm,
               "Version " VERSTRING " - "
-              "Copyright (C) 2009-2013 Cockos Incorporated",-1,&tr,DT_CENTER|DT_TOP);
+              "Copyright (C) 2009 and onward Cockos Incorporated",-1,&tr,DT_CENTER|DT_TOP);
 
         tr.top += h + 32;
 

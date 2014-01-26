@@ -1,20 +1,20 @@
 /*
     SnapEase
     loadsave.cpp -- loading/saving of image lists
-    Copyright (C) 2009-2013  Cockos Incorporated
+    Copyright (C) 2009 and onward Cockos Incorporated
 
-    PathSync is free software; you can redistribute it and/or modify
+    SnapEase is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 
-    PathSync is distributed in the hope that it will be useful,
+    SnapEase is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with PathSync; if not, write to the Free Software
+    along with SnapEase; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
@@ -176,6 +176,8 @@ bool importImageListFromFile(const char *fn, bool addToCurrent)
               rec->m_bchsv[3] = (float)lp.gettoken_float(13);
               rec->m_bchsv[4] = (float)lp.gettoken_float(14);
             }
+            if (lp.getnumtokens() > 15) rec->m_need_rotchk = !!lp.gettoken_int(15);
+            else rec->m_need_rotchk = false;
 
             rec->UpdateButtonStates();
 
@@ -255,7 +257,7 @@ bool saveImageListToFile(const char *fn)
     make_fn_relative(leadpath.Get(),rec->m_fn.Get(),buf,sizeof(buf));
     makeEscapedConfigString(rec->m_outname.Get(),&tbuf);
 
-    ctx->AddLine("%s \"%s\" %s %d %d %d %d %d %d %d %f %f %f %f %f",
+    ctx->AddLine("%s \"%s\" %s %d %d %d %d %d %d %d %f %f %f %f %f %d",
         rec == g_fullmode_item ? "IMAGE_FULL" : "IMAGE", 
         buf,
         tbuf.Get(),
@@ -270,7 +272,8 @@ bool saveImageListToFile(const char *fn)
         rec->m_bchsv[1],
         rec->m_bchsv[2],
         rec->m_bchsv[3],
-        rec->m_bchsv[4]
+        rec->m_bchsv[4],
+        rec->m_need_rotchk
         );
         
   }

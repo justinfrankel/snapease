@@ -1,20 +1,20 @@
 /*
     SnapEase
     imagerecord.cpp -- image thumbnail/button/info/etc entry implementation
-    Copyright (C) 2009-2013  Cockos Incorporated
+    Copyright (C) 2009 and onward Cockos Incorporated
 
-    PathSync is free software; you can redistribute it and/or modify
+    SnapEase is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 
-    PathSync is distributed in the hope that it will be useful,
+    SnapEase is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with PathSync; if not, write to the Free Software
+    along with SnapEase; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
@@ -261,6 +261,7 @@ ImageRecord::ImageRecord(const char *fn)
   m_fullimage=0;
   memset(m_bchsv,0,sizeof(m_bchsv));
   m_bw=false;
+  m_need_rotchk = true;
   m_rot=0;
   m_state=IR_STATE_NEEDLOAD;
   m_preview_image=NULL;
@@ -341,6 +342,7 @@ ImageRecord *ImageRecord ::Duplicate()
   rec->m_srcimage_h=m_srcimage_h;
   memcpy(rec->m_bchsv,m_bchsv,sizeof(m_bchsv));
   rec->m_bw = m_bw;
+  rec->m_need_rotchk = m_need_rotchk;
   rec->m_rot=m_rot;
   rec->m_croprect=m_croprect;
 

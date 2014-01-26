@@ -1,20 +1,20 @@
 /*
     SnapEase
     decode_thread.cpp -- background image loading thread
-    Copyright (C) 2009-2010  Cockos Incorporated
+    Copyright (C) 2009 and onward  Cockos Incorporated
 
-    PathSync is free software; you can redistribute it and/or modify
+    SnapEase is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
 
-    PathSync is distributed in the hope that it will be useful,
+    SnapEase is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with PathSync; if not, write to the Free Software
+    along with SnapEase; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
@@ -94,6 +94,121 @@ public:
   int last_listsize;
   int scanpos;
 };
+
+static unsigned int __exif_getint(const unsigned char *buf, int sz, unsigned char byteorder)
+{
+  unsigned int res = 0;
+  if (byteorder == 'M')
+  {
+    while (sz--) res = (res << 8) + *buf++;
+  }
+  else 
+  {
+    int sh = 0;
+    while (sz--)
+    {
+      res += *buf++ << sh;
+      sh += 8;
+    }
+  }
+  return res;
+}
+static bool __exif_process_dir(const unsigned char *base, int len, const unsigned char *cur, unsigned char byteorder, char *rotOut)
+{
+  int nument = __exif_getint(cur, 2, byteorder);
+  if (cur + 2 + nument * 12 > base + len) return false;
+  cur += 2;
+  while (nument-- > 0)
+  {
+    const int tag = __exif_getint(cur, 2, byteorder);
+    const int fmt = __exif_getint(cur + 2, 2, byteorder);
+    const int comp = __exif_getint(cur + 4, 4, byteorder);
+    const unsigned char *val = cur + 8;
+
+    const char bpf[] = { 1, 1, 2, 4, 8, 1, 1, 2, 4, 8, 4, 8 };
+    if (!fmt || fmt >= sizeof(bpf)-1) return false; // illegal format
+
+    const int bc = bpf[fmt - 1] * comp;
+    if (bc > 4)
+    {
+      val = base + __exif_getint(val, 4, byteorder);
+      if (val < base || val + bc > base + len) return false; // out of range
+    }
+    if (tag == 0x0112) // orientation
+    {
+      int rdsz = 1;
+      if (fmt == 3 || fmt == 8) rdsz = 2;
+      else if (fmt == 4 || fmt == 9) rdsz = 4;
+      else return false;
+
+      const int rot = __exif_getint(val, rdsz, byteorder);
+      if (rot == 8) *rotOut = 3;
+      else if (rot == 3) *rotOut = 2;
+      else if (rot == 6) *rotOut = 1;
+
+      return true;
+    }
+    if (tag == 0x8769 || tag == 0xa005)
+    {
+      const unsigned char *d = base + __exif_getint(val, 4, byteorder);
+      if (d >= base && d < base + len)
+        if (__exif_process_dir(base, len, d, byteorder, rotOut)) return true;
+    }
+    
+    cur += 12;
+  }
+  return false;
+}
+
+static bool __exif_process_tag(const unsigned char *buf, int buflen, char *rotOut)
+{
+  const unsigned char sig[] = { 0x45, 0x78, 0x69, 0x66, 0x00, 0x00 };
+  unsigned char byteorder = buf[6];
+  if (!memcmp(sig, buf, 6) &&
+    buf[7] == byteorder &&
+    (byteorder == 'M' || byteorder == 'I') &&
+    __exif_getint(buf + 8, 2, byteorder) == 0x2a &&
+    __exif_getint(buf + 10, 4, byteorder) == 0x8)
+  {
+    return __exif_process_dir(buf + 6, buflen - 4, buf + 14, byteorder, rotOut);
+  }
+  return false;
+}
+
+static char GetRotationForImage(const char *fn)
+{
+  FILE *fp = fopenUTF8(fn, "rb");
+  if (!fp) return 0;
+  char ret = 0;
+  if (fgetc(fp) == 0xff && fgetc(fp) == 0xd8)
+  {
+    int cnt;
+    for (cnt = 0; cnt < 3; cnt++)
+    {
+      int scan;
+      int type;
+      for (scan = 0; scan < 7 && 0xff == (type = fgetc(fp)); scan++);
+      if (type == 0xff || type == 0xda || type == 0xd9) break;
+      int l = fgetc(fp) << 8;
+      l += fgetc(fp);
+      l -= 2;
+      if (l < 0) break;
+      if (type == 0xe1 && l > 16)
+      {
+        unsigned char buf[65534];
+        if (fread(buf, 1, l, fp) != l) break;
+
+        if (__exif_process_tag(buf, l, &ret)) break;
+      }
+      else
+        fseek(fp, l, SEEK_CUR);
+    }
+  }
+
+  fclose(fp);
+  return ret;
+}
+
 
 static int RunWork(DecodeThreadContext &ctx)
 {
@@ -206,6 +321,8 @@ static int RunWork(DecodeThreadContext &ctx)
         rec->m_state=ImageRecord::IR_STATE_DECODING;
         ctx.curfn.Set(rec->m_fn.Get());
 
+        const bool calc_rot = rec->m_need_rotchk;
+        char calculated_rot = 0;
         g_DecodeDidSomething=true;
 
         g_images_mutex.Leave();
@@ -214,7 +331,11 @@ static int RunWork(DecodeThreadContext &ctx)
         delete bmDel;
 
         // load/process image
-        bool success = DoProcessBitmap(ctx.bmOut, ctx.curfn.Get(),&ctx.bm);
+        const bool success = DoProcessBitmap(ctx.bmOut, ctx.curfn.Get(),&ctx.bm);
+        if (success)
+        {
+          calculated_rot = GetRotationForImage(ctx.curfn.Get());
+        }
 
         didProc=true;
 
@@ -222,6 +343,11 @@ static int RunWork(DecodeThreadContext &ctx)
 
         if (g_images.Find(rec)>=0 && rec->m_state == ImageRecord::IR_STATE_DECODING)
         {
+          if (rec->m_need_rotchk && calc_rot)
+          {
+            rec->m_need_rotchk = false;
+            rec->m_rot = calculated_rot;
+          }
           rec->m_srcimage_w = ctx.bm.getWidth();
           rec->m_srcimage_h = ctx.bm.getHeight();
           if (!success) rec->m_state = ImageRecord::IR_STATE_ERROR;
