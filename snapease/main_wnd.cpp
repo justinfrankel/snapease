@@ -616,11 +616,6 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
 
     return 0;
-    case WM_INITMENU:
-      CheckMenuItem((HMENU)wParam, ID_SMP, g_config_smp ? MF_CHECKED : MF_UNCHECKED);
-      CheckMenuItem((HMENU)wParam, ID_STATUS_LINE, g_config_statusline ? MF_CHECKED : MF_UNCHECKED);
-
-    break;
     case WM_DESTROY:
 
       DecodeThread_Quit();
@@ -746,6 +741,8 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         HMENU hm=(HMENU)wParam;
         EnableMenuItem(hm,ID_SAVE,MF_BYCOMMAND|(g_imagelist_fn.Get()[0]? MF_ENABLED:MF_GRAYED));
         EnableMenuItem(hm,ID_EXPORT,MF_BYCOMMAND|(g_images.GetSize()? MF_ENABLED:MF_GRAYED));
+        CheckMenuItem(hm, ID_SMP, g_config_smp ? MF_CHECKED : MF_UNCHECKED);
+        CheckMenuItem(hm, ID_STATUS_LINE, g_config_statusline ? MF_CHECKED : MF_UNCHECKED);
       }
     break;
 #ifdef _WIN32

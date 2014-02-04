@@ -20,6 +20,10 @@
 
 #include "main.h"
 
+#ifdef __APPLE__
+#import <Carbon/Carbon.h>
+#endif
+
 #include "imagerecord.h"
 
 #include "../WDL/lice/lice.h"
@@ -254,13 +258,13 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode)
         if (!ctx.bmOut) ctx.bmOut = new LICE_MemBitmap;
 
         bool suc = LoadFullBitmap(ctx.bmOut,ctx.curfn.Get());
-        if (suc) calculated_rot = GetRotationForImage(ctx.curfn.Get());
+        if (suc && calc_rot) calculated_rot = GetRotationForImage(ctx.curfn.Get());
 
         g_images_mutex.Enter();
 
         if (suc && g_images.Find(it)>=0 && !strcmp(it->m_fn.Get(),ctx.curfn.Get()))
         {
-          if (it->m_need_rotchk && calculated_rot)
+          if (it->m_need_rotchk && calc_rot)
           {
             it->m_rot = calculated_rot;
             it->m_need_rotchk = false;
@@ -346,7 +350,7 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode)
 
         // load/process image
         const bool success = DoProcessBitmap(ctx.bmOut, ctx.curfn.Get(),&ctx.bm);
-        if (success)
+        if (success && calc_rot)
         {
           calculated_rot = GetRotationForImage(ctx.curfn.Get());
         }
