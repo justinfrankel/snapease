@@ -65,8 +65,8 @@ public:
   bool ProcessRect(LICE_IBitmap *destimage, int x, int y, int w, int h);
   ///
 
-  WDL_String m_fn;
-  WDL_String m_outname;
+  WDL_FastString m_fn;
+  WDL_FastString m_outname;
 
   enum { IR_STATE_NEEDLOAD=0, IR_STATE_DECODING, IR_STATE_LOADED, IR_STATE_ERROR };
 

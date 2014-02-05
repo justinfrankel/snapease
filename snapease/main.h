@@ -29,8 +29,8 @@
 class ImageRecord;
 
 extern HINSTANCE g_hInst;
-extern WDL_String g_ini_file;
-extern WDL_String g_list_path;
+extern WDL_FastString g_ini_file;
+extern WDL_FastString g_list_path;
 extern char g_exepath[4096];
 extern HWND g_hwnd;
 
@@ -88,7 +88,7 @@ void UpdateCaption();
 void AddImageRec(ImageRecord *rec, int idx=-1);
 
 extern bool g_imagelist_fn_dirty; // need save
-extern WDL_String g_imagelist_fn;
+extern WDL_FastString g_imagelist_fn;
 
 void LoadImageList(bool addToCurrent);
 bool SaveImageList(bool forceSaveAs);

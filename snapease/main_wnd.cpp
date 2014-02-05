@@ -49,8 +49,8 @@
 
 #include "resource.h"
 
-WDL_String g_ini_file;
-WDL_String g_list_path;
+WDL_FastString g_ini_file;
+WDL_FastString g_list_path;
 
 
 WDL_PtrList<ImageRecord> g_images;
@@ -402,7 +402,8 @@ void SetMainScrollPosition(float pos, int relative) // relative=1 for lines, 2 f
     if (relative == 2) pos *= (int)si.nPage;
     pos += si.nPos;
 
-    if (pos > si.nMax-(int)si.nPage) pos = si.nMax-(int)si.nPage;
+    const float mv = (float) (si.nMax - (int)si.nPage);
+    if (pos > mv) pos = mv;
     if (pos < 0) pos = 0;
   }
   if (pos != g_vwnd_scrollpos)
@@ -431,7 +432,7 @@ void EnsureImageRecVisible(ImageRecord *rec)
     else if (cr.top < r.top) pos -= r.top-cr.top;
 
     if (pos<0)pos=0;
-    SetMainScrollPosition(pos);
+    SetMainScrollPosition((float)pos);
     
     // do any necessary scrolling
   }
@@ -479,8 +480,8 @@ static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
     yo += g_lastSplashRect.top;
     if (bm) 
     {
-      float xsc = 1.0/splash->getWidth();
-      float ysc = 1.0/splash->getHeight();
+      float xsc = 1.0f/splash->getWidth();
+      float ysc = 1.0f/splash->getHeight();
 
       static float a[9]={0,};
       int x;
@@ -488,7 +489,7 @@ static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
       
       t += ((rand()+GetTickCount()/10000)%100)/1000.0;
       for(x=0;x<9;x++)
-        a[x]=a[x]*0.9 + 0.1 * ((0.5+sin(t*(0.2*x+0.2)))*0.3 - ((x/3)&1)*0.2);
+        a[x]=(float) (a[x]*0.9 + 0.1 * ((0.5+sin(t*(0.2*x+0.2)))*0.3 - ((x/3)&1)*0.2));
       
       LICE_GradRect(bm,xo,yo,splash->getWidth(),splash->getHeight(),a[6],a[7],a[8],1,   a[0]*xsc,a[1]*xsc,a[2]*xsc,0*xsc,a[3]*ysc,a[4]*ysc,a[5]*ysc,0*ysc,LICE_BLIT_MODE_COPY);
 
@@ -565,10 +566,9 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       {
         g_list_path.Set(g_ini_file.Get());
-        char *p=g_list_path.Get();
-        while (*p) p++;
-        while (p > g_list_path.Get() && *p != '\\' && *p != '/') p--;
-        *p=0;
+        int p = g_list_path.GetLength()-1;
+        while (p > 0 && g_list_path.Get()[p] != '\\' && g_list_path.Get()[p] != '/') p--;
+        g_list_path.SetLen(p);
 
         g_list_path.Append(PREF_DIRSTR "lists");
         CreateDirectory(g_list_path.Get(),NULL);
@@ -1039,7 +1039,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         if (!g_vwnd.OnMouseWheel(p.x, p.y, -(short)HIWORD(wParam)/120))
         {
           int l=(short)HIWORD(wParam);
-          SetMainScrollPosition(-l/400.0,2);
+          SetMainScrollPosition(-l/400.0f,2);
         }
       }
       else
@@ -1078,7 +1078,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         if (si.nPos > si.nMax-(int)si.nPage) si.nPos = si.nMax-(int)si.nPage;
         if (si.nPos < 0) si.nPos = 0;
-        SetMainScrollPosition(si.nPos);
+        SetMainScrollPosition((float)si.nPos);
       }
     return 0;
     case WM_DROPFILES:
@@ -1289,7 +1289,7 @@ int MainProcessMessage(MSG *msg)
       {
         if (msg->wParam == VK_NEXT || msg->wParam == VK_PRIOR)
         {
-          SetMainScrollPosition(msg->wParam == VK_NEXT ? 0.5 : -0.5, 2);
+          SetMainScrollPosition(msg->wParam == VK_NEXT ? 0.5f : -0.5f, 2);
           return 1;
         }
       }

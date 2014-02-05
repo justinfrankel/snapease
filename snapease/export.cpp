@@ -32,9 +32,6 @@
 
 #define MAX_RECENT_DIRS 10
 
-#ifndef BIF_NEWDIALOGSTYLE
-#define BIF_NEWDIALOGSTYLE 0x40
-#endif
 #ifdef _WIN32
 #include <shlobj.h>
 #include <commctrl.h>
@@ -54,6 +51,10 @@ static int WINAPI BrowseCallbackProc( HWND hwnd, UINT uMsg, LPARAM lParam, LPARA
 	return 0;
 }
 #endif
+#ifndef BIF_NEWDIALOGSTYLE
+#define BIF_NEWDIALOGSTYLE 0x40
+#endif
+
 // add uploaders here
 HWND CreateGenericPostUploaderConfig(HWND hwndPar);
 IFileUploader *CreateGenericPostUploader();
@@ -95,7 +96,7 @@ static void PositionChildWindow(HWND hwndDlg, HWND hwnd, int frameid)
 }
 
 
-static void FNFilterAppend(WDL_String *out, const char *in, int inlen)
+static void FNFilterAppend(WDL_FastString *out, const char *in, int inlen)
 {
   while (inlen-->0 && *in)
   {    
@@ -120,7 +121,7 @@ static void FNFilterAppend(WDL_String *out, const char *in, int inlen)
 static void DoImageOutputFileCalculation(const char *infn, const char *outname, int index, 
                                   const char *imagelistname, const char *diskoutpath, 
                                   const char *fmt,
-                                  WDL_String *nameOut)
+                                  WDL_FastString *nameOut)
 {
   nameOut->Set("");
   while (*fmt)
@@ -130,7 +131,7 @@ static void DoImageOutputFileCalculation(const char *infn, const char *outname, 
       case '*':
       case '<':
         {
-          int oldsz = strlen(nameOut->Get());
+          const int oldsz = nameOut->GetLength();
 
           // add filename portion
           {
@@ -139,15 +140,13 @@ static void DoImageOutputFileCalculation(const char *infn, const char *outname, 
             while (*p) p++;
             while (p >= srcstr && *p != '\\' && *p != '/') p--;
             p++;
-            FNFilterAppend(nameOut,p,strlen(p));
+            FNFilterAppend(nameOut,p,(int)strlen(p));
           }
           
           // remove extension
-          char *p=nameOut->Get();
-          char *st = nameOut->Get() + oldsz;
-          while (*p) p++;
-          while (p > st && *p != '.') p--;
-          if (p > st) *p=0;
+          int i = nameOut->GetLength();
+          while (i > oldsz && nameOut->Get()[i] != '.') i--;
+          if (i > oldsz) nameOut->SetLen(i);
         }
       break;
       case '>':
@@ -157,7 +156,7 @@ static void DoImageOutputFileCalculation(const char *infn, const char *outname, 
           {
             if (*p == '/' || *p == '\\')
             {
-              WDL_String temp(diskoutpath);
+              WDL_FastString temp(diskoutpath);
               temp.Append(PREF_DIRSTR);
               temp.Append(nameOut->Get());
               CreateDirectory(temp.Get(),NULL);                       
@@ -172,7 +171,7 @@ static void DoImageOutputFileCalculation(const char *infn, const char *outname, 
       case '/':
         if (diskoutpath[0])
         {
-          WDL_String temp(diskoutpath);
+          WDL_FastString temp(diskoutpath);
           temp.Append(PREF_DIRSTR);
           temp.Append(nameOut->Get());
           CreateDirectory(temp.Get(),NULL);          
@@ -245,15 +244,15 @@ private:
 
   IFileUploader *m_uploader;
 
-  WDL_String m_messages;
+  WDL_FastString m_messages;
 
   int m_total_files_out;
   WDL_INT64 m_total_bytes_out;
 
 
   // cur state
-  WDL_String m_outname; // without any leading path
-  WDL_String m_tmpfn;
+  WDL_FastString m_outname; // without any leading path
+  WDL_FastString m_tmpfn;
 
 
 };
@@ -324,7 +323,7 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
     {
       int x;
       const int maxtries=1000;
-      WDL_String s;
+      WDL_FastString s;
     
       for (x=0;x<maxtries;x++)
       {
@@ -512,7 +511,7 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
     m_uploader=0;
     if (m_disk_out[0] && !m_preventDiskOutput)
     {
-      WDL_String s;
+      WDL_FastString s;
       s.Set(m_disk_out);
       s.Append(PREF_DIRSTR);
       s.Append(m_outname.Get());
@@ -715,7 +714,7 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
               DestroyWindow(s_uploaderCfg);
               s_uploaderCfg=0;
             }
-            int mode = SendDlgItemMessage(hwndDlg,IDC_COMBO3,CB_GETCURSEL,0,0);
+            const int mode = (int)SendDlgItemMessage(hwndDlg,IDC_COMBO3,CB_GETCURSEL,0,0);
             s_uploaderCfg = CreateUploaderConfig(hwndDlg,mode);
 
             if (s_uploaderCfg) PositionChildWindow(hwndDlg,s_uploaderCfg,IDC_RECT);
@@ -725,7 +724,7 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
         case IDC_COMBO2:
           if (HIWORD(wParam) == CBN_SELCHANGE) 
           {
-            int fmt = SendDlgItemMessage(hwndDlg,IDC_COMBO2,CB_GETCURSEL,0,0);
+            const int fmt = (int)SendDlgItemMessage(hwndDlg,IDC_COMBO2,CB_GETCURSEL,0,0);
             ShowWindow(GetDlgItem(hwndDlg,IDC_JPGLBL),fmt==FORMAT_JPG);
             ShowWindow(GetDlgItem(hwndDlg,IDC_EDIT3),fmt==FORMAT_JPG);
             ShowWindow(GetDlgItem(hwndDlg,IDC_CHECK5),fmt==FORMAT_JPG);
@@ -738,7 +737,7 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
         case IDOK:
 
           {
-            int a = SendDlgItemMessage(hwndDlg,IDC_COMBO4,CB_GETCURSEL,0,0);
+            const int a = (int)SendDlgItemMessage(hwndDlg,IDC_COMBO4,CB_GETCURSEL,0,0);
             if (a>=0)
             {
               exportConfig.m_overwrite = a;
@@ -765,7 +764,7 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
               exportConfig.m_constrain_h = 0;
             }
 
-            exportConfig.m_fmt = SendDlgItemMessage(hwndDlg,IDC_COMBO2,CB_GETCURSEL,0,0);
+            exportConfig.m_fmt = (int)SendDlgItemMessage(hwndDlg,IDC_COMBO2,CB_GETCURSEL,0,0);
             if (exportConfig.m_fmt>=0) config_writeint("export_fmt",exportConfig.m_fmt);
 
             config_writeint("export_jpg_baseline",exportConfig.m_jpg_baseline = !!IsDlgButtonChecked(hwndDlg,IDC_CHECK5));
@@ -837,7 +836,7 @@ static WDL_DLGRET ExportConfigDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam,
 
             config_writeint("export_upload",isUp= !!IsDlgButtonChecked(hwndDlg,IDC_CHECK8));
             
-            int mode = SendDlgItemMessage(hwndDlg,IDC_COMBO3,CB_GETCURSEL,0,0);            
+            const int mode = (int)SendDlgItemMessage(hwndDlg,IDC_COMBO3,CB_GETCURSEL,0,0);            
             if (mode>=0) config_writeint("export_uploadmethod",mode);
               
             if (s_uploaderCfg) SendMessage(s_uploaderCfg,WM_COMMAND,IDOK,0);

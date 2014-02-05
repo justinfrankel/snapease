@@ -80,7 +80,7 @@ static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *w
   {
     bmOut->resize(outw,outh);
 
-    LICE_ScaledBlit(bmOut,workBM,0,0,outw,outh,0,0,workBM->getWidth(),workBM->getHeight(),1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
+    LICE_ScaledBlit(bmOut,workBM,0,0,outw,outh,0,0,(float)workBM->getWidth(),(float)workBM->getHeight(),1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
     return true;
   }
   return false;
@@ -92,7 +92,7 @@ public:
   DecodeThreadContext() { bmOut=NULL; }
   ~DecodeThreadContext() { delete bmOut; }
   LICE_MemBitmap bm;
-  WDL_String curfn;
+  WDL_FastString curfn;
   LICE_IBitmap *bmOut;
   int last_visstart;
   int last_listsize;

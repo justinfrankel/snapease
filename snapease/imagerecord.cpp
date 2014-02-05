@@ -369,16 +369,14 @@ void ImageRecord::SetIsFullscreen(bool isFS)
 void ImageRecord::SetDefaultTitle()
 {
   {
-    const char *p = m_fn.Get();
-    while (*p) p++;
+    const char *p = m_fn.Get()+m_fn.GetLength();
     while (p >= m_fn.Get() && *p != '\\' && *p != '/') p--;
     m_outname.Set(++p);
   }
   {
-    char *p = m_outname.Get();
-    while (*p) p++;
-    while (p >= m_outname.Get() && *p != '.') p--;
-    if (p > m_outname.Get()) *p=0;
+    int p = m_outname.GetLength()-1;
+    while (p >= 0 && m_outname.Get()[p] != '.') p--;
+    if (p > 0) m_outname.SetLen(p);
   }
 }
 
@@ -802,7 +800,7 @@ bool ImageRecord::GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutS
       return true;
       case BUTTONID_CROP:
         {
-          WDL_String s;
+          WDL_FastString s;
           s.Set(g_edit_mode==EDIT_MODE_CROP ? "Leave crop mode" : "Crop");
           char buf[512];
           GetSizeInfoString(buf,sizeof(buf));
@@ -841,7 +839,7 @@ bool ImageRecord::GetToolTipString(int xpos, int ypos, char *bufOut, int bufOutS
     POINT p ={xpos,ypos};
     if (PtInRect(&m_lastlbl_rect,p))
     {
-      WDL_String tmp;
+      WDL_FastString tmp;
       char buf[512];
       GetSizeInfoString(buf,sizeof(buf));
       tmp.SetFormatted(1024,"Image #%d/%d [%s], source filename:",g_images.Find(this)+1,g_images.GetSize(),buf);

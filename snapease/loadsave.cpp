@@ -24,7 +24,7 @@
 #include "../WDL/lineparse.h"
 
 bool g_imagelist_fn_dirty; // need save
-WDL_String g_imagelist_fn;
+WDL_FastString g_imagelist_fn;
 static const char *imagelist_extlist="Snapease image lists (*.SnapeaseList)\0*.SnapeaseList\0All Files\0*.*\0\0"; 
 
 
@@ -76,7 +76,7 @@ bool file_exists(const char *filename)
 
 static void make_fn_relative(const char *leadpath, const char *in, char *out, int outlen) // leadpath must NOT have any trailing \\ or /
 {
-  unsigned int pdlen=0;
+  size_t pdlen=0;
   if (1)
   {
     pdlen=strlen(leadpath);
@@ -99,7 +99,7 @@ static void resolve_fn_fromrelative(const char *leadpath, const char *in, char *
     
     ) 
   {
-    WDL_String tmp(leadpath);
+    WDL_FastString tmp(leadpath);
     tmp.Append(PREF_DIRSTR);
     tmp.Append(in);
     if (file_exists(tmp.Get()))
@@ -118,12 +118,11 @@ bool importImageListFromFile(const char *fn, bool addToCurrent)
   ProjectStateContext *ctx = ProjectCreateFileRead(fn);
   if (!ctx) return false;
 
-  WDL_String leadpath(fn);
+  WDL_FastString leadpath(fn);
   {
-    char *p=leadpath.Get();
-    while (*p) p++;
-    while (p > leadpath.Get() && *p != '\\' && *p != '/') p--;
-    p[0]=0;
+    int p = leadpath.GetLength();
+    while (p > 0 && leadpath.Get()[p] != '\\' && leadpath.Get()[p] != '/') p--;
+    leadpath.SetLen(p);
   }
 
 
@@ -239,12 +238,11 @@ bool saveImageListToFile(const char *fn)
   ProjectStateContext *ctx = ProjectCreateFileWrite(fn);
   if (!ctx) return false;
 
-  WDL_String leadpath(fn);
+  WDL_FastString leadpath(fn);
   {
-    char *p=leadpath.Get();
-    while (*p) p++;
-    while (p > leadpath.Get() && *p != '\\' && *p != '/') p--;
-    p[0]=0;
+    int p = leadpath.GetLength();
+    while (p > 0 && leadpath.Get()[p] != '\\' && leadpath.Get()[p] != '/') p--;
+    leadpath.SetLen(p);
   }
 
   int x;
@@ -394,20 +392,18 @@ void SetImageListIsDirty(bool isDirty)
 
 void UpdateCaption()
 {
-  WDL_String tmp;
-  char *p=g_imagelist_fn.Get();
-  if (p[0])
+  WDL_FastString tmp;
+  if (g_imagelist_fn.GetLength())
   {
-    while (*p) p++;
-    while (*p != '/' && *p != '\\' && p >= g_imagelist_fn.Get()) p--;
-    tmp.Set(++p);
-    p=tmp.Get();
-    while (*p) p++;
-    while (*p != '.' && p >= tmp.Get()) p--;
-    if (p > tmp.Get()) *p=0;
+    int p = g_imagelist_fn.GetLength();
+    while (p >= 0 && g_imagelist_fn.Get()[p] != '/' && g_imagelist_fn.Get()[p] != '\\') p--;
+    tmp.Set(g_imagelist_fn.Get() + p + 1);
+
+    p=tmp.GetLength();
+    while (p >= 0 && tmp.Get()[p] != '.') p--;
+    if (p > 0) tmp.SetLen(p);
 
     if (IsImageListDirty()) tmp.Append(" [modified]");
-
   }
   else
   {
