@@ -26,6 +26,7 @@
 #include "uploader.h"
 
 #include "../WDL/lice/lice.h"
+#include "../WDL/wdlcstring.h"
 
 #define FORMAT_JPG 0
 #define FORMAT_PNG 1
@@ -136,10 +137,7 @@ static void DoImageOutputFileCalculation(const char *infn, const char *outname, 
           // add filename portion
           {
             const char *srcstr = *fmt == '<' ? infn : imagelistname;
-            const char *p = srcstr;
-            while (*p) p++;
-            while (p >= srcstr && *p != '\\' && *p != '/') p--;
-            p++;
+            const char *p = WDL_get_filepart(srcstr);
             FNFilterAppend(nameOut,p,(int)strlen(p));
           }
           

@@ -379,16 +379,8 @@ void ImageRecord::SetIsFullscreen(bool isFS)
 
 void ImageRecord::SetDefaultTitle()
 {
-  {
-    const char *p = m_fn.Get()+m_fn.GetLength();
-    while (p >= m_fn.Get() && *p != '\\' && *p != '/') p--;
-    m_outname.Set(++p);
-  }
-  {
-    int p = m_outname.GetLength()-1;
-    while (p >= 0 && m_outname.Get()[p] != '.') p--;
-    if (p > 0) m_outname.SetLen(p);
-  }
+  m_outname.Set(m_fn.get_filepart());
+  m_outname.remove_fileext();
 }
 
 

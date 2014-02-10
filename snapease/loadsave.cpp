@@ -81,7 +81,7 @@ static void make_fn_relative(const char *leadpath, const char *in, char *out, in
   {
     pdlen=strlen(leadpath);
 
-    if (pdlen && (strlen(in)<=pdlen || strnicmp(leadpath,in,pdlen) || (in[pdlen] != '\\' && in[pdlen] != '/'))) pdlen=0;
+    if (pdlen && (strlen(in)<=pdlen || strnicmp(leadpath,in,pdlen) || !WDL_IS_DIRCHAR(in[pdlen]))) pdlen=0;
   }
 
   lstrcpyn(out,in+pdlen,outlen);
@@ -119,12 +119,7 @@ bool importImageListFromFile(const char *fn, bool addToCurrent)
   if (!ctx) return false;
 
   WDL_FastString leadpath(fn);
-  {
-    int p = leadpath.GetLength();
-    while (p > 0 && leadpath.Get()[p] != '\\' && leadpath.Get()[p] != '/') p--;
-    leadpath.SetLen(p);
-  }
-
+  leadpath.remove_filepart();
 
   bool cstate=false;
   LineParser lp(cstate);
@@ -239,11 +234,7 @@ bool saveImageListToFile(const char *fn)
   if (!ctx) return false;
 
   WDL_FastString leadpath(fn);
-  {
-    int p = leadpath.GetLength();
-    while (p > 0 && leadpath.Get()[p] != '\\' && leadpath.Get()[p] != '/') p--;
-    leadpath.SetLen(p);
-  }
+  leadpath.remove_filepart();
 
   int x;
   ctx->AddLine("<SNAPEASE_IMAGELIST 0.0");
@@ -393,16 +384,11 @@ void SetImageListIsDirty(bool isDirty)
 
 void UpdateCaption()
 {
-  WDL_FastString tmp;
+  static WDL_FastString tmp;
   if (g_imagelist_fn.GetLength())
   {
-    int p = g_imagelist_fn.GetLength();
-    while (p >= 0 && g_imagelist_fn.Get()[p] != '/' && g_imagelist_fn.Get()[p] != '\\') p--;
-    tmp.Set(g_imagelist_fn.Get() + p + 1);
-
-    p=tmp.GetLength();
-    while (p >= 0 && tmp.Get()[p] != '.') p--;
-    if (p > 0) tmp.SetLen(p);
+    tmp.Set(g_imagelist_fn.get_filepart());
+    tmp.remove_fileext();
 
     if (IsImageListDirty()) tmp.Append(" [modified]");
   }

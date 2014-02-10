@@ -15,16 +15,8 @@
 
 #include "../WDL/win32_utf8.h"
 
-#ifdef _WIN32
-
-#define PREF_DIRCH '\\'
-#define PREF_DIRSTR "\\"
-
-#else
-#define PREF_DIRCH '/'
-#define PREF_DIRSTR "/"
-
-#endif
+#define PREF_DIRCH WDL_DIRCHAR
+#define PREF_DIRSTR WDL_DIRCHAR_STR
 
 #include "sqlite3.h"
 

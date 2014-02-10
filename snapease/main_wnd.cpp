@@ -622,17 +622,12 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       
       sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
 
-      {
-        g_list_path.Set(g_ini_file.Get());
-        int p = g_list_path.GetLength()-1;
-        while (p > 0 && g_list_path.Get()[p] != '\\' && g_list_path.Get()[p] != '/') p--;
-        g_list_path.SetLen(p);
+      g_list_path.Set(g_ini_file.Get());
+      g_list_path.remove_filepart();
 
-        g_list_path.Append(PREF_DIRSTR "lists");
-        CreateDirectory(g_list_path.Get(),NULL);
+      g_list_path.Append(PREF_DIRSTR "lists");
+      CreateDirectory(g_list_path.Get(),NULL);
     
-      }
-
       g_hwnd = hwndDlg;
       g_vwnd.SetRealParent(hwndDlg);
       
@@ -906,14 +901,11 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if (temp)
           #endif     
             {
-              WDL_String path;
+              WDL_FastString path;
               path.Set(temp); 
               if (!temp[strlen(temp)+1]) // if single file, remove filename portion
               {
-                char *p=path.Get();
-                while (*p) p++;
-                while (p > path.Get() && *p != '\\' && *p != '/') p--;
-                *p=0;
+                path.remove_filepart();
               }            
               config_writestr("cwd",path.Get());
               lstrcpyn(cwd,path.Get(),sizeof(cwd));

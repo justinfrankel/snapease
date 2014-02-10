@@ -24,6 +24,8 @@
 #include <commctrl.h>
 #endif
 
+#include "../WDL/wdlcstring.h"
+
 char g_exepath[4096];
 HINSTANCE g_hInst;
 
@@ -39,12 +41,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
   WDL_VWnd_regHelperClass(mainClassName);
 
 
-  {
-    GetModuleFileName(g_hInst,g_exepath,sizeof(g_exepath));
-    char *p=g_exepath;
-    while (*p) p++;
-    while (p > g_exepath && *p != '\\') p--; *p=0;
-  }
+  GetModuleFileName(g_hInst,g_exepath,sizeof(g_exepath));
+  WDL_remove_filepart(g_exepath);
+
   g_ini_file.Set(g_exepath);
   g_ini_file.Append("\\snapease.ini");
 
