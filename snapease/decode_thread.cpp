@@ -558,9 +558,11 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode, sqlite3 *databa
         if (dist < 0) dist = -dist;
         int x;
         const int max1 = vis_start - dist - 2;        
-        if (g_ram_use_preview >= g_config_maxthumbnail) for (x = 0; x < max1; x ++)
-        {
-          ImageRecord *tr=g_images.Get(x);
+        const int max2 = vis_start + dist + 2;
+        if (g_ram_use_preview >= g_config_maxthumbnail) for (x = 0; x <max1 || g_images.GetSize()-1-(x/2) > max2; x ++)
+        {          
+          ImageRecord *tr = x < max1 ? g_images.Get(x) : NULL;
+          ImageRecord *tr1 = tr;
           if (tr && tr->m_preview_image && tr->m_state == ImageRecord::IR_STATE_LOADED)
           {
             g_ram_use_preview -= get_lice_bitmap_size(tr->m_preview_image);
@@ -571,8 +573,22 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode, sqlite3 *databa
 
             if (g_ram_use_preview < g_config_maxthumbnail) break;
           }
+          if (x & 1) continue;
+
+          const int x2 = g_images.GetSize() - 1 - x/2;
+          tr = x2 > max2 ? g_images.Get(x2) : NULL;
+          if (tr && tr->m_preview_image && tr->m_state == ImageRecord::IR_STATE_LOADED)
+          {
+            g_ram_use_preview -= get_lice_bitmap_size(tr->m_preview_image);
+            delete tr->m_preview_image;
+            tr->m_preview_image=0;
+            tr->m_state = ImageRecord::IR_STATE_NEEDLOAD;
+            g_images_cnt_ok--;
+
+            if (g_ram_use_preview < g_config_maxthumbnail) break;
+          }
+          if (!tr && !tr1) break;
         }
-        const int max2 = vis_start + dist + 2;
         if (g_ram_use_preview >= g_config_maxthumbnail) for (x = g_images.GetSize()-1; x > max2; x--)
         {
           ImageRecord *tr=g_images.Get(x);
