@@ -57,6 +57,7 @@ allow entering a list of terms, with tolerances for equality, such as $type $dat
 #include "../WDL/wdlcstring.h"
 
 #include "../WDL/wingui/scrollbar/coolscroll.h"
+#include "../WDL/mergesort.h"
 
 #include "resource.h"
 
@@ -144,7 +145,8 @@ public:
 
 MainWindowVwnd g_vwnd; // owns all children windows
 
-int g_firstvisible_startitem;
+int g_firstvisible_startitem,g_lastvisible_startitem;
+int g_images_listorderrev;
 
 bool g_aboutwindow_open;
 
@@ -276,6 +278,7 @@ int OrganizeWindow(HWND hwndDlg)
           rec->SetPosition(&rr);
 
           g_firstvisible_startitem = max(0,x-5); 
+          g_lastvisible_startitem = min(x + 5, g_images.GetSize() - 1);
         }
         else
         {
@@ -293,6 +296,7 @@ int OrganizeWindow(HWND hwndDlg)
             hadVis=true;
             g_firstvisible_startitem=x;
           }
+          if (rr.top < r.bottom) g_lastvisible_startitem = x;
           rec->SetPosition(&rr);
         }
       }
@@ -575,6 +579,22 @@ static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
       }
     }
   }
+}
+
+static int filenameCompare(const void *a, const void *b)
+{
+  const ImageRecord *r1 = *(const ImageRecord **)a;
+  const ImageRecord *r2 = *(const ImageRecord **)b;
+  return stricmp(r1->m_fn.Get(), r2->m_fn.Get());
+}
+
+static int dateCompare(const void *a, const void *b)
+{
+  const ImageRecord *r1 = *(const ImageRecord **)a;
+  const ImageRecord *r2 = *(const ImageRecord **)b;
+  if (r1->m_file_timestamp < r2->m_file_timestamp) return -1;
+  if (r1->m_file_timestamp > r2->m_file_timestamp) return 1;
+  return 0;
 }
 
 
@@ -977,6 +997,35 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case ID_STATUS_LINE:
           g_config_statusline = !g_config_statusline;
           config_writeint("status", g_config_statusline);
+          InvalidateRect(hwndDlg, NULL, FALSE);
+        break;
+        case ID_SORT_PATH:
+        case ID_SORT_DATE:
+        case ID_SORT_REVERSE:
+          g_images_mutex.Enter();
+          if (LOWORD(wParam) == ID_SORT_REVERSE)
+          {
+            int x;
+            for (x = 0; x < g_images.GetSize() / 2;x++)
+            {
+              ImageRecord *r = g_images.Get(x);
+              ImageRecord *r2 = g_images.Get(g_images.GetSize()-1-x);
+              g_images.Set(x, r2);
+              g_images.Set(g_images.GetSize() - 1 - x, r);
+            }
+          }
+          else
+          {
+            WDL_HeapBuf hb;
+            hb.Resize(sizeof(void *)* g_images.GetSize());
+            WDL_mergesort(g_images.GetList(), g_images.GetSize(), sizeof(void *), LOWORD(wParam) == ID_SORT_PATH ? filenameCompare : dateCompare, (char*)hb.Get());
+          }
+          g_images_mutex.Leave();
+
+          g_images_listorderrev++;
+          SetImageListIsDirty();
+          OrganizeWindow(hwndDlg);
+          if (g_fullmode_item) EnsureImageRecVisible(g_fullmode_item);
           InvalidateRect(hwndDlg, NULL, FALSE);
         break;
       }

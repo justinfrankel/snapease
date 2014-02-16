@@ -162,6 +162,12 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Quit\tCtrl+Q",               ID_QUIT
     END
+    POPUP "&Edit"
+    BEGIN
+    MENUITEM "Sort by path",          ID_SORT_PATH
+    MENUITEM "Sort by date",          ID_SORT_DATE
+    MENUITEM "Reverse list",          ID_SORT_REVERSE
+    END
     POPUP "&Options"
     BEGIN
     MENUITEM "Multiprocessor support",          ID_SMP

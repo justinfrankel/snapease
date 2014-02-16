@@ -52,12 +52,15 @@
 #define ID_STATUS_LINE                  40012
 #define ID_SMP                          40013
 #define ID_CACHE_THUMBNAILS             40014
+#define ID_SORT_PATH                    40015
+#define ID_SORT_DATE                    40016
+#define ID_SORT_REVERSE                 40017
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        117
-#define _APS_NEXT_COMMAND_VALUE         40015
+#define _APS_NEXT_COMMAND_VALUE         40018
 #define _APS_NEXT_CONTROL_VALUE         1021
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

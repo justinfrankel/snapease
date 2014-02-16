@@ -1328,6 +1328,7 @@ void ImageRecord::OnMouseUp(int xpos, int ypos)
               g_images_mutex.Leave();
             }
 
+            g_images_listorderrev++;
             SetImageListIsDirty(true);
 
             UpdateMainWindowWithSizeChanged();

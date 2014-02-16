@@ -323,6 +323,7 @@ public:
   LICE_IBitmap *bmOut;
   int last_visstart;
   int last_listsize;
+  int last_listorderrev;
   int scanpos;
 };
 
@@ -446,11 +447,15 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode, sqlite3 *databa
   int sleepAmt=1;
   g_images_mutex.Enter();
 
-  if (ctx.last_visstart != g_firstvisible_startitem || 
-      ctx.last_listsize != g_images.GetSize())
+  const int vsi = g_firstvisible_startitem;
+  const int vlor = g_images_listorderrev;
+  if (ctx.last_visstart != vsi || 
+      ctx.last_listsize != g_images.GetSize()||
+      ctx.last_listorderrev != vlor)
   {
+    ctx.last_listorderrev = vlor;
     ctx.last_listsize = g_images.GetSize();
-    ctx.last_visstart=g_firstvisible_startitem;
+    ctx.last_visstart=vsi;
     ctx.scanpos=0;
   }
   bool didProc=false;
@@ -533,7 +538,9 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode, sqlite3 *databa
 
 
     const int vis_start = min(max(ctx.last_visstart,0),g_images.GetSize());
-
+    int vis_end = g_lastvisible_startitem;
+    if (vis_end < vis_start) vis_end = vis_start;
+    if (vis_end > g_images.GetSize() - 1) vis_end = g_images.GetSize() - 1;
     int center = vis_start;
 
     if (1)
@@ -558,7 +565,7 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode, sqlite3 *databa
         if (dist < 0) dist = -dist;
         int x;
         const int max1 = vis_start - dist - 2;        
-        const int max2 = vis_start + dist + 2;
+        const int max2 = vis_end + dist + 2;
         if (g_ram_use_preview >= g_config_maxthumbnail) for (x = 0; x <max1 || g_images.GetSize()-1-(x/2) > max2; x ++)
         {          
           ImageRecord *tr = x < max1 ? g_images.Get(x) : NULL;

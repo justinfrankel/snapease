@@ -65,13 +65,14 @@ void DoExportDialog(HWND hwndDlg);
 extern WDL_PtrList<ImageRecord> g_images;
 extern int g_images_cnt_err, g_images_cnt_ok, g_images_statcnt, g_images_cnt_indb;
 extern int g_ram_use_preview, g_ram_use_full, g_ram_use_fullscaled, g_ram_use_fullfinal;
+extern int g_images_listorderrev;
 extern WDL_Mutex g_images_mutex;
 extern ImageRecord *g_fullmode_item;
 
 
 extern int g_config_smp, g_config_statusline,g_config_nodb;
 
-extern int g_firstvisible_startitem;
+extern int g_firstvisible_startitem,g_lastvisible_startitem;
 
 void config_readstr(const char *what, char *out, int outsz);
 int config_readint(const char *what, int def);
