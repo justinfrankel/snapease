@@ -29,7 +29,7 @@ extern int g_edit_mode;
 class ImageRecord : public WDL_VWnd
 {
 public:
-  ImageRecord(const char *srcfn);
+  ImageRecord(const char *srcfn, time_t timestamp=0);
   ~ImageRecord();
 
   ImageRecord *Duplicate();
@@ -125,6 +125,8 @@ public:
   int m_capture_state; 
   
   RECT m_lastlbl_rect; // last rect of text label (for editing)
+
+  time_t m_file_timestamp;
 
   static int sortByFN(const void *a, const void *b)
   {

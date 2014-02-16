@@ -158,7 +158,7 @@ bool importImageListFromFile(const char *fn, bool addToCurrent)
           {
             char resfn[4096];
             resolve_fn_fromrelative(leadpath.Get(),lp.gettoken_str(1),resfn,sizeof(resfn));
-            ImageRecord *rec= new ImageRecord(resfn);
+            ImageRecord *rec= new ImageRecord(resfn, lp.getnumtokens()>16 ? (time_t) lp.gettoken_float(16) : 0);
             rec->m_outname.Set(lp.gettoken_str(2));
             rec->m_bw = !!lp.gettoken_int(3);
             rec->m_rot = lp.gettoken_int(4)&3;
@@ -255,7 +255,7 @@ bool saveImageListToFile(const char *fn)
     make_fn_relative(leadpath.Get(),rec->m_fn.Get(),buf,sizeof(buf));
     makeEscapedConfigString(rec->m_outname.Get(),&tbuf);
 
-    ctx->AddLine("%s \"%s\" %s %d %d %d %d %d %d %d %f %f %f %f %f %d",
+    ctx->AddLine("%s \"%s\" %s %d %d %d %d %d %d %d %f %f %f %f %f %d %.0f",
         rec == g_fullmode_item ? "IMAGE_FULL" : "IMAGE", 
         buf,
         tbuf.Get(),
@@ -271,7 +271,8 @@ bool saveImageListToFile(const char *fn)
         rec->m_bchsv[2],
         rec->m_bchsv[3],
         rec->m_bchsv[4],
-        rec->m_need_rotchk
+        rec->m_need_rotchk,
+        (double)rec->m_file_timestamp
         );
         
   }

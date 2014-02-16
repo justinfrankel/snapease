@@ -247,7 +247,7 @@ static int GetNearestVWndToPoint(WDL_VWnd *par, int x, int y)
   return nearest2;
 }
 
-ImageRecord::ImageRecord(const char *fn)
+ImageRecord::ImageRecord(const char *fn, time_t timestamp)
 {
   memset(&m_lastlbl_rect,0,sizeof(m_lastlbl_rect));
   memset(&m_last_drawrect,0,sizeof(m_last_drawrect));
@@ -270,6 +270,15 @@ ImageRecord::ImageRecord(const char *fn)
   m_fn.Set(fn);
   SetDefaultTitle();
 
+  m_file_timestamp = timestamp;
+  if (!timestamp)
+  {
+    struct stat sb = { 0, };
+    if (!statUTF8(fn,&sb))
+    {
+      m_file_timestamp = sb.st_mtime;
+    }
+  }
   // add our button children
   int x;
   for(x=BUTTONID_BASE;x<BUTTONID_END;x++)
@@ -335,7 +344,7 @@ ImageRecord::~ImageRecord()
 
 ImageRecord *ImageRecord ::Duplicate()
 {
-  ImageRecord  *rec = new ImageRecord(m_fn.Get());
+  ImageRecord  *rec = new ImageRecord(m_fn.Get(),m_file_timestamp);
   rec->m_outname.Set(m_outname.Get());
   if (m_state==IR_STATE_LOADED && m_preview_image)
   {

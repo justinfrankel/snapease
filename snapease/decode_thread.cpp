@@ -68,14 +68,14 @@ bool LoadFullBitmap(LICE_IBitmap *bmOut, const char *fn)
   return success;
 }
 
-static int DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *workBM, char *want_rot_calc, sqlite3 *database, WDL_HeapBuf *workspace, sqlite3_stmt **stmts, int load_mode)
+static int DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *workBM, char *want_rot_calc, 
+                           sqlite3 *database, WDL_HeapBuf *workspace, sqlite3_stmt **stmts, int load_mode, struct stat *statbuf)
 {
   WDL_UINT64 fnhash = WDL_FNV64_IV;
   bool fnhash_valid = false;
   if (database)
   {
-    struct stat sb = { 0, };
-    if (!statUTF8(fn,&sb))
+    if (statbuf)
     {
       const char *p = fn;
       while (*p) p++;
@@ -87,9 +87,9 @@ static int DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *wo
         fnhash = WDL_FNV64(fnhash, &c, 1);
         p++;
       }
-      WDL_INT64 t = sb.st_mtime;
+      WDL_INT64 t = statbuf->st_mtime;
       fnhash = WDL_FNV64(fnhash, (const unsigned char *)&t, sizeof(t));
-      t = sb.st_size;
+      t = statbuf->st_size;
       fnhash = WDL_FNV64(fnhash, (const unsigned char *)&t, sizeof(t));
       fnhash_valid = true;
     }
@@ -193,7 +193,7 @@ static int DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *wo
       }
       if (got_res)
       {
-        return 1;
+        return 2;
       }
     }
   }
@@ -620,15 +620,27 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode, sqlite3 *databa
         if (!ctx.bmOut) ctx.bmOut = new LICE_MemBitmap(0,0,0);
         delete bmDel;
 
-        // load/process image
-        const int success = DoProcessBitmap(ctx.bmOut, ctx.curfn.Get(),&ctx.bm, calc_rot ? &calculated_rot : NULL,database, workspace,stmts,load_mode);
+        struct stat sb = { 0, };
+        const int sb_valid = !statUTF8(ctx.curfn.Get(), &sb);
 
-        didProc=true;
+        // load/process image
+        const int success = DoProcessBitmap(ctx.bmOut, ctx.curfn.Get(),&ctx.bm, calc_rot ? &calculated_rot : NULL,database, workspace,stmts,load_mode,sb_valid ? &sb : NULL);
+
+        if (load_mode < 0 && success >= 2)
+        {
+          // if generating/checking thumbnails, and in cache, then we can go fast fast
+        }
+        else
+        {
+          didProc=true;
+        }
 
         g_images_mutex.Enter();
 
         if (g_images.Find(rec)>=0 && rec->m_state == ImageRecord::IR_STATE_DECODING)
         {
+          if (sb_valid)
+            rec->m_file_timestamp = sb.st_mtime;
 
           if (load_mode>0)
           {

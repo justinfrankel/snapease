@@ -26,8 +26,9 @@
   Todo: 
     (tabs for image lists along top ?)
     
-    configurable fullsize image fore/back extents
+    status line left should show path+filename in fullscreen mode, other info in non-fs
 
+    configurable fullsize image fore/back extents
     configurable thumbnail cache mem limit
 
       exif read date, latitude, longitude, other info
