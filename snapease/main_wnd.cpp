@@ -26,6 +26,22 @@
   Todo: 
     (tabs for image lists along top ?)
     
+    configurable fullsize image fore/back extents
+
+    configurable thumbnail cache mem limit
+      if thumbnail limit would be exceeded, find furthest loaded image, toss contents if closer, load this one
+      if db enabled, and this is the furthest, check whether its in DB, mark it as in DB, or load and save to DB 
+      (and mark as in DB)
+
+      exif read date, latitude, longitude, other info
+      show exif info option in fullscreen
+
+reverse
+randomize
+
+sort by: type/title/width/height/area/aspect/filename/path/date/filedate/filesize  latitude/longitude/other exif info: ISO, aperature, etc
+allow entering a list of terms, with tolerances for equality, such as $type $date~hour $longitude~0.001 $filename $path
+
     slideshows etc?
     confirm to remove item from set?
 

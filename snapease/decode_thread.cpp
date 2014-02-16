@@ -36,7 +36,7 @@
 #define FILE_CACHE_BLOB_HEADERSIZE 16
 
 bool g_DecodeDidSomething;
-static bool g_DecodeThreadQuit=true;
+static bool g_DecodeThreadQuit;
 
 static char GetRotationForImage(const char *fn);
 
@@ -680,11 +680,6 @@ static int getCPUcount()
 
 void DecodeThread_Init()
 {
-  if (!g_DecodeThreadQuit) return;
-
-  g_DecodeThreadQuit=false;
-
-
   int numCPU = g_config_smp ? getCPUcount() : 1;
 
   if (numCPU<1) numCPU = 1;
@@ -704,8 +699,6 @@ void DecodeThread_Init()
 
 void DecodeThread_Quit()
 {
-  if (g_DecodeThreadQuit) return;
-
   int x;
   g_DecodeThreadQuit = true;
   for(x=0;x<sizeof(hThread)/sizeof(hThread[0]);x++)
@@ -722,7 +715,7 @@ void DecodeThread_Quit()
 
 void DecodeThread_RunTimer(void *db)
 {
-  if (!hThread[0] && !g_DecodeThreadQuit)
+  if (!hThread[0])
   {
     static bool reent; // in case something runs the message loop in this bitch
     if (!reent)
