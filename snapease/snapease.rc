@@ -165,6 +165,7 @@ BEGIN
     POPUP "&Options"
     BEGIN
     MENUITEM "Multiprocessor support",          ID_SMP
+    MENUITEM "Cache thumbnails to disk",        ID_CACHE_THUMBNAILS
     MENUITEM "Status line",                     ID_STATUS_LINE
     END
     POPUP "&Help", HELP

@@ -26,11 +26,14 @@
 
 #endif
 
+#include "sqlite3.h"
+
 class ImageRecord;
 
 extern HINSTANCE g_hInst;
 extern WDL_FastString g_ini_file;
 extern WDL_FastString g_list_path;
+extern WDL_FastString g_db_file;
 extern char g_exepath[4096];
 extern HWND g_hwnd;
 
@@ -42,7 +45,7 @@ WDL_DLGRET MainWindowProc(HWND, UINT, WPARAM, LPARAM);
 extern bool g_DecodeDidSomething;
 void DecodeThread_Init();
 void DecodeThread_Quit();
-void DecodeThread_RunTimer();
+void DecodeThread_RunTimer(void *db);
 
 void UpdateMainWindowWithSizeChanged();
 bool RemoveFullItemView(bool refresh=true); // if in full view, removes full view (and returns true)
@@ -66,7 +69,7 @@ extern WDL_Mutex g_images_mutex;
 extern ImageRecord *g_fullmode_item;
 
 
-extern int g_config_smp, g_config_statusline;
+extern int g_config_smp, g_config_statusline,g_config_nodb;
 
 extern int g_firstvisible_startitem;
 

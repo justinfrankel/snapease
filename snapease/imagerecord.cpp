@@ -339,7 +339,7 @@ ImageRecord *ImageRecord ::Duplicate()
   if (m_state==IR_STATE_LOADED && m_preview_image)
   {
     rec->m_state=m_state;   
-    LICE_Copy(rec->m_preview_image = new LICE_MemBitmap,m_preview_image);
+    LICE_Copy((rec->m_preview_image = new LICE_MemBitmap(0,0,0)),m_preview_image);
     g_ram_use_preview += get_lice_bitmap_size(rec->m_preview_image);
   }
   rec->m_srcimage_w=m_srcimage_w;

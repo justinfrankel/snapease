@@ -137,6 +137,7 @@
     <ClCompile Include="..\loadsave.cpp" />
     <ClCompile Include="..\main.cpp" />
     <ClCompile Include="..\main_wnd.cpp" />
+    <ClCompile Include="..\sqlite3.c" />
     <ClCompile Include="..\upload_post.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -189,6 +190,7 @@
     <ClInclude Include="..\imagerecord.h" />
     <ClInclude Include="..\main.h" />
     <ClInclude Include="..\resource.h" />
+    <ClInclude Include="..\sqlite3.h" />
     <ClInclude Include="..\uploader.h" />
   </ItemGroup>
   <ItemGroup>

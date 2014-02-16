@@ -383,6 +383,9 @@
     <ClCompile Include="..\..\WDL\giflib\gifalloc.c">
       <Filter>Source Files\WDL\giflib</Filter>
     </ClCompile>
+    <ClCompile Include="..\sqlite3.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\imagerecord.h">
@@ -534,6 +537,9 @@
     </ClInclude>
     <ClInclude Include="..\..\WDL\giflib\gif_lib_private.h">
       <Filter>Source Files\WDL\giflib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sqlite3.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

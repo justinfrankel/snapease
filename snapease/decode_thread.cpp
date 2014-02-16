@@ -27,12 +27,18 @@
 #include "imagerecord.h"
 
 #include "../WDL/lice/lice.h"
+#include "../WDL/zlib/zlib.h"
+
+#include "../WDL/fnv64.h"
+#include "../WDL/wdlcstring.h"
 
 #define DESIRED_PREVIEW_CACHEDIM 256
+#define FILE_CACHE_BLOB_HEADERSIZE 16
 
 bool g_DecodeDidSomething;
 static bool g_DecodeThreadQuit=true;
 
+static char GetRotationForImage(const char *fn);
 
 #define FORCE_THREADS 1
 #define MAX_THREADS 4
@@ -60,8 +66,132 @@ bool LoadFullBitmap(LICE_IBitmap *bmOut, const char *fn)
   return success;
 }
 
-static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *workBM)
+static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *workBM, char *want_rot_calc, sqlite3 *database, WDL_HeapBuf *workspace, sqlite3_stmt **stmts)
 {
+  WDL_UINT64 fnhash = WDL_FNV64_IV;
+  bool fnhash_valid = false;
+  if (database)
+  {
+    struct stat sb = { 0, };
+    if (!statUTF8(fn,&sb))
+    {
+      const char *p = fn;
+      while (*p) p++;
+      while (p >= fn && *p != '\\' && *p != '/') p--;
+      p++;
+      while (*p)
+      {
+        unsigned char c = (unsigned char)tolower(*p);
+        fnhash = WDL_FNV64(fnhash, &c, 1);
+        p++;
+      }
+      WDL_INT64 t = sb.st_mtime;
+      fnhash = WDL_FNV64(fnhash, (const unsigned char *)&t, sizeof(t));
+      t = sb.st_size;
+      fnhash = WDL_FNV64(fnhash, (const unsigned char *)&t, sizeof(t));
+      fnhash_valid = true;
+    }
+
+
+    if (fnhash_valid)
+    {
+      bool got_res = false;
+	    sqlite3_stmt *stmt = stmts ? stmts[0] : NULL;
+      bool stmt_needrel = false;
+
+      if (!stmt) 
+      {
+        if (sqlite3_prepare_v2(database, "SELECT DATA FROM THUMB WHERE HASH = ?1", -1, &stmt, NULL) == SQLITE_OK)
+        {
+          stmt_needrel = true;
+        }
+      }
+      if (stmt)
+      {
+        sqlite3_bind_int64(stmt, 1, fnhash);
+        int res,try_cnt=0;
+        do
+        {
+          res = sqlite3_step(stmt);
+          if (res != SQLITE_BUSY) break;
+          Sleep(1);
+        } while (!g_DecodeThreadQuit && try_cnt++ < 2000);
+
+        if (res==SQLITE_ROW)
+        {
+          const void *blob = sqlite3_column_blob(stmt, 0);
+          const int blob_bytes = sqlite3_column_bytes(stmt, 0);
+
+          if (blob && blob_bytes>0)
+          {
+            z_stream stream;
+            memset(&stream, 0, sizeof(stream));
+            if (inflateInit(&stream) == Z_OK)
+            {
+              stream.avail_in = blob_bytes;
+              stream.next_in = (unsigned char *)blob;
+              int wroffs = 0;
+              for (;;)
+              {
+                const int chunksz = 256 * 1024;
+                workspace->Resize(wroffs + chunksz, false);
+                if (workspace->GetSize() != wroffs + chunksz) break;
+
+                stream.total_out = 0;
+                stream.avail_out = workspace->GetSize()-wroffs;
+                stream.next_out = (unsigned char*)workspace->Get() + wroffs;
+                int res=inflate(&stream, Z_SYNC_FLUSH);
+                wroffs += stream.total_out;
+                if (res != Z_OK||!stream.total_out) break;                
+              }
+              if (workspace->GetSize()>=wroffs && wroffs > FILE_CACHE_BLOB_HEADERSIZE)
+              {
+                const char *rd = (const char *)workspace->Get();
+                if (want_rot_calc) *want_rot_calc = *rd;
+                
+                const int w = *(int *)(rd + 4);
+                const int h = *(int *)(rd + 8);
+                const int extra = *(int *)(rd + 12);
+                if (!rd[1] && w>0&&h>0 && wroffs >= FILE_CACHE_BLOB_HEADERSIZE + w*h*3)
+                {
+                  rd += FILE_CACHE_BLOB_HEADERSIZE;
+                  bmOut->resize(w, h);
+                  if (bmOut->getWidth() == w && bmOut->getHeight()==h)
+                  {
+                    int y;
+                    for (y = 0; y < h; y ++)
+                    {
+                      LICE_pixel_chan *po = (LICE_pixel_chan *)(bmOut->getBits() + bmOut->getRowSpan()*y);
+                      int x;
+                      for (x = 0; x < w; x ++)
+                      {
+                        po[LICE_PIXEL_R] = *rd++;
+                        po[LICE_PIXEL_G] = *rd++;
+                        po[LICE_PIXEL_B] = *rd++;
+                        po[LICE_PIXEL_A] = 0;
+                        po += 4;
+                      }
+
+                    }
+                    got_res = true;
+                  }
+                }
+              }
+              inflateEnd(&stream);
+            }
+          }
+        }        
+        if (stmt_needrel) sqlite3_finalize(stmt);
+        else 
+        {
+          sqlite3_reset(stmt);
+          sqlite3_clear_bindings(stmt);
+        }
+      }
+      if (got_res)
+        return true;
+    }
+  }
   if (!LoadFullBitmap(workBM,fn)) return false;
 
   int outw = workBM->getWidth();
@@ -79,8 +209,93 @@ static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *w
   if (outw > 0 && outh > 0)
   {
     bmOut->resize(outw,outh);
+    outw = bmOut->getWidth();
+    outh = bmOut->getHeight();
 
     LICE_ScaledBlit(bmOut,workBM,0,0,outw,outh,0,0,(float)workBM->getWidth(),(float)workBM->getHeight(),1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_FILTER_BILINEAR);
+
+    if (want_rot_calc)
+    {
+      *want_rot_calc = GetRotationForImage(fn);
+    }
+
+    if (database && fnhash_valid)
+    {
+      // compress to buffer
+      z_stream stream;
+      memset(&stream, 0, sizeof(stream));
+
+      const int alloc_sz = outw * outh * 7 + 4096 + FILE_CACHE_BLOB_HEADERSIZE;
+      workspace->Resize(alloc_sz,false);
+      if (workspace->GetSize() == alloc_sz && deflateInit(&stream, 1) == Z_OK)
+      {
+        char *srcbuf = (char *)workspace->Get() + 4096 + outw*outh * 4;
+        srcbuf[0] = want_rot_calc?*want_rot_calc:0;
+        srcbuf[1] = 0;
+        srcbuf[2] = 0;
+        srcbuf[3] = 0;
+        *(int *)(srcbuf + 4) = outw;
+        *(int *)(srcbuf + 8) = outh;
+        *(int *)(srcbuf + 12) = 0;
+
+        char *dest = srcbuf + FILE_CACHE_BLOB_HEADERSIZE;
+        int y;
+        for (y = 0; y < outh; y ++)
+        {
+          const LICE_pixel_chan *s = (LICE_pixel_chan *)(bmOut->getBits() + y * bmOut->getRowSpan());
+          int x=outw;
+          while (x--)
+          {
+            *dest++ = s[LICE_PIXEL_R] & 0xf8;
+            *dest++ = s[LICE_PIXEL_G] & 0xf8;
+            *dest++ = s[LICE_PIXEL_B] & 0xf8;
+            s+=4;
+          }
+        }
+
+        // srcbuf, FILE_CACHE_BLOB_HEADERSIZE + outw*outh*3 bytes, deflate
+        stream.avail_in = FILE_CACHE_BLOB_HEADERSIZE + outw*outh * 3;
+        stream.next_in = (unsigned char*)srcbuf;
+        stream.avail_out = outw*outh * 4 + 4096;
+        stream.next_out = (unsigned char *)workspace->Get();
+        deflate(&stream, Z_FINISH);
+        const int blob_sz = stream.total_out;
+     
+        deflateEnd(&stream);
+
+	      sqlite3_stmt *stmt = stmts ? stmts[1] : NULL;
+        bool stmt_needrel = false;
+        if (!stmt)
+        {
+  	      if (sqlite3_prepare_v2(database, "INSERT OR REPLACE INTO THUMB (HASH, DATA) VALUES(?1, ?2)", -1, &stmt, NULL) == SQLITE_OK)
+          {
+            stmt_needrel = true;
+          }
+        }
+
+        if (stmt)
+        {
+          sqlite3_bind_int64(stmt, 1, fnhash);
+          sqlite3_bind_blob(stmt, 2, workspace->Get(), blob_sz,SQLITE_STATIC);
+          int res,try_cnt=0;
+          do
+          {
+            res = sqlite3_step(stmt);
+            if (res != SQLITE_BUSY) break;
+            Sleep(1);
+          } while (!g_DecodeThreadQuit && try_cnt++ < 2000);
+
+          if (stmt_needrel)
+            sqlite3_finalize(stmt);
+          else
+          {
+            sqlite3_reset(stmt);
+            sqlite3_clear_bindings(stmt);
+          }
+        }        
+      }
+    }
+
     return true;
   }
   return false;
@@ -179,7 +394,7 @@ static bool __exif_process_tag(const unsigned char *buf, int buflen, char *rotOu
   return false;
 }
 
-static char GetRotationForImage(const char *fn)
+char GetRotationForImage(const char *fn)
 {
   FILE *fp = fopenUTF8(fn, "rb");
   if (!fp) return 0;
@@ -214,7 +429,7 @@ static char GetRotationForImage(const char *fn)
 }
 
 
-static int RunWork(DecodeThreadContext &ctx, bool allowFullMode)
+static int RunWork(DecodeThreadContext &ctx, bool allowFullMode, sqlite3 *database, WDL_HeapBuf *workspace, sqlite3_stmt **stmts)
 {
   int sleepAmt=1;
   g_images_mutex.Enter();
@@ -255,7 +470,7 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode)
 
         g_images_mutex.Leave();
 
-        if (!ctx.bmOut) ctx.bmOut = new LICE_MemBitmap;
+        if (!ctx.bmOut) ctx.bmOut = new LICE_MemBitmap(0,0,0);
 
         bool suc = LoadFullBitmap(ctx.bmOut,ctx.curfn.Get());
         if (suc && calc_rot) calculated_rot = GetRotationForImage(ctx.curfn.Get());
@@ -345,15 +560,11 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode)
 
         g_images_mutex.Leave();
 
-        if (!ctx.bmOut) ctx.bmOut = new LICE_MemBitmap;
+        if (!ctx.bmOut) ctx.bmOut = new LICE_MemBitmap(0,0,0);
         delete bmDel;
 
         // load/process image
-        const bool success = DoProcessBitmap(ctx.bmOut, ctx.curfn.Get(),&ctx.bm);
-        if (success && calc_rot)
-        {
-          calculated_rot = GetRotationForImage(ctx.curfn.Get());
-        }
+        const bool success = DoProcessBitmap(ctx.bmOut, ctx.curfn.Get(),&ctx.bm, calc_rot ? &calculated_rot : NULL,database, workspace,stmts);
 
         didProc=true;
 
@@ -397,11 +608,34 @@ static DWORD WINAPI DecodeThreadProc(LPVOID v)
 {
   DecodeThreadContext ctx;
 
+  sqlite3 *thisdb = NULL;
+
+  if (!g_config_nodb) sqlite3_open(g_db_file.Get(), &thisdb);
+
   ctx.last_visstart=g_firstvisible_startitem;
   ctx.scanpos=0;
+
+  sqlite3_stmt *stmts[2]={0,};
+
+  if (thisdb)
+  {
+    if (sqlite3_prepare_v2(thisdb, "SELECT DATA FROM THUMB WHERE HASH = ?1", -1, &stmts[0], NULL) != SQLITE_OK)
+      stmts[0] = 0;
+    if (sqlite3_prepare_v2(thisdb, "INSERT OR REPLACE INTO THUMB (HASH, DATA) VALUES(?1, ?2)", -1, &stmts[1], NULL) == SQLITE_OK)
+      stmts[1] = 0;
+  }
+          
+  WDL_HeapBuf hb;
   while (!g_DecodeThreadQuit)
   {
-    Sleep(RunWork(ctx,!v));
+    Sleep(RunWork(ctx,!v, thisdb,&hb,stmts));
+  }
+
+  if (thisdb) 
+  {
+    if (stmts[0]) sqlite3_finalize(stmts[0]);
+    if (stmts[1]) sqlite3_finalize(stmts[1]);
+    sqlite3_close(thisdb);
   }
 
   return 0;
@@ -483,9 +717,10 @@ void DecodeThread_Quit()
       hThread[x]=0;
     }
   }
+  g_DecodeThreadQuit = false;
 }
 
-void DecodeThread_RunTimer()
+void DecodeThread_RunTimer(void *db)
 {
   if (!hThread[0] && !g_DecodeThreadQuit)
   {
@@ -496,7 +731,8 @@ void DecodeThread_RunTimer()
 
       static DecodeThreadContext *p;
       if (!p) p=new DecodeThreadContext;
-      if (p) RunWork(*p,true);
+      static WDL_HeapBuf hb;
+      if (p) RunWork(*p,true, (sqlite3*)db,&hb,NULL);
 
       reent=false;
     }

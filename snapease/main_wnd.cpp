@@ -25,9 +25,6 @@
 
   Todo: 
     (tabs for image lists along top ?)
-    disk-based thumbnail cache? sqlite?
-
-
     
     slideshows etc?
     confirm to remove item from set?
@@ -52,6 +49,7 @@
 WDL_FastString g_ini_file;
 WDL_FastString g_list_path;
 
+WDL_FastString g_db_file;
 
 WDL_PtrList<ImageRecord> g_images;
 int g_images_cnt_err, g_images_cnt_ok, g_images_statcnt;
@@ -61,7 +59,7 @@ WDL_Mutex g_images_mutex;
 HWND g_hwnd;
 WDL_VWnd_Painter g_hwnd_painter;
 
-int g_config_smp, g_config_statusline;
+int g_config_smp, g_config_statusline, g_config_nodb;
 
 class MainWindowVwnd : public WDL_VWnd
 {
@@ -459,6 +457,31 @@ void AddImage(const char *fn)
 
 static RECT g_lastSplashRect;
 
+static sqlite3 *g_thumbnail_db; // read database connection for UI thread
+static void quit_db()
+{
+  if (g_thumbnail_db)
+  {
+    sqlite3_close(g_thumbnail_db);
+    g_thumbnail_db=0;
+  }
+}
+static void init_db()
+{
+  sqlite3_open(g_db_file.Get(), &g_thumbnail_db);
+  if (g_thumbnail_db)
+  {
+    char *errMsg = NULL;
+    if (sqlite3_exec(g_thumbnail_db,
+      "CREATE TABLE IF NOT EXISTS THUMB ("
+      "HASH INTEGER PRIMARY KEY NOT NULL,"
+      "DATA BLOB NOT NULL);", NULL, NULL, &errMsg) != SQLITE_OK)
+    {
+      OutputDebugString("Error creating SQLite table:");
+      if (errMsg) OutputDebugString(errMsg);
+    }
+  }
+}
 
 static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
 {
@@ -562,7 +585,8 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 #ifndef _WIN32 // need to fix some coolsb top level window bugs
       InitializeCoolSB(hwndDlg);
 #endif
-
+      
+      sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
 
       {
         g_list_path.Set(g_ini_file.Get());
@@ -581,6 +605,18 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       UpdateMainWindowWithSizeChanged();
       g_config_smp = config_readint("smp", 1);
       g_config_statusline = config_readint("status", 1);
+      g_config_nodb = config_readint("nodb", 0);
+
+
+      {
+        g_db_file.Set(g_ini_file.Get());
+        int p = g_db_file.GetLength()-1;
+        while (p > 0 && g_db_file.Get()[p] != '\\' && g_db_file.Get()[p] != '/') p--;
+        g_db_file.SetLen(p);
+        g_db_file.Append(PREF_DIRSTR "snapease_thumbnails.sqlite3");
+        
+        if (!g_config_nodb) init_db();
+      }
 
       {
         RECT r={config_readint("wndx",15),config_readint("wndy",15),};
@@ -619,7 +655,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
 
       DecodeThread_Quit();
-
+      quit_db();
       config_writestr("lastlist",g_imagelist_fn.Get());
 
       {
@@ -649,7 +685,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 #ifndef _WIN32
       UninitializeCoolSB(hwndDlg);
 #endif
-      
+     
       g_hwnd=0; // prevent multidelete on osx :)
 #ifdef _WIN32
       PostQuitMessage(0);
@@ -681,7 +717,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
       else if (wParam==GENERAL_TIMER)
       {
-        DecodeThread_RunTimer();
+        DecodeThread_RunTimer(g_thumbnail_db);
 
         bool wantInvalidate = false;
         if (!g_images.GetSize() || g_aboutwindow_open)
@@ -743,6 +779,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         EnableMenuItem(hm,ID_EXPORT,MF_BYCOMMAND|(g_images.GetSize()? MF_ENABLED:MF_GRAYED));
         CheckMenuItem(hm, ID_SMP, g_config_smp ? MF_CHECKED : MF_UNCHECKED);
         CheckMenuItem(hm, ID_STATUS_LINE, g_config_statusline ? MF_CHECKED : MF_UNCHECKED);
+        CheckMenuItem(hm, ID_CACHE_THUMBNAILS, g_config_nodb ? MF_UNCHECKED : MF_CHECKED);
       }
     break;
 #ifdef _WIN32
@@ -890,6 +927,30 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         
           }
 
+        break;
+        case ID_CACHE_THUMBNAILS:
+          DecodeThread_Quit();
+          g_config_nodb = !g_config_nodb;
+          if (g_config_nodb)
+          {
+            quit_db();
+            if (file_exists(g_db_file.Get()))
+            {
+              if (MessageBox(hwndDlg,"Remove thumbnail cache database file?","SnapEase thumbnails",MB_YESNO) == IDYES)
+              {
+                for (;;)
+                {
+                  if (DeleteFile(g_db_file.Get())) break;
+                  if (MessageBox(hwndDlg, "Could not remove cache database file, try again?", "SnapEase thumbnails", MB_YESNO) == IDNO) break;
+                }
+              }
+            }
+          }
+          else
+          {
+            init_db();
+          }          
+          DecodeThread_Init();
         break;
         case ID_SMP:
           g_config_smp = !g_config_smp;
