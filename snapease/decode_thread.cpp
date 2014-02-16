@@ -38,6 +38,8 @@
 bool g_DecodeDidSomething;
 static bool g_DecodeThreadQuit;
 
+int g_config_maxthumbnail=128<<10; // kb
+
 static char GetRotationForImage(const char *fn);
 
 #define FORCE_THREADS 1
@@ -66,7 +68,7 @@ bool LoadFullBitmap(LICE_IBitmap *bmOut, const char *fn)
   return success;
 }
 
-static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *workBM, char *want_rot_calc, sqlite3 *database, WDL_HeapBuf *workspace, sqlite3_stmt **stmts)
+static int DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *workBM, char *want_rot_calc, sqlite3 *database, WDL_HeapBuf *workspace, sqlite3_stmt **stmts, int load_mode)
 {
   WDL_UINT64 fnhash = WDL_FNV64_IV;
   bool fnhash_valid = false;
@@ -122,7 +124,8 @@ static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *w
           const void *blob = sqlite3_column_blob(stmt, 0);
           const int blob_bytes = sqlite3_column_bytes(stmt, 0);
 
-          if (blob && blob_bytes>0)
+          if (load_mode < 0) got_res = true;
+          else if (blob && blob_bytes>0)
           {
             z_stream stream;
             memset(&stream, 0, sizeof(stream));
@@ -189,10 +192,13 @@ static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *w
         }
       }
       if (got_res)
-        return true;
+      {
+        return 1;
+      }
     }
   }
-  if (!LoadFullBitmap(workBM,fn)) return false;
+
+  if (!LoadFullBitmap(workBM,fn)) return 0;
 
   int outw = workBM->getWidth();
   int outh = workBM->getHeight();
@@ -219,6 +225,7 @@ static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *w
       *want_rot_calc = GetRotationForImage(fn);
     }
 
+    int rv = -1;
     if (database && fnhash_valid)
     {
       // compress to buffer
@@ -284,6 +291,11 @@ static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *w
             if (res != SQLITE_BUSY) break;
             Sleep(1);
           } while (!g_DecodeThreadQuit && try_cnt++ < 2000);
+          
+          if (res != SQLITE_BUSY)
+          {
+            rv = 1;
+          }
 
           if (stmt_needrel)
             sqlite3_finalize(stmt);
@@ -296,9 +308,9 @@ static bool DoProcessBitmap(LICE_IBitmap *bmOut, const char *fn, LICE_IBitmap *w
       }
     }
 
-    return true;
+    return rv;
   }
-  return false;
+  return 0;
 }
 
 class DecodeThreadContext
@@ -520,9 +532,9 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode, sqlite3 *databa
     }
 
 
-    int center = ctx.last_visstart;
-    if (center<0) center=0;
-    else if (center>g_images.GetSize()) center=g_images.GetSize();
+    const int vis_start = min(max(ctx.last_visstart,0),g_images.GetSize());
+
+    int center = vis_start;
 
     if (1)
     {
@@ -537,9 +549,54 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode, sqlite3 *databa
 
     ImageRecord *rec = g_images.Get(center);
 
-    if (rec) 
+    if (rec && rec->m_state == ImageRecord::IR_STATE_NEEDLOAD) 
     {
-      if (rec->m_state == ImageRecord::IR_STATE_NEEDLOAD)
+      int load_mode = 1;
+      if (g_config_maxthumbnail)
+      {
+        int dist = center - vis_start;
+        if (dist < 0) dist = -dist;
+        int x;
+        const int max1 = vis_start - dist - 2;        
+        if (g_ram_use_preview >= g_config_maxthumbnail) for (x = 0; x < max1; x ++)
+        {
+          ImageRecord *tr=g_images.Get(x);
+          if (tr && tr->m_preview_image && tr->m_state == ImageRecord::IR_STATE_LOADED)
+          {
+            g_ram_use_preview -= get_lice_bitmap_size(tr->m_preview_image);
+            delete tr->m_preview_image;
+            tr->m_preview_image=0;
+            tr->m_state = ImageRecord::IR_STATE_NEEDLOAD;
+            g_images_cnt_ok--;
+
+            if (g_ram_use_preview < g_config_maxthumbnail) break;
+          }
+        }
+        const int max2 = vis_start + dist + 2;
+        if (g_ram_use_preview >= g_config_maxthumbnail) for (x = g_images.GetSize()-1; x > max2; x--)
+        {
+          ImageRecord *tr=g_images.Get(x);
+          if (tr && tr->m_preview_image && tr->m_state == ImageRecord::IR_STATE_LOADED)
+          {
+            g_ram_use_preview -= get_lice_bitmap_size(tr->m_preview_image);
+            delete tr->m_preview_image;
+            tr->m_preview_image=0;
+            tr->m_state = ImageRecord::IR_STATE_NEEDLOAD;
+            g_images_cnt_ok--;
+
+            if (g_ram_use_preview < g_config_maxthumbnail) break;
+          }
+        }
+        if (g_ram_use_preview >= g_config_maxthumbnail)
+        {
+          if (!database || rec->m_cache_has_thumbnail) load_mode = 0;
+          else load_mode = -1;
+        }
+        // see if there's something farther from center than we are with ImageRecord::IR_STATE_LOADED
+      }
+
+      if (load_mode == 0) sleepAmt = 30;
+      if (load_mode != 0)
       {
         LICE_IBitmap *bmDel = NULL;
         if (rec->m_preview_image)
@@ -564,7 +621,7 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode, sqlite3 *databa
         delete bmDel;
 
         // load/process image
-        const bool success = DoProcessBitmap(ctx.bmOut, ctx.curfn.Get(),&ctx.bm, calc_rot ? &calculated_rot : NULL,database, workspace,stmts);
+        const int success = DoProcessBitmap(ctx.bmOut, ctx.curfn.Get(),&ctx.bm, calc_rot ? &calculated_rot : NULL,database, workspace,stmts,load_mode);
 
         didProc=true;
 
@@ -572,13 +629,18 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode, sqlite3 *databa
 
         if (g_images.Find(rec)>=0 && rec->m_state == ImageRecord::IR_STATE_DECODING)
         {
-          if (rec->m_need_rotchk && calc_rot)
+
+          if (load_mode>0)
           {
-            rec->m_need_rotchk = false;
-            rec->m_rot = calculated_rot;
+            if (rec->m_need_rotchk && calc_rot)
+            {
+              rec->m_need_rotchk = false;
+              rec->m_rot = calculated_rot;
+            }
+            rec->m_srcimage_w = ctx.bm.getWidth();
+            rec->m_srcimage_h = ctx.bm.getHeight();
           }
-          rec->m_srcimage_w = ctx.bm.getWidth();
-          rec->m_srcimage_h = ctx.bm.getHeight();
+
           if (!success)
           {
             rec->m_state = ImageRecord::IR_STATE_ERROR;
@@ -587,12 +649,22 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode, sqlite3 *databa
           else if (strcmp(rec->m_fn.Get(),ctx.curfn.Get())) rec->m_state = ImageRecord::IR_STATE_ERROR;
           else
           {
-            g_images_cnt_ok++;
+            if (success>0 && !rec->m_cache_has_thumbnail) g_images_cnt_indb++;
+            rec->m_cache_has_thumbnail = success > 0;
+
             g_images_statcnt++;
-            rec->m_state = ImageRecord::IR_STATE_LOADED;
-            rec->m_preview_image = ctx.bmOut;
-            g_ram_use_preview += get_lice_bitmap_size(rec->m_preview_image);
-            ctx.bmOut = 0;
+            if (load_mode>0)
+            {
+              g_images_cnt_ok++;
+              rec->m_state = ImageRecord::IR_STATE_LOADED;
+              rec->m_preview_image = ctx.bmOut;
+              g_ram_use_preview += get_lice_bitmap_size(rec->m_preview_image);
+              ctx.bmOut = 0;
+            }
+            else
+            {
+              rec->m_state = ImageRecord::IR_STATE_NEEDLOAD; // load_mode=-1, calculated and cached thumbnail
+            }
           }
           g_DecodeDidSomething=true;
         }
@@ -621,7 +693,7 @@ static DWORD WINAPI DecodeThreadProc(LPVOID v)
   {
     if (sqlite3_prepare_v2(thisdb, "SELECT DATA FROM THUMB WHERE HASH = ?1", -1, &stmts[0], NULL) != SQLITE_OK)
       stmts[0] = 0;
-    if (sqlite3_prepare_v2(thisdb, "INSERT OR REPLACE INTO THUMB (HASH, DATA) VALUES(?1, ?2)", -1, &stmts[1], NULL) == SQLITE_OK)
+    if (sqlite3_prepare_v2(thisdb, "INSERT OR REPLACE INTO THUMB (HASH, DATA) VALUES(?1, ?2)", -1, &stmts[1], NULL) != SQLITE_OK)
       stmts[1] = 0;
   }
           

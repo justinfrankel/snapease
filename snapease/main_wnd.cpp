@@ -29,9 +29,6 @@
     configurable fullsize image fore/back extents
 
     configurable thumbnail cache mem limit
-      if thumbnail limit would be exceeded, find furthest loaded image, toss contents if closer, load this one
-      if db enabled, and this is the furthest, check whether its in DB, mark it as in DB, or load and save to DB 
-      (and mark as in DB)
 
       exif read date, latitude, longitude, other info
       show exif info option in fullscreen
@@ -68,8 +65,8 @@ WDL_FastString g_list_path;
 WDL_FastString g_db_file;
 
 WDL_PtrList<ImageRecord> g_images;
-int g_images_cnt_err, g_images_cnt_ok, g_images_statcnt;
-INT_PTR g_ram_use_preview, g_ram_use_full, g_ram_use_fullscaled, g_ram_use_fullfinal;
+int g_images_cnt_err, g_images_cnt_ok, g_images_statcnt, g_images_cnt_indb;
+int g_ram_use_preview, g_ram_use_full, g_ram_use_fullscaled, g_ram_use_fullfinal;
 WDL_Mutex g_images_mutex;
 
 HWND g_hwnd;
@@ -696,7 +693,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       g_vwnd.RemoveAllChildren(true);
 
-      g_images_cnt_err = g_images_cnt_ok = 0;
+      g_images_cnt_err = g_images_cnt_ok = g_images_cnt_indb = 0;
 
 #ifndef _WIN32
       UninitializeCoolSB(hwndDlg);
@@ -751,7 +748,8 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
               char newbuf[256];
               
               snprintf(newbuf, sizeof(newbuf),
-                "%d/%d", g_images_cnt_ok + g_images_cnt_err, g_images.GetSize());
+                "%d/%d/%d", g_images_cnt_ok + g_images_cnt_err, g_images_cnt_indb,g_images.GetSize());
+
               if (g_images_cnt_err) snprintf_append(newbuf, sizeof(newbuf), " [%d error]", g_images_cnt_err);
 
               if (g_images_statcnt > 0)
@@ -759,10 +757,10 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 snprintf_append(newbuf, sizeof(newbuf), " [%.1f load/sec]", (double)g_images_statcnt * 1000.0 / (now - last_status_time));
                 g_images_statcnt = 0;
               }
-              snprintf_append(newbuf, sizeof(newbuf), " [%dMB thumbnails, fullcache: %d/%d/%dMB]", (int)(g_ram_use_preview / 1024 / 1024),
-                (int)(g_ram_use_full / 1024 / 1024),
-                (int)(g_ram_use_fullscaled / 1024 / 1024),
-                (int)(g_ram_use_fullfinal / 1024 / 1024)
+              snprintf_append(newbuf, sizeof(newbuf), " [%dMB thumbnails, fullcache: %d/%d/%dMB]", (g_ram_use_preview / 1024),
+                (g_ram_use_full / 1024),
+                (g_ram_use_fullscaled / 1024),
+                (g_ram_use_fullfinal / 1024)
                 );
 
               last_status_time = now;
@@ -947,6 +945,7 @@ WDL_DLGRET MainWindowProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case ID_CACHE_THUMBNAILS:
           DecodeThread_Quit();
           g_config_nodb = !g_config_nodb;
+          config_writeint("nodb", g_config_nodb);
           if (g_config_nodb)
           {
             quit_db();

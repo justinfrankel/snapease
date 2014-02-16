@@ -262,6 +262,7 @@ ImageRecord::ImageRecord(const char *fn)
   memset(m_bchsv,0,sizeof(m_bchsv));
   m_bw=false;
   m_need_rotchk = true;
+  m_cache_has_thumbnail = false;
   m_rot=0;
   m_state=IR_STATE_NEEDLOAD;
   m_preview_image=NULL;
@@ -342,6 +343,7 @@ ImageRecord *ImageRecord ::Duplicate()
     LICE_Copy((rec->m_preview_image = new LICE_MemBitmap(0,0,0)),m_preview_image);
     g_ram_use_preview += get_lice_bitmap_size(rec->m_preview_image);
   }
+  rec->m_cache_has_thumbnail = m_cache_has_thumbnail;
   rec->m_srcimage_w=m_srcimage_w;
   rec->m_srcimage_h=m_srcimage_h;
   memcpy(rec->m_bchsv,m_bchsv,sizeof(m_bchsv));
@@ -535,6 +537,9 @@ INT_PTR ImageRecord::SendCommand(int command, INT_PTR parm1, INT_PTR parm2, WDL_
           if (par)
           {
             const int fmi=this == g_fullmode_item ? g_images.Find(g_fullmode_item) : -1;
+
+            if (m_cache_has_thumbnail) g_images_cnt_indb--;
+
             g_images_mutex.Enter();
             g_images.Delete(g_images.Find(this));
             if (m_state == ImageRecord::IR_STATE_ERROR) g_images_cnt_err--;
@@ -1946,7 +1951,7 @@ bool ImageRecord::ProcessRect(LICE_IBitmap *destimage, int x, int y, int w, int 
 
 }
 
-INT_PTR get_lice_bitmap_size(LICE_IBitmap *bm)
+int get_lice_bitmap_size(LICE_IBitmap *bm)
 {
-  return bm ? (INT_PTR)(bm->getWidth()*bm->getHeight() * 4) : 0;
+  return bm ? (bm->getWidth()*bm->getHeight())/256 : 0;
 }

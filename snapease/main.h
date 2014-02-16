@@ -63,8 +63,8 @@ void DoExportDialog(HWND hwndDlg);
 #include "imagerecord.h"
 
 extern WDL_PtrList<ImageRecord> g_images;
-extern int g_images_cnt_err, g_images_cnt_ok, g_images_statcnt;
-extern INT_PTR g_ram_use_preview, g_ram_use_full, g_ram_use_fullscaled, g_ram_use_fullfinal;
+extern int g_images_cnt_err, g_images_cnt_ok, g_images_statcnt, g_images_cnt_indb;
+extern int g_ram_use_preview, g_ram_use_full, g_ram_use_fullscaled, g_ram_use_fullfinal;
 extern WDL_Mutex g_images_mutex;
 extern ImageRecord *g_fullmode_item;
 

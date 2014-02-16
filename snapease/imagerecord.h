@@ -74,6 +74,7 @@ public:
   char m_rot; // 90deg steps (0..3)
   bool m_bw;
   bool m_need_rotchk; // check file for rotation EXIF info
+  bool m_cache_has_thumbnail;
 
   RECT m_croprect;
 
@@ -133,6 +134,6 @@ public:
   }
 };
 
-INT_PTR get_lice_bitmap_size(LICE_IBitmap *);
+int get_lice_bitmap_size(LICE_IBitmap *); //kb
 
 #endif
