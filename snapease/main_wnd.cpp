@@ -495,8 +495,8 @@ static void init_db()
       "HASH INTEGER PRIMARY KEY NOT NULL,"
       "DATA BLOB NOT NULL);", NULL, NULL, &errMsg) != SQLITE_OK)
     {
-      OutputDebugString("Error creating SQLite table:");
-      if (errMsg) OutputDebugString(errMsg);
+//      OutputDebugString("Error creating SQLite table:");
+  //    if (errMsg) OutputDebugString(errMsg);
     }
   }
 }

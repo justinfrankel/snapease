@@ -144,6 +144,7 @@
 		337ED65910B75A3D009528D7 /* snapease.png in Resources */ = {isa = PBXBuildFile; fileRef = 337ED64E10B75A3D009528D7 /* snapease.png */; };
 		337ED65B10B75AE8009528D7 /* snapease.icns in Resources */ = {isa = PBXBuildFile; fileRef = 337ED65A10B75AE8009528D7 /* snapease.icns */; };
 		33A8DE7C11C000E70008DF1F /* color.png in Resources */ = {isa = PBXBuildFile; fileRef = 33A8DE7B11C000E70008DF1F /* color.png */; };
+		33ACCF8D18B197FC00BF142C /* sqlite3.c in Sources */ = {isa = PBXBuildFile; fileRef = 33ACCF8C18B197FC00BF142C /* sqlite3.c */; };
 		33E310FF10B78E07009F49F7 /* main_osx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 33E310FE10B78E07009F49F7 /* main_osx.cpp */; };
 		33E3117610B7954B009F49F7 /* swellappmain.mm in Sources */ = {isa = PBXBuildFile; fileRef = 33E3117510B7954B009F49F7 /* swellappmain.mm */; };
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
@@ -350,6 +351,7 @@
 		337ED64E10B75A3D009528D7 /* snapease.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = snapease.png; path = ../images/snapease.png; sourceTree = SOURCE_ROOT; };
 		337ED65A10B75AE8009528D7 /* snapease.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; name = snapease.icns; path = ../images/snapease.icns; sourceTree = SOURCE_ROOT; };
 		33A8DE7B11C000E70008DF1F /* color.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = color.png; path = ../images/color.png; sourceTree = SOURCE_ROOT; };
+		33ACCF8C18B197FC00BF142C /* sqlite3.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = sqlite3.c; path = ../sqlite3.c; sourceTree = "<group>"; };
 		33E310FE10B78E07009F49F7 /* main_osx.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main_osx.cpp; sourceTree = "<group>"; };
 		33E3117410B7954B009F49F7 /* swellappmain.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = swellappmain.h; path = ../../WDL/swell/swellappmain.h; sourceTree = SOURCE_ROOT; };
 		33E3117510B7954B009F49F7 /* swellappmain.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = swellappmain.mm; path = ../../WDL/swell/swellappmain.mm; sourceTree = SOURCE_ROOT; };
@@ -432,6 +434,7 @@
 		29B97315FDCFA39411CA2CEA /* Other Sources */ = {
 			isa = PBXGroup;
 			children = (
+				33ACCF8C18B197FC00BF142C /* sqlite3.c */,
 				32CA4F630368D1EE00C91783 /* snapease_Prefix.pch */,
 				29B97316FDCFA39411CA2CEA /* main.m */,
 				33E310FE10B78E07009F49F7 /* main_osx.cpp */,
@@ -733,8 +736,11 @@
 /* Begin PBXProject section */
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
+			attributes = {
+			};
 			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "snapease" */;
 			compatibilityVersion = "Xcode 3.1";
+			developmentRegion = English;
 			hasScannedForEncodings = 1;
 			knownRegions = (
 				English,
@@ -791,6 +797,7 @@
 				337ED4BC10B755BB009528D7 /* asyncdns.cpp in Sources */,
 				337ED4BD10B755BB009528D7 /* connection.cpp in Sources */,
 				337ED4BE10B755BB009528D7 /* httpget.cpp in Sources */,
+				33ACCF8D18B197FC00BF142C /* sqlite3.c in Sources */,
 				337ED4BF10B755BB009528D7 /* listen.cpp in Sources */,
 				337ED4C010B755BB009528D7 /* util.cpp in Sources */,
 				337ED4D510B755F5009528D7 /* lice.cpp in Sources */,
@@ -935,6 +942,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_LINK_OBJC_RUNTIME = NO;
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
@@ -993,6 +1001,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				CLANG_LINK_OBJC_RUNTIME = NO;
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
@@ -1008,6 +1017,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				CLANG_LINK_OBJC_RUNTIME = NO;
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
