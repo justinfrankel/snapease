@@ -373,13 +373,17 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
   #ifdef _WIN32
       GetTempPath(sizeof(fn)-128, fn);
   #else
-      char *p = getenv("TEMP");
+     #ifdef __APPLE__
+        const char *p = getenv("TMPDIR");
+     #else
+        const char *p = getenv("TEMP");
+      #endif
       if (!p || !*p) p="/tmp";
       lstrcpyn(fn, p, 512);
-      strcat(fn,"/");
+      if (!fn[0] || fn[strlen(fn)-1] != '/') strcat(fn,"/");
   #endif
 
-      sprintf(fn+strlen(fn),"snapease-temp-%08x-%08x.tmp",
+      snprintf_append(fn,sizeof(fn),"snapease-temp-%08x-%08x.tmp",
   #ifdef _WIN32
         GetCurrentProcessId(),
   #else
