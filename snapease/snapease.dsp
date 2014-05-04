@@ -892,6 +892,14 @@ SOURCE=.\main_wnd.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\sqlite3.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\sqlite3.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\upload_post.cpp
 # End Source File
 # End Group
