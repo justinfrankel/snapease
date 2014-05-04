@@ -1,3 +1,11 @@
+v0.3 - May 5 2014
+  + Multiprocessor image loading/thumbnail rendering option
+  + Thumbnail caching to disk option (using sqlite3)
+  + Status line option (shows memory use)
+  + Constrained thumbnail cache memory use
+  + JPEG EXIF tag reading to auto-rotate imported images
+  + Image list sorting support
+  
 v0.2 - April 24 2013
   + Drag and drop reordering/duplicating of images
   + Removed clone button (use ctrl+drag and drop to duplicate)
