@@ -701,6 +701,14 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\sqlite3.c"
+				>
+			</File>
+			<File
+				RelativePath=".\sqlite3.h"
+				>
+			</File>
+			<File
 				RelativePath="upload_post.cpp"
 				>
 				<FileConfiguration
