@@ -33,9 +33,11 @@
 
 #include "swell.h"
 #include "../assocarray.h"
+#include "../wdlcstring.h"
 #include "../mutex.h"
 #include "../queue.h"
 #include <sys/stat.h>
+#include <sys/file.h>
 #include <sys/types.h>
 
 static void deleteStringKeyedArray(WDL_StringKeyedArray<char *> *p) {   delete p; }
@@ -45,29 +47,31 @@ struct iniFileContext
   iniFileContext() : m_sections(false,deleteStringKeyedArray) 
   { 
     m_curfn=NULL;
-    m_curfp=NULL;
     m_lastaccesscnt=0;
     m_curfn_time=0;
+    m_curfn_sz=0;
   }
   ~iniFileContext() { }
   
-  char *m_curfn;
-  FILE *m_curfp;  
   WDL_UINT64 m_lastaccesscnt;
   time_t m_curfn_time;
+  int m_curfn_sz;
+  char *m_curfn;
+
   WDL_StringKeyedArray< WDL_StringKeyedArray<char *> * > m_sections;
 
 };
 
-#define NUM_OPEN_CONTEXTS 3
+#define NUM_OPEN_CONTEXTS 32
 static iniFileContext s_ctxs[NUM_OPEN_CONTEXTS];
 static WDL_Mutex m_mutex;
 
-static time_t getfileupdtime(FILE *fp)
+static time_t getfileupdtimesize(const char *fn, int *szOut)
 {
-  if (!fp) return 0;
   struct stat st;
-  if (fstat(fileno(fp),&st)) return 0;
+  *szOut = 0;
+  if (!fn || !fn[0] || stat(fn,&st)) return 0;
+  *szOut = (int)st.st_size;
   return st.st_mtime;
 }
 
@@ -98,28 +102,27 @@ static iniFileContext *GetFileContext(const char *name)
   int best_z = 0;
   {
     int w;
-    bool had_z=false;
-    WDL_UINT64 bestcnt = 0; bestcnt--;
+    WDL_UINT64 bestcnt = 0; 
+    bestcnt--;
+
     for (w=0;w<NUM_OPEN_CONTEXTS;w++)
     {
-      if (s_ctxs[w].m_curfn && !stricmp(s_ctxs[w].m_curfn,name)) 
+      if (!s_ctxs[w].m_curfn || !stricmp(s_ctxs[w].m_curfn,name)) 
       {
+        // we never clear m_curfn, so we'll always find an item in cache before an unused cache entry
         best_z=w;
         break;
       }
 
-      if (!had_z)
-      {
-        if (!s_ctxs[w].m_curfn || !s_ctxs[w].m_curfp) { best_z = w; had_z=true; }    
-        else if (s_ctxs[w].m_lastaccesscnt < bestcnt) { best_z = w; bestcnt = s_ctxs[w].m_lastaccesscnt; }
-      }
+      if (s_ctxs[w].m_lastaccesscnt < bestcnt) { best_z = w; bestcnt = s_ctxs[w].m_lastaccesscnt; }
     }
   }
     
   iniFileContext *ctx = &s_ctxs[best_z];
   ctx->m_lastaccesscnt=++acc_cnt;
   
-  if (!ctx->m_curfn || stricmp(ctx->m_curfn,name) || !ctx->m_curfp || ctx->m_curfn_time != getfileupdtime(ctx->m_curfp))
+  int sz=0;
+  if (!ctx->m_curfn || stricmp(ctx->m_curfn,name) || ctx->m_curfn_time != getfileupdtimesize(ctx->m_curfn,&sz) || sz != ctx->m_curfn_sz)
   {
     ctx->m_sections.DeleteAll();
 //    printf("reinitting to %s\n",name);
@@ -128,16 +131,16 @@ static iniFileContext *GetFileContext(const char *name)
       free(ctx->m_curfn);
       ctx->m_curfn=strdup(name);
     }
-    if (ctx->m_curfp) fclose(ctx->m_curfp);
-    FILE *fp = ctx->m_curfp=fopen(name,"r");
+    FILE *fp = fopen(name,"r");
     
-    if (!ctx->m_curfp) 
+    if (!fp)
     {
-//      printf("error opening %s\n",m_curfn);
+      ctx->m_curfn_time=0;
+      ctx->m_curfn_sz=0;
       return ctx; // allow to proceed (empty file)
     }
-    flockfile(fp);
-    
+
+    flock(fileno(fp),LOCK_SH);
     
     // parse .ini file
     WDL_StringKeyedArray<char *> *cursec=NULL;
@@ -149,8 +152,12 @@ static iniFileContext *GetFileContext(const char *name)
       if (!fgets_to_typedbuf(&_buf,fp)) break;
 
       char *buf = _buf.Get();
+      if (!ctx->m_sections.GetSize()) 
+      {
+        lcnt += strlen(buf);
+        if (lcnt > 256*1024) break; // dont bother reading more than 256kb if no section encountered
+      }
       char *p=buf;
-      if (lcnt++ == 8 && !ctx->m_sections.GetSize()) break; // dont bother reading more than 8 lines if no section encountered
 
       while (*p) p++;
 
@@ -195,9 +202,11 @@ static iniFileContext *GetFileContext(const char *name)
         }
       }
     }
+    ctx->m_curfn_time = getfileupdtimesize(name,&ctx->m_curfn_sz);
+    flock(fileno(fp),LOCK_UN);    
+    fclose(fp);
+
     if (cursec) cursec->Resort();
-    ctx->m_curfn_time = getfileupdtime(fp);
-    funlockfile(fp);    
   }
   return ctx;
 }
@@ -205,11 +214,27 @@ static iniFileContext *GetFileContext(const char *name)
 static void WriteBackFile(iniFileContext *ctx)
 {
   if (!ctx||!ctx->m_curfn) return;
-  if (ctx->m_curfp) fclose(ctx->m_curfp);
-  FILE *fp = ctx->m_curfp=fopen(ctx->m_curfn,"w");
-  if (!ctx->m_curfp) return;
+  char newfn[1024];
+  lstrcpyn_safe(newfn,ctx->m_curfn,sizeof(newfn)-8);
+  {
+    char *p=newfn;
+    while (*p) p++;
+    while (p>newfn && p[-1] != '/') p--;
+    char lc = '.';
+    while (*p)
+    {
+      char c = *p;
+      *p++ = lc;
+      lc = c;
+    }
+    *p++ = lc;
+    strcpy(p,".new");
+  }
+
+  FILE *fp = fopen(newfn,"w");
+  if (!fp) return;
   
-  flockfile(fp);
+  flock(fileno(fp),LOCK_EX);
   
   int x;
   for (x = 0; ; x ++)
@@ -231,9 +256,17 @@ static void WriteBackFile(iniFileContext *ctx)
   }  
   
   fflush(fp);
-  ctx->m_curfn_time = getfileupdtime(fp);
-  funlockfile(fp);
-  
+  flock(fileno(fp),LOCK_UN);
+  fclose(fp);
+
+  if (!rename(newfn,ctx->m_curfn))
+  {
+    ctx->m_curfn_time = getfileupdtimesize(ctx->m_curfn,&ctx->m_curfn_sz);
+  }
+  else
+  {
+    // error updating, hmm how to handle this?
+  }
 }
 
 BOOL WritePrivateProfileSection(const char *appname, const char *strings, const char *fn)
@@ -258,7 +291,7 @@ BOOL WritePrivateProfileSection(const char *appname, const char *strings, const 
     while (*strings)
     {
       char buf[8192];
-      lstrcpyn(buf,strings,sizeof(buf));
+      lstrcpyn_safe(buf,strings,sizeof(buf));
       char *p = buf;
       while (*p && *p != '=') p++;
       if (*p)
@@ -324,6 +357,31 @@ BOOL WritePrivateProfileString(const char *appname, const char *keyname, const c
   return TRUE;
 }
 
+static void lstrcpyn_trimmed(char* dest, const char* src, int len)
+{
+  if (len<1) return;
+  // Mimic Win32 behavior of stripping quotes and whitespace
+  while (*src==' ' || *src=='\t') ++src; // Strip beginning whitespace
+
+  const char *end = src;
+  if (*end) while (end[1]) end++;
+
+  while (end >= src && (*end==' ' || *end=='\t')) --end; // Strip end whitespace
+
+  if (end > src && ((*src=='\"' && *end=='\"') || (*src=='\'' && *end=='\'')))
+  {	
+    // Strip initial set of "" or ''
+    ++src; 
+    --end;
+  }
+
+  int newlen = (int) (end-src+2);
+  if (newlen < 1) newlen = 1;
+  else if (newlen > len) newlen = len;
+
+  lstrcpyn_safe(dest, src, newlen);
+}	
+
 DWORD GetPrivateProfileSection(const char *appname, char *strout, DWORD strout_len, const char *fn)
 {
   WDL_MutexLock lock(&m_mutex);
@@ -350,19 +408,20 @@ DWORD GetPrivateProfileSection(const char *appname, char *strout, DWORD strout_l
        
 #define WRSTR(v) \
         l= strlen(v); \
-        if (l > strout_len - szOut - 2) l = strout_len - 2 - szOut; \
+        if (l > (int)strout_len - szOut - 2) l = (int)strout_len - 2 - szOut; \
         if (l>0) { memcpy(strout+szOut,v,l); szOut+=l; }
         
         WRSTR(kv)
         WRSTR("=")
-        WRSTR(val)
-        
 #undef WRSTR
 
+        lstrcpyn_trimmed(strout+szOut, val, (int)strout_len - szOut - 2);
+        szOut += strlen(strout+szOut);
+
         l=1;
-        if (l > strout_len - szOut - 1) l = strout_len - 1 - szOut;
+        if (l > (int)strout_len - szOut - 1) l = (int)strout_len - 1 - szOut;
         if (l>0) { memset(strout+szOut,0,l); szOut+=l; }
-        if (szOut >= strout_len-1)
+        if (szOut >= (int)strout_len-1)
         {
           strout[strout_len-1]=0;
           return strout_len-2;
@@ -431,13 +490,13 @@ DWORD GetPrivateProfileString(const char *appname, const char *keyname, const ch
       const char *val = cursec->Get(keyname);
       if (val)
       {
-        lstrcpyn(ret,val,retsize);
+        lstrcpyn_trimmed(ret,val,retsize);
         return strlen(ret);
       }
     }
   }
 //  printf("def %s %s %s %s\n",appname,keyname,def,fn);
-  lstrcpyn(ret,def?def:"",retsize);
+  lstrcpyn_safe(ret,def?def:"",retsize);
   return strlen(ret);
 }
 

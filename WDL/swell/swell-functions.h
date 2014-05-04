@@ -728,6 +728,10 @@ SWELL_API_DEFINE(void, SWELL_MessageQueue_Clear,(HWND h))
 */
 #ifdef SWELL_TARGET_OSX
 SWELL_API_DEFINE(int, SWELL_MacKeyToWindowsKey,(void *nsevent, int *flags))
+
+  // ex is the same as normal, except if mode=1 it does more processing of raw keys w/ modifiers
+  // and also if nsevent==NULL current event is used
+SWELL_API_DEFINE(int, SWELL_MacKeyToWindowsKeyEx,(void *nsevent, int *flags, int mode))
 #endif
 SWELL_API_DEFINE(int,SWELL_KeyToASCII,(int wParam, int lParam, int *newflags))
 
@@ -810,7 +814,7 @@ SWELL_API_DEFINE(BOOL, SWELL_SetCursorPos, (int X, int Y))
 ** Gets screen information, for the screen that contains sourcerect. if wantWork is set
 ** it excluses the menu bar etc.
 */
-SWELL_API_DEFINE(void, SWELL_GetViewPort,(RECT *r, RECT *sourcerect, bool wantWork))
+SWELL_API_DEFINE(void, SWELL_GetViewPort,(RECT *r, const RECT *sourcerect, bool wantWork))
 
 /*
 ** Clipboard API emulation
@@ -1071,6 +1075,8 @@ SWELL_API_DEFINE(void,SWELL_SetWindowWantRaiseAmt,(HWND h, int  amt))
 SWELL_API_DEFINE(void,SWELL_SetListViewFastClickMask,(HWND hList, int mask))
 
 
+SWELL_API_DEFINE(void,GetTempPath,(int sz, char *buf))
+
 #ifndef __APPLE__
 SWELL_API_DEFINE(void,SWELL_initargs,(int *argc, char ***argv))
 SWELL_API_DEFINE(void,SWELL_RunMessageLoop,())
@@ -1087,6 +1093,10 @@ SWELL_API_DEFINE(BOOL,SWELL_IsGroupBox,(HWND))
 SWELL_API_DEFINE(BOOL,SWELL_IsButton,(HWND))
 SWELL_API_DEFINE(BOOL,SWELL_IsStaticText,(HWND))
 SWELL_API_DEFINE(void,SWELL_GetDesiredControlSize,(HWND hwnd, RECT *r))
+
+#ifdef __APPLE__
+SWELL_API_DEFINE(void,SWELL_DisableAppNap,(int disable))
+#endif
 
 
 #endif // _WDL_SWELL_H_API_DEFINED_

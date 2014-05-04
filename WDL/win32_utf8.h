@@ -33,7 +33,7 @@ WDL_WIN32_UTF8_IMPL HINSTANCE LoadLibraryUTF8(LPCTSTR path);
 
 WDL_WIN32_UTF8_IMPL HANDLE CreateFileUTF8(LPCTSTR lpFileName,DWORD dwDesiredAccess,DWORD dwShareMode,LPSECURITY_ATTRIBUTES lpSecurityAttributes,DWORD dwCreationDisposition,DWORD dwFlagsAndAttributes,HANDLE hTemplateFile);
 
-WDL_WIN32_UTF8_IMPL int DragQueryFileUTF8(HDROP hDrop, int idx, char *buf, int bufsz);
+WDL_WIN32_UTF8_IMPL UINT DragQueryFileUTF8(HDROP hDrop, UINT idx, char *buf, UINT bufsz);
 
 WDL_WIN32_UTF8_IMPL int DrawTextUTF8(HDC hdc, LPCTSTR str, int nc, LPRECT lpRect, UINT format);
 
@@ -50,6 +50,8 @@ WDL_WIN32_UTF8_IMPL BOOL GetMenuItemInfoUTF8(HMENU hMenu, UINT uItem,BOOL fByPos
    
 WDL_WIN32_UTF8_IMPL int statUTF8(const char *filename, struct stat *buffer);
 WDL_WIN32_UTF8_IMPL FILE *fopenUTF8(const char *filename, const char *mode);
+
+WDL_WIN32_UTF8_IMPL int GetKeyNameTextUTF8(LONG lParam, LPTSTR lpString, int nMaxCount);
 
 
 WDL_WIN32_UTF8_IMPL WCHAR *WDL_UTF8ToWC(const char *buf, BOOL doublenull, int minsize, DWORD *sizeout); 

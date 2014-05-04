@@ -46,11 +46,6 @@ typedef uintptr_t UINT_PTR, *PUINT_PTR, ULONG_PTR, *PULONG_PTR, DWORD_PTR, *PDWO
 #define TRUE 1
 #endif
 
-#ifndef max
-#define max(x,y) ((x)<(y)?(y):(x))
-#define min(x,y) ((x)<(y)?(x):(y))
-#endif
-
 #ifndef S_OK
 #define S_OK 0
 #endif
@@ -66,15 +61,22 @@ typedef uintptr_t UINT_PTR, *PUINT_PTR, ULONG_PTR, *PULONG_PTR, DWORD_PTR, *PDWO
 #define GetBValue(x) ((x)&0xff)
 
 // basic platform compat defines
+#ifndef stricmp
 #define stricmp(x,y) strcasecmp(x,y)
+#endif
+#ifndef strnicmp
 #define strnicmp(x,y,z) strncasecmp(x,y,z)
+#endif
 
 #define DeleteFile(x) (!unlink(x))
 #define MoveFile(x,y) (!rename(x,y))
 #define GetCurrentDirectory(sz,buf) (!getcwd(buf,sz))
 #define SetCurrentDirectory(buf) (!chdir(buf))
 #define CreateDirectory(x,y) (!mkdir((x),0755))
+
+#ifndef wsprintf
 #define wsprintf sprintf
+#endif
 
 #ifndef LOWORD
 #define MAKEWORD(a, b)      ((unsigned short)(((BYTE)(a)) | ((WORD)((BYTE)(b))) << 8))
@@ -161,8 +163,8 @@ typedef unsigned int ULONG;
 typedef short SHORT;
 typedef int *LPINT;
 typedef char CHAR;
-typedef char *LPSTR;
-typedef const char *LPCSTR;
+typedef char *LPSTR, *LPTSTR;
+typedef const char *LPCSTR, *LPCTSTR;
 
 #define __int64 long long // define rather than typedef, for unsigned __int64 support
 

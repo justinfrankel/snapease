@@ -33,8 +33,11 @@
 #include "swell-internal.h"
 
 #include "../mutex.h"
+#include "../assocarray.h"
+#include "../wdlcstring.h"
 
 
+#ifndef SWELL_NO_CORETEXT
 static bool IsCoreTextSupported()
 {
 #if MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_5
@@ -47,7 +50,8 @@ static bool IsCoreTextSupported()
   }
   
   return is105 > 0 && CTFontCreateWithName && CTLineDraw && CTFramesetterCreateWithAttributedString && CTFramesetterCreateFrame && 
-         CTFrameGetLines && CTLineGetTypographicBounds && CTLineCreateWithAttributedString;
+         CTFrameGetLines && CTLineGetTypographicBounds && CTLineCreateWithAttributedString && CTFontCopyPostScriptName
+         ;
 #else
   // targetting 10.5+, CT is always valid
   return true;
@@ -68,6 +72,7 @@ static CTFontRef GetCoreTextDefaultFont()
   }
   return deffr;
 }
+#endif // !SWELL_NO_CORETEXT
   
 
 static NSString *CStringToNSString(const char *str)
@@ -257,7 +262,7 @@ HGDIOBJ SelectObject(HDC ctx, HGDIOBJ pen)
   if (!mod) return 0;
   
   HGDIOBJ__ *op=*mod;
-  if (!HGDIOBJ_VALID(op,p->type)) op=(HGDIOBJ__*)p->type;
+  if (!HGDIOBJ_VALID(op,p->type)) op=(HGDIOBJ__*)(INT_PTR)p->type;
   if (op != p) *mod=p;  
   return op;
 }
@@ -490,6 +495,55 @@ void SWELL_SetPixel(HDC ctx, int x, int y, int c)
 }
 
 
+static WDL_Mutex s_fontnamecache_mutex;
+
+#ifdef SWELL_CLEANUP_ON_UNLOAD
+static void releaseString(NSString *s) { [s release]; }
+#endif
+static WDL_StringKeyedArray<NSString *> s_fontnamecache(true,
+#ifdef SWELL_CLEANUP_ON_UNLOAD
+      releaseString
+#else
+      NULL
+#endif
+      );
+
+static NSString *SWELL_GetCachedFontName(const char *nm)
+{
+  NSString *ret = NULL;
+  if (nm && *nm)
+  {
+    s_fontnamecache_mutex.Enter();
+    ret = s_fontnamecache.Get(nm);
+    s_fontnamecache_mutex.Leave();
+    if (!ret)
+    {
+      ret = CStringToNSString(nm);
+      if (ret)
+      {
+#ifndef SWELL_NO_CORETEXT
+        // only do postscript name lookups on 10.9+
+        if (floor(NSFoundationVersionNumber) > 945.00) // NSFoundationVersionNumber10_8
+        {
+          NSFont *font = [NSFont fontWithName:ret size:10];
+          NSString *nr = font ? (NSString *)CTFontCopyPostScriptName((CTFontRef)font) : NULL;
+          if (nr) 
+          {
+            [ret release];
+            ret = nr;
+          }
+        }
+#endif
+
+        s_fontnamecache_mutex.Enter();
+        s_fontnamecache.Insert(nm,ret);
+        s_fontnamecache_mutex.Leave();
+      }
+    }
+  }
+  return ret ? ret : @"";
+}
+
 HFONT CreateFont(int lfHeight, int lfWidth, int lfEscapement, int lfOrientation, int lfWeight, char lfItalic, 
                  char lfUnderline, char lfStrikeOut, char lfCharSet, char lfOutPrecision, char lfClipPrecision, 
                  char lfQuality, char lfPitchAndFamily, const char *lfFaceName)
@@ -505,21 +559,21 @@ HFONT CreateFont(int lfHeight, int lfWidth, int lfEscapement, int lfOrientation,
   
   font->font_rotation = lfOrientation/10.0;
 
+#ifndef SWELL_NO_CORETEXT
   if (IsCoreTextSupported())
   {
     char buf[1024];
-    lstrcpyn(buf,lfFaceName,900);
+    lstrcpyn_safe(buf,lfFaceName,900);
     if (lfWeight >= FW_BOLD) strcat(buf," Bold");
     if (lfItalic) strcat(buf," Italic");
 
-    NSString *str=CStringToNSString(buf); 
-    font->ct_FontRef = (void*)CTFontCreateWithName((CFStringRef)str,fontwid,NULL);
-    [str release];
+    font->ct_FontRef = (void*)CTFontCreateWithName((CFStringRef)SWELL_GetCachedFontName(buf),fontwid,NULL);
     if (!font->ct_FontRef) font->ct_FontRef = (void*)[[NSFont labelFontOfSize:fontwid] retain]; 
 
     // might want to make this conditional (i.e. only return font if created successfully), but I think we'd rather fallback to a system font than use ATSUI
     return font;
   }
+#endif
   
 #ifdef SWELL_ATSUI_TEXT_SUPPORT
   ATSUFontID fontid=kATSUInvalidFontID;
@@ -610,6 +664,7 @@ BOOL GetTextMetrics(HDC ctx, TEXTMETRIC *tm)
   }
 #endif
 
+#ifndef SWELL_NO_CORETEXT
   CTFontRef fr = curfont_valid ? (CTFontRef)ct->curfont->ct_FontRef : NULL;
   if (!fr)  fr=GetCoreTextDefaultFont();
 
@@ -625,6 +680,7 @@ BOOL GetTextMetrics(HDC ctx, TEXTMETRIC *tm)
     
     return 1;
   }
+#endif
 
   
   return 1;
@@ -802,6 +858,7 @@ int DrawText(HDC ctx, const char *buf, int buflen, RECT *r, int align)
   }
 #endif  
   
+#ifndef SWELL_NO_CORETEXT
   CTFontRef fr = curfont_valid ? (CTFontRef)ct->curfont->ct_FontRef : NULL;
   if (!fr)  fr=GetCoreTextDefaultFont();
   if (fr)
@@ -953,6 +1010,7 @@ int DrawText(HDC ctx, const char *buf, int buflen, RECT *r, int align)
     
     return line_h;
   }
+#endif
   
   
   [str release];
@@ -1018,59 +1076,77 @@ HICON CreateIconIndirect(ICONINFO* iconinfo)
 
 HICON LoadNamedImage(const char *name, bool alphaFromMask)
 {
-  int needfree=0;
   NSImage *img=0;
   NSString *str=CStringToNSString(name); 
   if (strstr(name,"/"))
   {
     img=[[NSImage alloc] initWithContentsOfFile:str];
-    if (img) needfree=1;
   }
-  if (!img) img=[NSImage imageNamed:str];
+  if (!img) 
+  {
+    img=[NSImage imageNamed:str];
+    if (img) [img retain];
+  }
   [str release];
   if (!img) 
   {
     return 0;
   }
     
+  [img setFlipped:YES];
   if (alphaFromMask)
   {
-    NSSize sz=[img size];
-    NSImage *newImage=[[NSImage alloc] initWithSize:sz];
-    [newImage lockFocus];
-    
-    [img setFlipped:YES];
-    [img drawInRect:NSMakeRect(0,0,sz.width,sz.height) fromRect:NSZeroRect operation:NSCompositeSourceOver fraction:1.0];
-    int y;
-    CGContextRef myContext = (CGContextRef) [[NSGraphicsContext currentContext] graphicsPort];
-    for (y=0; y< sz.height; y ++)
+    const NSSize sz=[img size];
+    const int w = (int)sz.width, h=(int)sz.height;
+    HDC hdc;
+    if (w>0 && h>0 && NULL != (hdc=SWELL_CreateMemContext(NULL,w,h)))
     {
-      int x;
-      for (x = 0; x < sz.width; x ++)
+      [NSGraphicsContext saveGraphicsState];
+      NSGraphicsContext *gc=[NSGraphicsContext graphicsContextWithGraphicsPort:((struct HDC__*)hdc)->ctx flipped:NO];
+      [NSGraphicsContext setCurrentContext:gc];
+      [img drawInRect:NSMakeRect(0,0,w,h) fromRect:NSZeroRect operation:NSCompositeCopy fraction:1.0];
+      [NSGraphicsContext restoreGraphicsState];
+
+      NSImage *newImage=[[NSImage alloc] initWithData:[img TIFFRepresentation]];
+      [newImage setFlipped:YES];
+
+      const int *fb = (const int *)SWELL_GetCtxFrameBuffer(hdc);
+      int y,rcnt=0;
+      [newImage lockFocus];
+      CGContextRef myContext = (CGContextRef) [[NSGraphicsContext currentContext] graphicsPort];
+      for (y=0; y < h; y ++)
       {
-        NSColor *col=NSReadPixel(NSMakePoint(x,y));
-        if (col && [col numberOfComponents]<=4)
+        int x;
+        for (x = 0; x < w; x++)
         {
-          CGFloat comp[4];
-          [col getComponents:comp]; // this relies on the format being RGB
-          if (comp[0] == 1.0 && comp[1] == 0.0 && comp[2] == 1.0 && comp[3]==1.0)
-            //fabs(comp[0]-1.0) < 0.0001 && fabs(comp[1]-.0) < 0.0001 && fabs(comp[2]-1.0) < 0.0001)
+#ifdef __ppc__
+          if ((*fb++ & 0xffffff) == 0xff00ff)
+#else
+          if ((*fb++ & 0xffffff00) == 0xff00ff00)
+#endif
           {
             CGContextClearRect(myContext,CGRectMake(x,y,1,1));
+            rcnt++;
           }
         }
       }
+      [newImage unlockFocus];
+
+      SWELL_DeleteGfxContext(hdc);
+
+      if (rcnt)
+      {
+        [img release];
+        img=newImage;    
+      }
+      else
+        [newImage release];
     }
-    [newImage unlockFocus];
-    
-    if (needfree) [img release];
-    needfree=1;
-    img=newImage;    
   }
   
   HGDIOBJ__ *i=GDP_OBJECT_NEW();
   i->type=TYPE_BITMAP;
-  i->wid=needfree;
+  i->wid=1;
   i->bitmapptr = img;
   return i;
 }
@@ -1089,7 +1165,7 @@ void DrawImageInRect(HDC ctx, HICON img, RECT *r)
   NSRect rr=NSMakeRect(r->left,r->top,r->right-r->left,r->bottom-r->top);
   [nsi setFlipped:YES];
   [nsi drawInRect:rr fromRect:NSZeroRect operation:NSCompositeSourceOver fraction:1.0];
-  [nsi setFlipped:NO];
+  [nsi setFlipped:NO]; // todo: restore old flippedness?
   [NSGraphicsContext restoreGraphicsState];
 //  [gc release];
 }
