@@ -1,4 +1,4 @@
-#define VERSTRING "0.2"
+#define VERSTRING "0.3"
 /*
     SnapEase
     main_wnd.cpp -- main window dialogness
@@ -511,18 +511,21 @@ static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
     int xo=0,yo=0;
     LICE_IBitmap *bm = painter->GetBuffer(&xo,&yo);
 
-    g_lastSplashRect.left = r.right/2 - splash->getWidth()/2;
-    g_lastSplashRect.top = r.bottom/2 - splash->getHeight()/2 - splash->getHeight()/4;
+    const int splwid = splash->getWidth() + max(r.right-splash->getWidth(),0) / 2;
+    const int splhei = splash->getHeight() + max(r.bottom-splash->getHeight(),0) / 2;
+
+    g_lastSplashRect.left = r.right/2 - splwid/2;
+    g_lastSplashRect.top = r.bottom/2 - splhei/2 - splhei/4;
     if (g_lastSplashRect.top<0)g_lastSplashRect.top=0;
-    g_lastSplashRect.right = g_lastSplashRect.left + splash->getWidth();
-    g_lastSplashRect.bottom = g_lastSplashRect.top + splash->getHeight();
+    g_lastSplashRect.right = g_lastSplashRect.left + splwid;
+    g_lastSplashRect.bottom = g_lastSplashRect.top + splhei;
 
     xo += g_lastSplashRect.left;
     yo += g_lastSplashRect.top;
     if (bm) 
     {
-      float xsc = 1.0f/splash->getWidth();
-      float ysc = 1.0f/splash->getHeight();
+      float xsc = 4.0f/splwid;
+      float ysc = 4.0f/splhei;
 
       static float a[9]={0,};
       int x;
@@ -530,11 +533,11 @@ static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
       
       t += ((rand()+GetTickCount()/10000)%100)/1000.0;
       for(x=0;x<9;x++)
-        a[x]=(float) (a[x]*0.9 + 0.1 * ((0.5+sin(t*(0.2*x+0.2)))*0.3 - ((x/3)&1)*0.2));
+        a[x]=(float) (a[x]*0.9 + 0.1 * (((0.5+sin(t*(0.2*x+0.2)))*0.3 - ((x/3)&1)*0.2)));
       
-      LICE_GradRect(bm,xo,yo,splash->getWidth(),splash->getHeight(),a[6],a[7],a[8],1,   a[0]*xsc,a[1]*xsc,a[2]*xsc,0*xsc,a[3]*ysc,a[4]*ysc,a[5]*ysc,0*ysc,LICE_BLIT_MODE_COPY);
+      LICE_GradRect(bm,xo,yo,splwid,splhei,a[6],a[7],a[8],1,   a[0]*xsc,a[1]*xsc,a[2]*xsc,0*xsc,a[3]*ysc,a[4]*ysc,a[5]*ysc,0*ysc,LICE_BLIT_MODE_COPY);
 
-      LICE_Blit(bm,splash,xo, yo,NULL,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_USE_ALPHA);
+      LICE_Blit(bm,splash,xo + (splwid-splash->getWidth())/2, yo + (splhei-splash->getHeight())/2,NULL,1.0f,LICE_BLIT_MODE_COPY|LICE_BLIT_USE_ALPHA);
 
       //if (g_aboutwindow_open)
       {
@@ -557,7 +560,7 @@ static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
         tmpfont.SetBkMode(TRANSPARENT);
         tmpfont.SetTextColor(LICE_RGBA(255,255,255,255));
 
-        RECT tr={xo - g_lastSplashRect.left,yo+splash->getHeight()+5,xo - g_lastSplashRect.left + r.right,yo+r.bottom};
+        RECT tr={xo - g_lastSplashRect.left,yo+splhei+5,xo - g_lastSplashRect.left + r.right,yo+r.bottom};
         int h = tmpfont.DrawText(bm,
               "Version " VERSTRING " - "
               "Copyright (C) 2009 and onward Cockos Incorporated",-1,&tr,DT_CENTER|DT_TOP);
