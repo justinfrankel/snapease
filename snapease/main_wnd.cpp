@@ -355,7 +355,7 @@ void UpdateMainWindowWithSizeChanged()
       OrganizeWindow(hwndDlg);
     }
 
-    SCROLLINFO si={sizeof(si),SIF_PAGE|SIF_POS|SIF_RANGE,0,wh, r.bottom, g_vwnd_scrollpos,};
+    SCROLLINFO si={sizeof(si),SIF_PAGE|SIF_POS|SIF_RANGE,0,wh, (UINT)r.bottom, g_vwnd_scrollpos,};
     CoolSB_SetScrollInfo(hwndDlg,SB_VERT,&si,TRUE);
   }
   InvalidateRect(hwndDlg,NULL,FALSE);
