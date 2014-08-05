@@ -1468,10 +1468,10 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     {
       // scale coordinates to match this image
 
-      cropl = (m_croprect.left * srcimage->getWidth()) / max(m_srcimage_w,1);
-      cropt = (m_croprect.top * srcimage->getHeight()) / max(m_srcimage_h,1);
-      cropw = ((m_croprect.right * srcimage->getWidth()) / max(m_srcimage_w,1)) - cropl;
-      croph = ((m_croprect.bottom * srcimage->getHeight()) / max(m_srcimage_h,1)) - cropt;
+      cropl = (int) ((m_croprect.left * (double)srcimage->getWidth()) / max(m_srcimage_w,1) + 0.5);
+      cropt = (int) ((m_croprect.top * (double)srcimage->getHeight()) / max(m_srcimage_h,1) + 0.5);
+      cropw = (int) (((m_croprect.right * (double)srcimage->getWidth()) / max(m_srcimage_w,1)) + 0.5) - cropl;
+      croph = (int) (((m_croprect.bottom * (double)srcimage->getHeight()) / max(m_srcimage_h,1)) + 0.5) - cropt;
 
       if (cropw < 1) cropw=1;
       if (croph < 1) croph=1;
@@ -1500,11 +1500,11 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     int w=destw,h=desth;
     if (srcw*desth > destw*srch) // src image wider than tall
     {
-      h = (destw * srch) / max(srcw,1);
+      h = (int) ((destw * (double)srch) / max(srcw,1) + 0.5);
     }
     else
     {
-      w = (desth * srcw) / max(srch,1);
+      w = (int) ((desth * (double)srcw) / max(srch,1) + 0.5);
     }
 
     int yoffs = (desth-h)/2 + r.top + 2;
