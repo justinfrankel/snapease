@@ -537,7 +537,7 @@ static int RunWork(DecodeThreadContext &ctx, bool allowFullMode, sqlite3 *databa
     }
 
 
-    const int vis_start = min(max(ctx.last_visstart,0),g_images.GetSize());
+    const int vis_start = wdl_min(wdl_max(ctx.last_visstart,0),g_images.GetSize());
     int vis_end = g_lastvisible_startitem;
     if (vis_end < vis_start) vis_end = vis_start;
     if (vis_end > g_images.GetSize() - 1) vis_end = g_images.GetSize() - 1;

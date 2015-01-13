@@ -157,7 +157,7 @@ public:
     char b[2]={m_labelc,0};
     LICE_DrawText(drawbm,cx-3,cy-3,b,LICE_RGBA(255,128,0,255),1.0f,LICE_BLIT_MODE_COPY);
 
-    float r = min(m_position.bottom-m_position.top,m_position.right-m_position.left)/2 - 1;
+    float r = wdl_min(m_position.bottom-m_position.top,m_position.right-m_position.left)/2 - 1;
     LICE_Circle(drawbm,cx,cy,r,LICE_RGBA(255,255,255,255),1.0f,LICE_BLIT_MODE_COPY,true);
 
     double ang = m_val ? *m_val : 0.0;
@@ -734,8 +734,8 @@ void ImageRecord::GetCropRectForScreen(int w, int h, RECT *cr)
   }
 
   // rotate
-  int sw=max(m_srcimage_w,1);
-  int sh=max(m_srcimage_h,1);
+  int sw=wdl_max(m_srcimage_w,1);
+  int sh=wdl_max(m_srcimage_h,1);
   switch  (m_rot&3)
   {
     case 0: 
@@ -1468,10 +1468,10 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     {
       // scale coordinates to match this image
 
-      cropl = (int) ((m_croprect.left * (double)srcimage->getWidth()) / max(m_srcimage_w,1) + 0.5);
-      cropt = (int) ((m_croprect.top * (double)srcimage->getHeight()) / max(m_srcimage_h,1) + 0.5);
-      cropw = (int) (((m_croprect.right * (double)srcimage->getWidth()) / max(m_srcimage_w,1)) + 0.5) - cropl;
-      croph = (int) (((m_croprect.bottom * (double)srcimage->getHeight()) / max(m_srcimage_h,1)) + 0.5) - cropt;
+      cropl = (int) ((m_croprect.left * (double)srcimage->getWidth()) / wdl_max(m_srcimage_w,1) + 0.5);
+      cropt = (int) ((m_croprect.top * (double)srcimage->getHeight()) / wdl_max(m_srcimage_h,1) + 0.5);
+      cropw = (int) (((m_croprect.right * (double)srcimage->getWidth()) / wdl_max(m_srcimage_w,1)) + 0.5) - cropl;
+      croph = (int) (((m_croprect.bottom * (double)srcimage->getHeight()) / wdl_max(m_srcimage_h,1)) + 0.5) - cropt;
 
       if (cropw < 1) cropw=1;
       if (croph < 1) croph=1;
@@ -1500,11 +1500,11 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
     int w=destw,h=desth;
     if (srcw*desth > destw*srch) // src image wider than tall
     {
-      h = (int) ((destw * (double)srch) / max(srcw,1) + 0.5);
+      h = (int) ((destw * (double)srch) / wdl_max(srcw,1) + 0.5);
     }
     else
     {
-      w = (int) ((desth * (double)srcw) / max(srch,1) + 0.5);
+      w = (int) ((desth * (double)srcw) / wdl_max(srch,1) + 0.5);
     }
 
     int yoffs = (desth-h)/2 + r.top + 2;
@@ -1737,7 +1737,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
       if (cr.left > xoffs) LICE_FillRect(drawbm,xoffs,yoffs,cr.left-xoffs,h,col,al,LICE_BLIT_MODE_COPY);
       if (cr.right < xoffs+w)  LICE_FillRect(drawbm,cr.right,yoffs,xoffs+w - cr.right,h,col,al,LICE_BLIT_MODE_COPY);
 
-      int vsw=min(xoffs+w,cr.right)-max(xoffs,cr.left),vsx=max(xoffs,cr.left);
+      int vsw=wdl_min(xoffs+w,cr.right)-wdl_max(xoffs,cr.left),vsx=wdl_max(xoffs,cr.left);
       if (cr.top > yoffs) LICE_FillRect(drawbm,vsx,yoffs,vsw,cr.top - yoffs,col,al,LICE_BLIT_MODE_COPY);
       if (cr.bottom < yoffs+h) LICE_FillRect(drawbm,vsx,cr.bottom,vsw,yoffs+h-cr.bottom,col,al,LICE_BLIT_MODE_COPY);
 

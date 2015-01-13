@@ -201,8 +201,8 @@ void DrawTooltipForPoint(LICE_IBitmap *bm, POINT mousePt, RECT *wndr, const char
     tmpfont.DrawText(bm,text,-1,&r,DT_CALCRECT);
 
 
-    int xo = min(max(mousePt.x,wndr->left),wndr->right);
-    int yo = min(max(mousePt.y + 24,wndr->top),wndr->bottom);
+    int xo = wdl_min(wdl_max(mousePt.x,wndr->left),wndr->right);
+    int yo = wdl_min(wdl_max(mousePt.y + 24,wndr->top),wndr->bottom);
 
     if (yo + r.bottom > wndr->bottom-4) // too close to bottom, move up if possible
     {
@@ -277,8 +277,8 @@ int OrganizeWindow(HWND hwndDlg)
           RECT rr={12,12,r.right-12,r.bottom-12};
           rec->SetPosition(&rr);
 
-          g_firstvisible_startitem = max(0,x-5); 
-          g_lastvisible_startitem = min(x + 5, g_images.GetSize() - 1);
+          g_firstvisible_startitem = wdl_max(0,x-5);
+          g_lastvisible_startitem = wdl_min(x + 5, g_images.GetSize() - 1);
         }
         else
         {
@@ -511,8 +511,8 @@ static void DrawAboutWindow(WDL_VWnd_Painter *painter, RECT r)
     int xo=0,yo=0;
     LICE_IBitmap *bm = painter->GetBuffer(&xo,&yo);
 
-    const int splwid = splash->getWidth() + max(r.right-splash->getWidth(),0) / 2;
-    const int splhei = splash->getHeight() + max(r.bottom-splash->getHeight(),0) / 2;
+    const int splwid = splash->getWidth() + wdl_max(r.right-splash->getWidth(),0) / 2;
+    const int splhei = splash->getHeight() + wdl_max(r.bottom-splash->getHeight(),0) / 2;
 
     g_lastSplashRect.left = r.right/2 - splwid/2;
     g_lastSplashRect.top = r.bottom/2 - splhei/2 - splhei/4;

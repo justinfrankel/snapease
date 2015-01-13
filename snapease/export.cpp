@@ -297,7 +297,7 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
           "Total size: %.2fMB, average image size: %.2fMB",
           m_total_files_out,m_runpos,
         (m_total_bytes_out/1024.0/1024.0),
-        (m_total_bytes_out/1024.0/1024.0)/(double)max(1,m_total_files_out)
+        (m_total_bytes_out/1024.0/1024.0)/(double)wdl_max(1,m_total_files_out)
         );
       SetDlgItemText(hwndDlg,IDCANCEL,"Close");
       m_isFinished=true;
@@ -386,7 +386,7 @@ void imageExporter::RunExportTimer(HWND hwndDlg)
     m_outname.Append(extension);
 
     m_upload_statustext[0]=0;
-    double avg_imgsize=(m_total_bytes_out/1024.0/1024.0)/(double)max(1,m_total_files_out);
+    double avg_imgsize=(m_total_bytes_out/1024.0/1024.0)/(double)wdl_max(1,m_total_files_out);
     DisplayMessage(hwndDlg,false,"Processing %d/%d - %.2fMB/%.2fMB (est), average image size = %.2fMB\r\n"
                                  "Source: %.100s\r\n"
                                  "Destination: %.100s%s%.100s%s\r\n"
