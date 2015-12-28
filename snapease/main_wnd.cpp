@@ -1,4 +1,4 @@
-#define VERSTRING "0.3"
+#define VERSTRING "0.4"
 /*
     SnapEase
     main_wnd.cpp -- main window dialogness

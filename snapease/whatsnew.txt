@@ -1,3 +1,8 @@
+v0.4 - December 28 2015
+  + Update to libpng 1.6.19
+  + Fix issues with extremely large images
+  + Update to NSIS 2.5.0 on Windows
+
 v0.3 - May 5 2014
   + Multiprocessor image loading/thumbnail rendering option
   + Thumbnail caching to disk option (using sqlite3)
