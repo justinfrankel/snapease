@@ -82,9 +82,9 @@ public:
   MainWindowVwnd() { }
   ~MainWindowVwnd()  { }
 
-  virtual void OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect)
+  virtual void OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect, int rscale)
   {
-    WDL_VWnd::OnPaint(drawbm,origin_x,origin_y,cliprect);
+    WDL_VWnd::OnPaint(drawbm,origin_x,origin_y,cliprect, rscale);
     if (!m_children) return;
 
     WDL_VWnd *capwnd = m_children->Get(m_captureidx);

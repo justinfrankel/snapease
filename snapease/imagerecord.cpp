@@ -148,7 +148,7 @@ public:
     }
   }
 
-  virtual void OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect)
+  virtual void OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect, int rscale)
   {
     int cx = origin_x + (m_position.right+m_position.left)/2;
     int cy = origin_y + (m_position.bottom+m_position.top)/2;
@@ -393,7 +393,7 @@ LICE_CachedFont g_imagerecord_font;
 LICE_IBitmap *LoadThemeElement(int idx, const char *name)
 {
 #ifdef _WIN32
-  LICE_IBitmap *bm = LICE_LoadPNGFromResource(g_hInst,idx,NULL);
+  LICE_IBitmap *bm = LICE_LoadPNGFromResource(g_hInst,MAKEINTRESOURCE(idx),NULL);
 #else
   LICE_IBitmap *bm =  LICE_LoadPNGFromNamedResource(name,NULL);
 
@@ -1420,7 +1420,7 @@ bool ImageRecord::ProcessImageToBitmap(LICE_IBitmap *srcimage, LICE_IBitmap *des
 }
 
 
-void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect)
+void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT *cliprect, int rscale)
 {
   if (!g_imagerecord_font.GetHFont())
   {
@@ -1893,7 +1893,7 @@ void ImageRecord::OnPaint(LICE_IBitmap *drawbm, int origin_x, int origin_y, RECT
       }
     }
   }
-  WDL_VWnd::OnPaint(drawbm,origin_x,origin_y,cliprect);
+  WDL_VWnd::OnPaint(drawbm,origin_x,origin_y,cliprect,rscale);
 }
 
 void ImageRecord::GetSizeInfoString(char *buf, int bufsz) // WxH or WxH cropped to WxH
