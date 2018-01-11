@@ -2542,6 +2542,44 @@ _emit 0x90;
 }
 __declspec(naked) void nseel_asm_fptobool_end(void) {}
 
+__declspec(naked) void nseel_asm_fptobool_rev(void)
+{
+  __asm {
+_emit 0x89;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+    fabs;
+#ifdef TARGET_X64
+    fcomp EEL_ASM_TYPE [r12+-8]; //[g_closefact]
+#else
+    fcomp EEL_ASM_TYPE [ebx+-8]; //[g_closefact]
+#endif
+    fstsw ax;
+    and eax, 256;
+_emit 0x89;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+_emit 0x90;
+  }
+}
+__declspec(naked) void nseel_asm_fptobool_rev_end(void) {}
 
 __declspec(naked) void nseel_asm_min(void)
 {
@@ -3915,7 +3953,7 @@ _emit 0x90;
 __declspec(naked) void nseel_asm_stack_exch_end(void) {}
 
 #ifdef TARGET_X64
-__declspec(naked) void win64_callcode()
+__declspec(naked) void eel_callcode64()
 {
 	__asm {
 #ifndef EEL_X64_NO_CHANGE_FPFLAGS
@@ -3959,6 +3997,38 @@ __declspec(naked) void win64_callcode()
 		add rsp, 16;
 #endif
 
+		ret;
+	}
+}
+
+__declspec(naked) void eel_setfp_round()
+{
+	__asm {
+#ifndef EEL_X64_NO_CHANGE_FPFLAGS
+		sub rsp, 16;
+		fnstcw [rsp];
+		mov ax, [rsp];
+		and ax, 0xF3FF; // set round to nearest
+		mov [rsp+4], ax;
+		fldcw [rsp+4];
+		add rsp, 16;
+#endif
+		ret;
+	}
+}
+
+__declspec(naked) void eel_setfp_trunc()
+{
+	__asm {
+#ifndef EEL_X64_NO_CHANGE_FPFLAGS
+		sub rsp, 16;
+		fnstcw [rsp];
+		mov ax, [rsp];
+		or ax, 0xC00; // set to truncate
+		mov [rsp+4], ax;
+		fldcw [rsp+4];
+		add rsp, 16;
+#endif
 		ret;
 	}
 }

@@ -11,6 +11,30 @@
 #include <math.h>
 #include <stdio.h>
 
+#ifndef _WIN32
+#include <sys/time.h>
+#include "../../swell/swell.h"
+#endif
+
+static double gettm()
+{
+#ifndef _WIN32
+  struct timeval tm={0,};
+   gettimeofday(&tm,NULL);
+   return (double)tm.tv_sec + (double)tm.tv_usec/1000000;
+#else
+  LARGE_INTEGER freq;
+  QueryPerformanceFrequency(&freq);
+
+  LARGE_INTEGER now;
+  QueryPerformanceCounter(&now);
+  return (double)now.QuadPart / (double)freq.QuadPart;
+#endif
+}
+
+char g_status[1024];
+
+
 #include "../lice_text.h"
 
 #include "../lice_glbitmap.h"
@@ -39,7 +63,7 @@ static WDL_VideoDecode *m_decoder;
 
 #define NUM_EFFECTS 25
 
-char *effect_names[NUM_EFFECTS] =
+const char *effect_names[NUM_EFFECTS] =
 {
   "Rotated + Scaled blit",
   "Simple alpha blit",
@@ -73,7 +97,7 @@ LICE_IBitmap *jpg;
 LICE_IBitmap *bmp;
 LICE_IBitmap *icon;
 LICE_IBitmap *framebuffer;
-static int m_effect = NUM_EFFECTS-1;
+static int m_effect = 11;
 static int m_doeff = 0;
 
 static LICE_IBitmap* tmpbmp = 0;
@@ -82,11 +106,8 @@ static DWORD m_start_time, m_frame_cnt;
 bool m_cap;
 
 
-static void DoPaint(HWND hwndDlg)
+static void DoPaint(HWND hwndDlg, HDC dc)
 {
-  PAINTSTRUCT ps;
-  
-  HDC dc = BeginPaint(hwndDlg, &ps);
   RECT r;
   GetClientRect(hwndDlg, &r);
   
@@ -104,15 +125,18 @@ static void DoPaint(HWND hwndDlg)
   int x=rand()%(r.right+300)-150;
   int y=rand()%(r.bottom+300)-150;
 
+  static int frame_cnt;
   static int s_preveff = -1;
   if (m_effect != s_preveff)
   {
+    frame_cnt=0;
     s_preveff = m_effect;
     LICE_Clear(framebuffer, 0);
   }
 
   static MTRand s_rng;
-  
+  double t2=gettm();
+
   switch(m_effect)
   {
     case 23:
@@ -249,22 +273,22 @@ static void DoPaint(HWND hwndDlg)
       bool aa = true;
       float maxsegmentpx = 0.0f;
 
-      x0 = w*rand()/RAND_MAX;
-      y0 = h*rand()/RAND_MAX;
-      x1 = w*rand()/RAND_MAX;
-      y1 = h*rand()/RAND_MAX;
-      x2 = w*rand()/RAND_MAX;
-      y2 = h*rand()/RAND_MAX;
+      x0 = w*(double)rand()/RAND_MAX;
+      y0 = h*(double)rand()/RAND_MAX;
+      x1 = w*(double)rand()/RAND_MAX;
+      y1 = h*(double)rand()/RAND_MAX;
+      x2 = w*(double)rand()/RAND_MAX;
+      y2 = h*(double)rand()/RAND_MAX;
       LICE_DrawQBezier(framebuffer, x0, y0, x1, y1, x2, y2, LICE_RGBA(255,0,0,255), 1.0f, LICE_BLIT_MODE_COPY, aa, maxsegmentpx);
 
-      x0 = w*rand()/RAND_MAX;
-      y0 = h*rand()/RAND_MAX;
-      x1 = w*rand()/RAND_MAX;
-      y1 = h*rand()/RAND_MAX;
-      x2 = w*rand()/RAND_MAX;
-      y2 = h*rand()/RAND_MAX;
-      x3 = w*rand()/RAND_MAX;
-      y3 = h*rand()/RAND_MAX;
+      x0 = w*(double)rand()/RAND_MAX;
+      y0 = h*(double)rand()/RAND_MAX;
+      x1 = w*(double)rand()/RAND_MAX;
+      y1 = h*(double)rand()/RAND_MAX;
+      x2 = w*(double)rand()/RAND_MAX;
+      y2 = h*(double)rand()/RAND_MAX;
+      x3 = w*(double)rand()/RAND_MAX;
+      y3 = h*(double)rand()/RAND_MAX;
       LICE_DrawCBezier(framebuffer, x0, y0, x1, y1, x2, y2, x3, y3, LICE_RGBA(0,255,0,255), 1.0f, LICE_BLIT_MODE_COPY, aa, maxsegmentpx);
     }
     break;
@@ -387,6 +411,9 @@ static void DoPaint(HWND hwndDlg)
     case 17:
       {
         static pl_Obj *obj=NULL,*obj2=NULL;
+        static LICE_IBitmap *framebuffer2;
+        if (!framebuffer2) framebuffer2=new LICE_MemBitmap;
+        LICE_Copy(framebuffer2,framebuffer);
         if (!obj)
         {
           pl_Mat *mat = new pl_Mat;
@@ -414,6 +441,9 @@ static void DoPaint(HWND hwndDlg)
           mat2->SolidOpacity=0.4;
           mat2->BackfaceCull=false;
           mat2->BackfaceIllumination=1.0;
+          mat2->Texture2=framebuffer2;
+          mat2->Tex2MapIdx=-1;
+          mat2->Tex2Opacity=0.75;
 
           mat->Texture=bmp;
           LICE_TexGen_Marble(mat->Texture = new LICE_MemBitmap(r.right,r.bottom),NULL,0.3,0.4,0.0,1.0f);
@@ -444,7 +474,9 @@ static void DoPaint(HWND hwndDlg)
             no->Xa += 50.35*x;
             no->Ya -= 30.13*x;
           }
-          obj2=plMakeBox(130,130,130,mat2);
+          obj2=plMakeSphere(58,20,20,mat2);
+          obj2->Zp -= 30.0;
+          obj->Zp += 30.0;
 
           /*pl_Obj *o = plRead3DSObj("c:\\temp\\suzanne.3ds",mat);
           if (o)
@@ -708,7 +740,7 @@ static void DoPaint(HWND hwndDlg)
     {
       int x;
       static double a;
-      double sc=sin(a)*0.024;
+      double sc=sin(a)*0.24;
       a+=0.03;
       for (x = 0; x < 10000; x ++)
         LICE_PutPixel(framebuffer,rand()%framebuffer->getWidth(),rand()%framebuffer->getHeight(),LICE_RGBA(255,255,255,255),sc,LICE_BLIT_MODE_ADD);
@@ -720,18 +752,18 @@ static void DoPaint(HWND hwndDlg)
 
       LICE_pixel goodCol=LICE_RGBA(192,0,192,64);
       LICE_Clear(framebuffer,goodCol);
-      int subx=30,suby=30,subw=300,subh=300;
+      int subx=30,suby=30,subw=framebuffer->getWidth()-60,subh=framebuffer->getHeight()-60;
       LICE_SubBitmap bm(framebuffer,subx,suby,subw,subh);
       LICE_Clear(&bm,LICE_RGBA(80,80,80,255));
 
       int n;
       int w = framebuffer->getWidth(), h = framebuffer->getHeight();      
-      for(n=0;n<10000;n++)
+      for(n=0;n<1000;n++)
       {
         LICE_FLine(&bm, rand()%(w*3/2)-w/4, rand()%(h*3/2)-h/4, rand()%(w*3/2)-w/4, rand()%(h*3/2)-h/4, LICE_RGBA(rand()%255,rand()%255,rand()%255,255));
       }
       int y;
-      for(y=0;y<h;y++)
+      if (0) for(y=0;y<h;y++)
       {
         int x;
         for(x=0;x<w;x++)
@@ -858,27 +890,36 @@ static void DoPaint(HWND hwndDlg)
   {
     LICE_ScaledBlit(framebuffer,jpg,0,0,framebuffer->getWidth(),framebuffer->getHeight(),0,0,jpg->getWidth(),jpg->getHeight(),0.5,LICE_BLIT_MODE_COPY);
   }
+  t2 = gettm()-t2;
   
   m_frame_cnt++;
   
   double sec=(GetTickCount()-m_start_time)*0.001;
   //if (sec>0.0001)
-  if (false)
+  if (g_status[0])
   {
-    char buf[512];
-    sprintf(buf,"%dx%d @ %.2ffps",framebuffer->getWidth(),framebuffer->getHeight(),m_frame_cnt / (double)sec);
-    LICE_DrawText(framebuffer,1,1,buf,LICE_RGBA(0,0,0,0),1,LICE_BLIT_MODE_COPY);
-    LICE_DrawText(framebuffer,0,0,buf,LICE_RGBA(255,255,255,0),1,LICE_BLIT_MODE_COPY);
+    LICE_DrawText(framebuffer,1,1,g_status,LICE_RGBA(0,0,0,0),1,LICE_BLIT_MODE_COPY);
+    LICE_DrawText(framebuffer,0,0,g_status,LICE_RGBA(255,255,255,0),1,LICE_BLIT_MODE_COPY);
   }
   
   m_doeff = 0;
   
-#ifndef _WIN32
-  SWELL_SyncCtxFrameBuffer(framebuffer->getDC()); // flush required on OS X
-#endif
+  double t1=gettm();
+  
   BitBlt(dc,r.left,r.top,framebuffer->getWidth(),framebuffer->getHeight(),framebuffer->getDC(),0,0,SRCCOPY);
   //      bmp->blitToDC(dc, NULL, 0, 0);
+  t1 = gettm()-t1;
 
+  static double ac,stt,ac2;
+
+  if (!frame_cnt++)
+  {
+    ac=ac2=0;
+    stt=gettm();
+  }
+  ac+=t1;
+  ac2+=t2;
+  sprintf(g_status,"blit = %f/%f, %f/%f %dx%d @ %ffps\n",t1,t2,ac/frame_cnt,ac2/frame_cnt,framebuffer->getWidth(),framebuffer->getHeight(),frame_cnt/(gettm()-stt));
 
 #if 0
   if (GetAsyncKeyState(VK_SHIFT)&0x8000)
@@ -889,8 +930,6 @@ static void DoPaint(HWND hwndDlg)
     LICE_WriteJPG("/tmp/blah.jpg",framebuffer);
   }
 #endif
-
-  EndPaint(hwndDlg, &ps);
 }
 
 
@@ -899,7 +938,11 @@ LRESULT WINAPI testRenderDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 {
   if (uMsg==WM_PAINT)
   {
-    DoPaint(hwndDlg);
+    PAINTSTRUCT ps;
+    
+    HDC dc = BeginPaint(hwndDlg, &ps);
+    DoPaint(hwndDlg,dc);
+    EndPaint(hwndDlg, &ps);
     return 0;
   }
   if (uMsg == WM_LBUTTONDOWN)
@@ -942,11 +985,18 @@ WDL_DLGRET WINAPI dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     //jpg=LICE_LoadJPG("C:/turds.jpg");
 
 #ifdef _WIN32
-    bmp = LICE_LoadPNGFromResource(g_hInstance, IDC_PNG1);
-    icon = LICE_LoadIconFromResource(g_hInstance, IDI_MAIN, 0);
+    bmp = LICE_LoadPNGFromResource(g_hInstance, MAKEINTRESOURCE(IDC_PNG1));
+    icon = LICE_LoadIconFromResource(g_hInstance, MAKEINTRESOURCE(IDI_MAIN), 0);
+#else
+    bmp = LICE_LoadPNGFromNamedResource("image.png");
+
+      
+    // uncomment if you want to try GL blits:
+    //   SWELL_SetViewGL(GetDlgItem(hwndDlg,IDC_RECT),true);
+    SendMessage(hwndDlg,WM_SIZE,0,0);
 #endif     
     
-    SetTimer(hwndDlg,1,3,NULL);
+    SetTimer(hwndDlg,1,1,NULL);
     {
       int x;
       for (x = 0; x < NUM_EFFECTS; x ++)
@@ -974,7 +1024,14 @@ WDL_DLGRET WINAPI dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     InvalidateRect(hwndDlg,NULL,FALSE);
     return 0;
   case WM_PAINT:
-    DoPaint(hwndDlg);
+    {
+      PAINTSTRUCT ps;
+      
+      HDC dc = BeginPaint(hwndDlg, &ps);
+
+      DoPaint(hwndDlg,dc);
+      EndPaint(hwndDlg,&ps);
+    }
     break;
 #else
   case WM_SIZE:
@@ -986,7 +1043,17 @@ WDL_DLGRET WINAPI dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   }
   return 0;
   case WM_TIMER:
+#if 1
     InvalidateRect(GetDlgItem(hwndDlg,IDC_RECT),NULL,FALSE);
+#else
+    {
+      HWND h = GetDlgItem(hwndDlg,IDC_RECT);
+      HDC dc = GetWindowDC(h);
+      DoPaint(hwndDlg,dc);
+      ReleaseDC(h,dc);
+      SWELL_FlushWindow(h);
+    }
+#endif
   return 0;
 #endif
   case WM_COMMAND:
@@ -999,7 +1066,7 @@ WDL_DLGRET WINAPI dlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         m_frame_cnt=0;
       break;
       case IDCANCEL:
-#ifdef _WIN32
+#ifndef __APPLE__
         EndDialog(hwndDlg, 0);
 #else
         DestroyWindow(hwndDlg); // on mac we run modeless
@@ -1023,4 +1090,51 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdPa
 
   return 0;
 }
+#else
+
+static HWND ccontrolCreator(HWND parent, const char *cname, int idx, const char *classname, int style, int x, int y, int w, int h)
+{
+  if (!stricmp(classname,"TestRenderingClass"))
+  {
+    HWND hw=CreateDialog(NULL,0,parent,(DLGPROC)testRenderDialogProc);
+    SetWindowLong(hw,GWL_ID,idx);
+    SetWindowPos(hw,HWND_TOP,x,y,w,h,SWP_NOZORDER|SWP_NOACTIVATE);
+    ShowWindow(hw,SW_SHOWNA);
+    return hw;
+  }
+  return 0;
+}
+
+#include "../../swell/swell-dlggen.h"
+
+// define our dialog box resource!
+
+SWELL_DEFINE_DIALOG_RESOURCE_BEGIN(IDD_DIALOG1,SWELL_DLG_WS_RESIZABLE|SWELL_DLG_WS_FLIPPED,"LICE Test",400,300,1.8)
+BEGIN
+CONTROL         "",IDC_RECT,"TestRenderingClass",0,7,23,384,239 // we arae creating a custom control here because it will be opaque and therefor a LOT faster drawing
+COMBOBOX        IDC_COMBO1,7,7,181,170,CBS_DROPDOWNLIST | WS_VSCROLL | 
+WS_TABSTOP
+
+END
+SWELL_DEFINE_DIALOG_RESOURCE_END(IDD_DIALOG1)
+
+#if !defined(__APPLE__)
+int main(int argc, char **argv)
+{
+  SWELL_initargs(&argc,&argv);
+  SWELL_Internal_PostMessage_Init();
+  SWELL_ExtendedAPI("APPNAME",(void*)"LICE test");
+  SWELL_RegisterCustomControlCreator(ccontrolCreator);
+  //SWELL_ExtendedAPI("INIFILE",(void*)"path/to/ini/file.ini");
+  //SWELL_ExtendedAPI("FONTPANGRAM",(void*)"LICE test thingy lbah akbzfshauoh01384u1023");
+  DialogBox(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), NULL, dlgProc);
+
+  return 0;
+}
+
+INT_PTR SWELLAppMain(int msg, INT_PTR parm1, INT_PTR parm2)
+{
+  return 0;
+}
+#endif
 #endif

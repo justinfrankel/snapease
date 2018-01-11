@@ -87,9 +87,10 @@ void nseel_asm_2pdds(void)
       "movl %rsi, %r15\n"
       "movl %rdi, %r14\n"
       "call *%eax\n"
+      "movl %r14, %rdi\n" /* restore thrashed rdi */
       "movl %r15, %rsi\n"
-      "movq xmm0, (%r14)\n"
       "movl %r14, %rax\n" /* set return value */
+      "movq xmm0, (%r14)\n"
     #else
       "subl X64_EXTRA_STACK_SPACE, %rsp\n"
       "call *%eax\n"
@@ -1212,6 +1213,22 @@ void nseel_asm_fptobool(void)
 }
 void nseel_asm_fptobool_end(void) {}
 
+void nseel_asm_fptobool_rev(void)
+{
+  __asm__(
+      FUNCTION_MARKER
+    "fabs\n"
+#ifdef TARGET_X64
+    "fcomp" EEL_F_SUFFIX " -8(%r12)\n" //[g_closefact]
+#else
+    "fcomp" EEL_F_SUFFIX " -8(%ebx)\n" //[g_closefact]
+#endif
+    "fstsw %ax\n"
+    "andl $256, %eax\n"
+    FUNCTION_MARKER
+  );
+}
+void nseel_asm_fptobool_rev_end(void) {}
 
 void nseel_asm_min(void)
 {
@@ -1989,7 +2006,7 @@ void nseel_asm_stack_exch(void)
 void nseel_asm_stack_exch_end(void) {}
 
 #ifdef TARGET_X64
-void win64_callcode() 
+void eel_callcode64() 
 {
 	__asm__(
 #ifndef EEL_X64_NO_CHANGE_FPFLAGS
@@ -2033,6 +2050,38 @@ void win64_callcode()
 		"addl $16, %rsp\n"
 #endif
 
+		"ret\n"
+	);
+}
+
+void eel_setfp_round()
+{
+	__asm__(
+#ifndef EEL_X64_NO_CHANGE_FPFLAGS
+		"subl $16, %rsp\n"
+		"fnstcw (%rsp)\n"
+		"mov (%rsp), %ax\n"
+		"and $0xF3FF, %ax\n" // set round to nearest
+		"mov %ax, 4(%rsp)\n"
+		"fldcw 4(%rsp)\n"
+		"addl $16, %rsp\n"
+#endif
+		"ret\n"
+	);
+}
+
+void eel_setfp_trunc()
+{
+	__asm__(
+#ifndef EEL_X64_NO_CHANGE_FPFLAGS
+		"subl $16, %rsp\n"
+		"fnstcw (%rsp)\n"
+		"mov (%rsp), %ax\n"
+		"or $0xC00, %ax\n" // set to truncate
+		"mov %ax, 4(%rsp)\n"
+		"fldcw 4(%rsp)\n"
+		"addl $16, %rsp\n"
+#endif
 		"ret\n"
 	);
 }

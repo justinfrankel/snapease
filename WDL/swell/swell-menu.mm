@@ -1,5 +1,5 @@
-/* Cockos SWELL (Simple/Small Win32 Emulation Layer for Losers (who use OS X))
-   Copyright (C) 2006-2007, Cockos, Inc.
+/* Cockos SWELL (Simple/Small Win32 Emulation Layer for Linux/OSX)
+   Copyright (C) 2006 and later, Cockos, Inc.
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -60,9 +60,8 @@ bool SetMenuItemText(HMENU hMenu, int idx, int flag, const char *text)
   {
     if (!(flag & MF_BYPOSITION))
     {
-      int x;
-      int n=[menu numberOfItems];
-      for (x = 0; x < n; x ++)
+      const int n = (int) [menu numberOfItems];
+      for (int x = 0; x < n; x ++)
       {
         item=[menu itemAtIndex:x];
         if (item && [item hasSubmenu])
@@ -96,9 +95,8 @@ bool EnableMenuItem(HMENU hMenu, int idx, int en)
   {
     if (!(en & MF_BYPOSITION))
     {
-      int x;
-      int n=[menu numberOfItems];
-      for (x = 0; x < n; x ++)
+      const int n=(int)[menu numberOfItems];
+      for (int x = 0; x < n; x ++)
       {
         item=[menu itemAtIndex:x];
         if (item && [item hasSubmenu])
@@ -126,9 +124,8 @@ bool CheckMenuItem(HMENU hMenu, int idx, int chk)
   {
     if (!(chk & MF_BYPOSITION))
     {
-      int x;
-      int n=[menu numberOfItems];
-      for (x = 0; x < n; x ++)
+      const int n=(int)[menu numberOfItems];
+      for (int x = 0; x < n; x ++)
       {
         item=[menu itemAtIndex:x];
         if (item && [item hasSubmenu])
@@ -171,19 +168,19 @@ HMENU GetSubMenu(HMENU hMenu, int pos)
 int GetMenuItemCount(HMENU hMenu)
 {
   NSMenu *menu=(NSMenu *)hMenu;
-  return [menu numberOfItems];
+  return (int)[menu numberOfItems];
 }
 
 int GetMenuItemID(HMENU hMenu, int pos)
 {
   NSMenu *menu=(NSMenu *)hMenu;
-  if (pos < 0 || pos >= [menu numberOfItems]) return 0;
+  if (pos < 0 || pos >= (int)[menu numberOfItems]) return 0;
   
   NSMenuItem *item=[menu itemAtIndex:pos]; 
   if (item) 
   {
     if ([item hasSubmenu]) return -1;
-    return [item tag];
+    return (int)[item tag];
   }
   return 0;
 }
@@ -210,9 +207,8 @@ bool SetMenuItemModifier(HMENU hMenu, int idx, int flag, int code, unsigned int 
   {
     if (!(flag & MF_BYPOSITION))
     {
-      int x;
-      int n=[menu numberOfItems];
-      for (x = 0; x < n; x ++)
+      const int n = (int)[menu numberOfItems];
+      for (int x = 0; x < n; x ++)
       {
         item=[menu itemAtIndex:x];
         if (item && [item hasSubmenu])
@@ -250,7 +246,7 @@ bool SetMenuItemModifier(HMENU hMenu, int idx, int flag, int code, unsigned int 
     
     if (code>='A' && code<='Z') suppressShift=true;
   }
-  else if (code >= VK_F1 && code <= VK_F12)
+  else if (code >= VK_F1 && code <= VK_F24)
   {
     arrowKey = NSF1FunctionKey + code - VK_F1;
   }
@@ -418,8 +414,8 @@ bool DeleteMenu(HMENU hMenu, int idx, int flag)
     item=[m itemWithTag:idx];
     if (!item) 
     {
-      int x,n=[m numberOfItems];
-      for (x=0;x<n;x++)
+      const int n = (int) [m numberOfItems];
+      for (int x=0;x<n;x++)
       {
         item=[m itemAtIndex:x];
         if (item && [item hasSubmenu])
@@ -454,9 +450,8 @@ BOOL SetMenuItemInfo(HMENU hMenu, int pos, BOOL byPos, MENUITEMINFO *mi)
   {
     if (!byPos)
     {
-      int x;
-      int n=[m numberOfItems];
-      for (x = 0; x < n; x ++)
+      const int n = (int)[m numberOfItems];
+      for (int x = 0; x < n; x ++)
       {
         item=[m itemAtIndex:x];
         if (item && [item hasSubmenu])
@@ -469,11 +464,6 @@ BOOL SetMenuItemInfo(HMENU hMenu, int pos, BOOL byPos, MENUITEMINFO *mi)
     return 0;
   }
   
-  if ((mi->fMask & MIIM_SUBMENU) && mi->hSubMenu) // do this before MIIM_TYPE so we title the submenu properly
-  {  
-    [m setSubmenu:(NSMenu*)mi->hSubMenu forItem:item];
-    [((NSMenu*)mi->hSubMenu) release]; // let the parent menu free it
-  } 
   if (mi->fMask & MIIM_TYPE)
   {
     if (mi->fType == MFT_STRING && mi->dwTypeData)
@@ -483,11 +473,30 @@ BOOL SetMenuItemInfo(HMENU hMenu, int pos, BOOL byPos, MENUITEMINFO *mi)
       NSString *label=(NSString *)SWELL_CStringToCFString(buf); 
       
       [item setTitle:label];
-      if ([item hasSubmenu] && [item submenu]) [[item submenu] setTitle:label];
+
+      if ([item hasSubmenu])
+      {
+        NSMenu *subm=[item submenu];
+        if (subm) [subm setTitle:label];
+      }
       
       [label release];      
     }
   }
+  if (mi->fMask & MIIM_SUBMENU) 
+  {
+    NSMenu *oldMenu = [item hasSubmenu] ? [item submenu] : NULL;
+    NSMenu *newMenu = (NSMenu*)mi->hSubMenu;
+    if (oldMenu != newMenu)
+    {
+      if (oldMenu) [oldMenu retain]; // we do not destroy the old menu, caller responsibility
+
+      if (newMenu) [newMenu setTitle:[item title]];
+      [m setSubmenu:newMenu forItem:item];
+      if (newMenu) [newMenu release]; // let the parent menu free it
+    }
+  }
+
   if (mi->fMask & MIIM_STATE)
   {
     [item setState:((mi->fState&MFS_CHECKED)?NSOnState:NSOffState)];
@@ -522,9 +531,8 @@ BOOL GetMenuItemInfo(HMENU hMenu, int pos, BOOL byPos, MENUITEMINFO *mi)
   {
     if (!byPos)
     {
-      int x;
-      int n=[m numberOfItems];
-      for (x = 0; x < n; x ++)
+      const int n = (int)[m numberOfItems];
+      for (int x = 0; x < n; x ++)
       {
         item=[m itemAtIndex:x];
         if (item && [item hasSubmenu])
@@ -566,25 +574,22 @@ BOOL GetMenuItemInfo(HMENU hMenu, int pos, BOOL byPos, MENUITEMINFO *mi)
   
   if (mi->fMask & MIIM_ID)
   {
-    mi->wID = [item tag];
+    mi->wID = (unsigned int)[item tag];
   }
   
   if(mi->fMask & MIIM_SUBMENU)
   {
-    if ([item hasSubmenu])
-    {
-      mi->hSubMenu = (HMENU)[item submenu];
-    }
+    mi->hSubMenu = (HMENU) ([item hasSubmenu] ? [item submenu] : NULL);
   }
   
   return 1;
   
 }
 
-void SWELL_InsertMenu(HMENU menu, int pos, int flag, UINT_PTR idx, const char *str)
+void SWELL_InsertMenu(HMENU menu, int pos, unsigned int flag, UINT_PTR idx, const char *str)
 {
   MENUITEMINFO mi={sizeof(mi),MIIM_ID|MIIM_STATE|MIIM_TYPE,MFT_STRING,
-    (flag & ~MF_BYPOSITION),(flag&MF_POPUP) ? 0 : (int)idx,NULL,NULL,NULL,0,(char *)str};
+    (flag & ~MF_BYPOSITION),(flag&MF_POPUP) ? 0 : (unsigned int)idx,NULL,NULL,NULL,0,(char *)str};
   
   if (flag&MF_POPUP) 
   {
@@ -615,11 +620,11 @@ void InsertMenuItem(HMENU hMenu, int pos, BOOL byPos, MENUITEMINFO *mi)
   if (!hMenu) return;
   NSMenu *m=(NSMenu *)hMenu;
   NSMenuItem *item;
-  int ni=[m numberOfItems];
+  int ni = (int)[m numberOfItems];
   
   if (!byPos) 
   {
-    pos = [m indexOfItemWithTag:pos];
+    pos = (int)[m indexOfItemWithTag:pos];
   }
   if (pos < 0 || pos > ni) pos=ni; 
   
@@ -689,11 +694,24 @@ void InsertMenuItem(HMENU hMenu, int pos, BOOL byPos, MENUITEMINFO *mi)
     [item setTag:mi->wID];
   }
   
-  NSMenuItem *fi=[m itemAtIndex:0];
-  if (fi && fi != item)
+  int i;
+  ni = (int)[m numberOfItems];
+  // try to find a valid action/target
+  for (i = 0; i < ni; i ++)
   {
-    if ([fi action]) [item setAction:[fi action]]; 
-    if ([fi target]) [item setTarget:[fi target]]; 
+    NSMenuItem *fi=[m itemAtIndex:i];
+    if (fi && fi != item)
+    {
+      SEL act = [fi action];
+      id tgt = [fi target];
+      if (act || tgt)
+      {
+        if (act) [item setAction:act];
+        if (tgt) [item setTarget:tgt];
+        break;
+      }
+    }
+    if (i == 5 && ni > 14) i = ni-6; // only look at first and last 6 items or so
   }
 }
 
@@ -712,7 +730,7 @@ void InsertMenuItem(HMENU hMenu, int pos, BOOL byPos, MENUITEMINFO *mi)
 
 -(void) onSwellCommand:(id)sender
 {
-  int tag=[sender tag];
+  int tag=(int) [sender tag];
   if (tag)
     m_act=tag;
 }
@@ -739,8 +757,8 @@ void SWELL_SetMenuDestination(HMENU menu, HWND hwnd)
   
   NSMenu *m=(NSMenu *)menu;
   [m setDelegate:(id)hwnd];
-  int x,n=[m numberOfItems];
-  for (x = 0; x < n; x++)
+  const int n = (int)[m numberOfItems];
+  for (int x = 0; x < n; x++)
   {
     NSMenuItem *item=[m itemAtIndex:x];
     if (item)
@@ -764,6 +782,7 @@ void SWELL_SetMenuDestination(HMENU menu, HWND hwnd)
 
 int TrackPopupMenu(HMENU hMenu, int flags, int xpos, int ypos, int resvd, HWND hwnd, const RECT *r)
 {
+  ReleaseCapture(); // match win32 -- TrackPopupMenu() ends any captures
   if (hMenu)
   {
     NSMenu *m=(NSMenu *)hMenu;
@@ -780,7 +799,7 @@ int TrackPopupMenu(HMENU hMenu, int flags, int xpos, int ypos, int resvd, HWND h
       NSPoint pt = NSMakePoint(xpos, ypos);
       pt=[w convertScreenToBase:pt];
       pt.y -= 4;
-      int wn = [w windowNumber]; // event ? [event windowNumber] : [w windowNumber];
+      NSInteger wn = [w windowNumber]; // event ? [event windowNumber] : [w windowNumber];
       NSTimeInterval ts = event ? [event timestamp] : 0;
       NSGraphicsContext *gctx = event ? [event context] : 0;
       event = [NSEvent otherEventWithType:NSApplicationDefined location:pt modifierFlags:0 timestamp:ts windowNumber:wn context:gctx subtype:0 data1:0 data2:0];
@@ -816,10 +835,10 @@ int TrackPopupMenu(HMENU hMenu, int flags, int xpos, int ypos, int resvd, HWND h
 
 
 
-void SWELL_Menu_AddMenuItem(HMENU hMenu, const char *name, int idx, int flags)
+void SWELL_Menu_AddMenuItem(HMENU hMenu, const char *name, int idx, unsigned int flags)
 {
   MENUITEMINFO mi={sizeof(mi),MIIM_ID|MIIM_STATE|MIIM_TYPE,MFT_STRING,
-    (flags)?MFS_GRAYED:0,idx,NULL,NULL,NULL,0,(char *)name};
+    (unsigned int) ((flags)?MFS_GRAYED:0),(unsigned int)idx,NULL,NULL,NULL,0,(char *)name};
   if (!name)
   {
     mi.fType = MFT_SEPARATOR;
@@ -848,7 +867,7 @@ int SWELL_GenerateMenuFromList(HMENU hMenu, const void *_list, int listsz)
     list+=cnt;
     listsz -= cnt;
   }
-  return list + 1 - (SWELL_MenuGen_Entry *)_list;
+  return (int) (list + 1 - (SWELL_MenuGen_Entry *)_list);
 }
 
 

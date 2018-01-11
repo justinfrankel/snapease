@@ -93,7 +93,11 @@
 
 // allow overriding behavior
 #ifndef EEL_STRING_GET_FOR_INDEX
-#define EEL_STRING_GET_FOR_INDEX(x, wr) (EEL_STRING_GET_CONTEXT_POINTER(opaque)->GetStringForIndex(x, wr))
+#define EEL_STRING_GET_FOR_INDEX(x, wr) (EEL_STRING_GET_CONTEXT_POINTER(opaque)->GetStringForIndex(x, wr, false))
+#endif
+
+#ifndef EEL_STRING_GET_FOR_WRITE
+#define EEL_STRING_GET_FOR_WRITE(x, wr) (EEL_STRING_GET_CONTEXT_POINTER(opaque)->GetStringForIndex(x, wr, true))
 #endif
 
 #ifndef EEL_STRING_GETFMTVAR
@@ -119,7 +123,7 @@ class eel_string_context_state
   public:
     static int cmpistr(const char **a, const char **b) { return stricmp(*a,*b); }
 
-    eel_string_context_state()  : m_varname_cache(cmpistr), m_named_strings_names(false)
+    eel_string_context_state()  : m_named_strings_names(false), m_varname_cache(cmpistr)
     {
       m_vm=0;
       memset(m_user_strings,0,sizeof(m_user_strings));
@@ -191,15 +195,15 @@ class eel_string_context_state
       return r;
     }
 
-    const char *GetStringForIndex(EEL_F val, EEL_STRING_STORAGECLASS **isWriteableAs=NULL)
+    const char *GetStringForIndex(EEL_F val, EEL_STRING_STORAGECLASS **stringContainerOut=NULL, bool is_for_write=false)
     {
       int idx = (int) (val+0.5);
       if (idx>=0 && idx < EEL_STRING_MAX_USER_STRINGS)
       {
-        if (isWriteableAs)
+        if (stringContainerOut)
         {
           if (!m_user_strings[idx]) m_user_strings[idx] = new EEL_STRING_STORAGECLASS;
-          *isWriteableAs = m_user_strings[idx];
+          *stringContainerOut = m_user_strings[idx];
         }
         return m_user_strings[idx]?m_user_strings[idx]->Get():"";
       }
@@ -210,15 +214,15 @@ class eel_string_context_state
       if (s)
       {
         // mutable string
-        if (isWriteableAs) *isWriteableAs=s;
+        if (stringContainerOut) *stringContainerOut=s;
       }
       else
       {
         s = m_literal_strings.Get(idx - EEL_STRING_LITERAL_BASE);
         #ifdef EEL_STRINGS_MUTABLE_LITERALS
-          if (isWriteableAs) *isWriteableAs=s;
+          if (stringContainerOut) *stringContainerOut=s;
         #else
-          if (isWriteableAs) *isWriteableAs=NULL;
+          if (stringContainerOut) *stringContainerOut=is_for_write ? NULL : s;
         #endif
       }
       return s ? s->Get() : NULL;
@@ -230,7 +234,7 @@ class eel_string_context_state
     WDL_StringKeyedArray<int> m_named_strings_names; // #xyz->index
 
     EEL_STRING_STORAGECLASS *m_user_strings[EEL_STRING_MAX_USER_STRINGS]; // indices 0-1023 (etc)
-    WDL_AssocArray<const char *, EEL_F *> m_varname_cache; // cached pointers when using %{xyz}s, %{#xyz}s bypasses
+    WDL_AssocArray<const char *, EEL_F_PTR> m_varname_cache; // cached pointers when using %{xyz}s, %{#xyz}s bypasses
 
     NSEEL_VMCTX m_vm;
 #ifdef EEL_STRING_WANT_MUTEX
@@ -239,7 +243,9 @@ class eel_string_context_state
 
     static EEL_F addNamedStringCallback(void *opaque, const char *name)
     {
+      if (!opaque) return -1.0;
       eel_string_context_state *_this = EEL_STRING_GET_CONTEXT_POINTER(opaque);
+      if (!_this) return -1.0;
 
       EEL_STRING_MUTEXLOCK_SCOPE
       if (!name || !name[0])
@@ -260,7 +266,10 @@ class eel_string_context_state
 
     static EEL_F addStringCallback(void *opaque, struct eelStringSegmentRec *list)
     {
+      if (!opaque) return -1.0;
+
       eel_string_context_state *_this = EEL_STRING_GET_CONTEXT_POINTER(opaque);
+      if (!_this) return -1.0;
 
       EEL_STRING_STORAGECLASS *ns = new EEL_STRING_STORAGECLASS;
       // could probably do a faster implementation using AddRaw() etc but this should also be OK
@@ -436,10 +445,10 @@ int eel_format_strings(void *opaque, const char *fmt, const char *fmt_end, char 
         const int maxl=(int) (buf+buf_sz - 2 - op);
         if (wr && !fs[2]) // %s or %S -- todo: implement padding modes for binary compat too?
         {
-          int l = wr->GetLength();
-          if (l > maxl) l=maxl;
-          memcpy(op,wr->Get(),l);
-          op += l;
+          int wl = wr->GetLength();
+          if (wl > maxl) wl=maxl;
+          memcpy(op,wr->Get(),wl);
+          op += wl;
           *op=0;
         }
         else
@@ -517,7 +526,7 @@ static int eel_string_match(void *opaque, const char *fmt, const char *msg, int 
     }
 
     // if string ends and format is not on a wildcard, early-out to 0
-    if (msg>=msg_endptr && *fmt != '*') return 0;
+    if (msg>=msg_endptr && *fmt != '*' && *fmt != '%') return 0;
 
     switch (*fmt)
     {
@@ -601,7 +610,7 @@ static int eel_string_match(void *opaque, const char *fmt, const char *msg, int 
 #ifdef EEL_STRING_GETNAMEDVAR 
               char tmp[128];
               int idx=0;
-              while (dest_varname < fmt_endptr && *dest_varname && *dest_varname != '}' && idx<sizeof(tmp)-1) tmp[idx++] = *dest_varname++;
+              while (dest_varname < fmt_endptr && *dest_varname && *dest_varname != '}' && idx<(int)sizeof(tmp)-1) tmp[idx++] = *dest_varname++;
               tmp[idx]=0;
               if (idx>0) varOut = EEL_STRING_GETNAMEDVAR(tmp,1,&vv);
 #endif
@@ -613,7 +622,7 @@ static int eel_string_match(void *opaque, const char *fmt, const char *msg, int 
               if (varOut == &vv) // %{#foo}c
               {
                 EEL_STRING_STORAGECLASS *wr=NULL;
-                EEL_STRING_GET_FOR_INDEX(vv, &wr);
+                EEL_STRING_GET_FOR_WRITE(vv, &wr);
                 if (wr) wr->Set(msg,1);
               }
               else
@@ -691,7 +700,7 @@ static int eel_string_match(void *opaque, const char *fmt, const char *msg, int 
 #ifdef EEL_STRING_GETNAMEDVAR 
               char tmp[128];
               int idx=0;
-              while (dest_varname < fmt_endptr && *dest_varname  && *dest_varname != '}' && idx<sizeof(tmp)-1) tmp[idx++] = *dest_varname++;
+              while (dest_varname < fmt_endptr && *dest_varname  && *dest_varname != '}' && idx<(int)sizeof(tmp)-1) tmp[idx++] = *dest_varname++;
               tmp[idx]=0;
               if (idx>0) varOut = EEL_STRING_GETNAMEDVAR(tmp,1,&vv);
 #endif
@@ -701,7 +710,7 @@ static int eel_string_match(void *opaque, const char *fmt, const char *msg, int 
               if (fmt_char == 's')
               {
                 EEL_STRING_STORAGECLASS *wr=NULL;
-                EEL_STRING_GET_FOR_INDEX(*varOut, &wr);
+                EEL_STRING_GET_FOR_WRITE(*varOut, &wr);
                 if (wr)
                 {
                   if (msg_endptr >= wr->Get() && msg_endptr <= wr->Get() + wr->GetLength())
@@ -731,11 +740,11 @@ static int eel_string_match(void *opaque, const char *fmt, const char *msg, int 
               else
               {
                 char tmp[128];
-                lstrcpyn_safe(tmp,msg,min(len+1,sizeof(tmp)));
+                lstrcpyn_safe(tmp,msg,wdl_min(len+1,(int)sizeof(tmp)));
                 if (varOut == &vv) 
                 {
                   EEL_STRING_STORAGECLASS *wr=NULL;
-                  EEL_STRING_GET_FOR_INDEX(vv, &wr);
+                  EEL_STRING_GET_FOR_WRITE(vv, &wr);
                   if (wr) wr->Set(tmp);
                 }
                 else
@@ -773,7 +782,7 @@ static EEL_F NSEEL_CGEN_CALL _eel_sprintf(void *opaque, INT_PTR num_param, EEL_F
   {
     EEL_STRING_MUTEXLOCK_SCOPE
     EEL_STRING_STORAGECLASS *wr=NULL;
-    EEL_STRING_GET_FOR_INDEX(*(parms[0]), &wr);
+    EEL_STRING_GET_FOR_WRITE(*(parms[0]), &wr);
     if (!wr)
     {
 #ifdef EEL_STRING_DEBUGOUT
@@ -818,7 +827,7 @@ static EEL_F NSEEL_CGEN_CALL _eel_strncat(void *opaque, EEL_F *strOut, EEL_F *fm
   {
     EEL_STRING_MUTEXLOCK_SCOPE
     EEL_STRING_STORAGECLASS *wr=NULL, *wr_src=NULL;
-    EEL_STRING_GET_FOR_INDEX(*strOut, &wr);
+    EEL_STRING_GET_FOR_WRITE(*strOut, &wr);
     if (!wr)
     {
 #ifdef EEL_STRING_DEBUGOUT
@@ -867,7 +876,7 @@ static EEL_F NSEEL_CGEN_CALL _eel_strcpysubstr(void *opaque, INT_PTR nparm, EEL_
   {
     EEL_STRING_MUTEXLOCK_SCOPE
     EEL_STRING_STORAGECLASS *wr=NULL, *wr_src=NULL;
-    EEL_STRING_GET_FOR_INDEX(parms[0][0], &wr);
+    EEL_STRING_GET_FOR_WRITE(parms[0][0], &wr);
     if (!wr)
     {
 #ifdef EEL_STRING_DEBUGOUT
@@ -930,7 +939,7 @@ static EEL_F NSEEL_CGEN_CALL _eel_strncpy(void *opaque, EEL_F *strOut, EEL_F *fm
   {
     EEL_STRING_MUTEXLOCK_SCOPE
     EEL_STRING_STORAGECLASS *wr=NULL, *wr_src=NULL;
-    EEL_STRING_GET_FOR_INDEX(*strOut, &wr);
+    EEL_STRING_GET_FOR_WRITE(*strOut, &wr);
     if (!wr)
     {
 #ifdef EEL_STRING_DEBUGOUT
@@ -1178,6 +1187,7 @@ static EEL_F eel_getchar_do(int flag, const char *src)
   } a;
   const int type_sz=flag&0xf;
 
+  memset(&a, 0, sizeof(a));
   if (flag & EEL_GETCHAR_FLAG_ENDIANSWAP)
   {
     src += type_sz;
@@ -1238,7 +1248,7 @@ static EEL_F NSEEL_CGEN_CALL _eel_strsetchar2(void *opaque, INT_PTR np, EEL_F **
   {
     EEL_STRING_MUTEXLOCK_SCOPE
     EEL_STRING_STORAGECLASS *wr=NULL;
-    EEL_STRING_GET_FOR_INDEX(parms[0][0], &wr);
+    EEL_STRING_GET_FOR_WRITE(parms[0][0], &wr);
     if (!wr)
     {
 #ifdef EEL_STRING_DEBUGOUT
@@ -1283,7 +1293,7 @@ static EEL_F NSEEL_CGEN_CALL _eel_strsetchar(void *opaque, EEL_F *strOut, EEL_F 
   {
     EEL_STRING_MUTEXLOCK_SCOPE
     EEL_STRING_STORAGECLASS *wr=NULL;
-    EEL_STRING_GET_FOR_INDEX(*strOut, &wr);
+    EEL_STRING_GET_FOR_WRITE(*strOut, &wr);
     if (!wr)
     {
 #ifdef EEL_STRING_DEBUGOUT
@@ -1323,7 +1333,7 @@ static EEL_F NSEEL_CGEN_CALL _eel_strinsert(void *opaque, EEL_F *strOut, EEL_F *
   {
     EEL_STRING_MUTEXLOCK_SCOPE
     EEL_STRING_STORAGECLASS *wr=NULL, *wr_src=NULL;
-    EEL_STRING_GET_FOR_INDEX(*strOut, &wr);
+    EEL_STRING_GET_FOR_WRITE(*strOut, &wr);
     if (!wr)
     {
 #ifdef EEL_STRING_DEBUGOUT
@@ -1386,7 +1396,7 @@ static EEL_F NSEEL_CGEN_CALL _eel_strdelsub(void *opaque, EEL_F *strOut, EEL_F *
   {
     EEL_STRING_MUTEXLOCK_SCOPE
     EEL_STRING_STORAGECLASS *wr=NULL;
-    EEL_STRING_GET_FOR_INDEX(*strOut, &wr);
+    EEL_STRING_GET_FOR_WRITE(*strOut, &wr);
     if (!wr)
     {
 #ifdef EEL_STRING_DEBUGOUT
@@ -1415,7 +1425,7 @@ static EEL_F NSEEL_CGEN_CALL _eel_strsetlen(void *opaque, EEL_F *strOut, EEL_F *
   {
     EEL_STRING_MUTEXLOCK_SCOPE
     EEL_STRING_STORAGECLASS *wr=NULL;
-    EEL_STRING_GET_FOR_INDEX(*strOut, &wr);
+    EEL_STRING_GET_FOR_WRITE(*strOut, &wr);
     if (!wr)
     {
 #ifdef EEL_STRING_DEBUGOUT

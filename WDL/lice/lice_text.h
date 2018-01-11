@@ -47,8 +47,11 @@ class LICE_IFont
 
     virtual LICE_pixel GetTextColor()=0;
     virtual HFONT GetHFont()=0;
+    virtual int GetLineHeight()=0;
 };
 
+
+#ifndef LICE_TEXT_NO_DECLARE_CACHEDFONT
 
 class LICE_CachedFont : public LICE_IFont
 {
@@ -71,14 +74,16 @@ class LICE_CachedFont : public LICE_IFont
 
     virtual LICE_pixel GetTextColor() { return m_fg; }
     virtual HFONT GetHFont() { return m_font; }
+    virtual int GetLineHeight() { return m_line_height; }
+
 
     void SetLineSpacingAdjust(int amt) { m_lsadj=amt; }
 
-  private:
+  protected:
 
+    virtual bool DrawGlyph(LICE_IBitmap *bm, unsigned short c, int xpos, int ypos, RECT *clipR);
     int DrawTextImpl(LICE_IBitmap *bm, const char *str, int strcnt, RECT *rect, UINT dtFlags); // cause swell defines DrawText to SWELL_DrawText etc
 
-    bool DrawGlyph(LICE_IBitmap *bm, unsigned short c, int xpos, int ypos, RECT *clipR);
     bool RenderGlyph(unsigned short idx);
 
     LICE_pixel m_fg,m_bg,m_effectcol;
@@ -94,6 +99,7 @@ class LICE_CachedFont : public LICE_IFont
       int width, height;
       int advance;
       int charid; // used by m_extracharlist
+      int left_extra;
     };
     charEnt *findChar(unsigned short c);
 
@@ -106,5 +112,7 @@ class LICE_CachedFont : public LICE_IFont
     HFONT m_font;
 
 };
+
+#endif // !LICE_TEXT_NO_DECLARE_CACHEDFONT
 
 #endif//_LICE_TEXT_H_

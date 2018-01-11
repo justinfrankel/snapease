@@ -54,61 +54,22 @@
 typedef unsigned int LICE_pixel;
 typedef unsigned char LICE_pixel_chan;
 
-#ifdef _WIN32
-
 #define LICE_RGBA(r,g,b,a) (((b)&0xff)|(((g)&0xff)<<8)|(((r)&0xff)<<16)|(((a)&0xff)<<24))
 #define LICE_GETB(v) ((v)&0xff)
 #define LICE_GETG(v) (((v)>>8)&0xff)
 #define LICE_GETR(v) (((v)>>16)&0xff)
 #define LICE_GETA(v) (((v)>>24)&0xff)
 
-
-#define LICE_PIXEL_B 0
-#define LICE_PIXEL_G 1
-#define LICE_PIXEL_R 2
-#define LICE_PIXEL_A 3
-
-#elif defined(__APPLE__)
-// start apple
+#if defined(__APPLE__) && defined(__ppc__)
 #define LICE_PIXEL_A 0
 #define LICE_PIXEL_R 1
 #define LICE_PIXEL_G 2
 #define LICE_PIXEL_B 3
-
-#ifdef __ppc__ // same memory format, different endian
-
-#define LICE_RGBA(r,g,b,a) (((b)&0xff)|(((g)&0xff)<<8)|(((r)&0xff)<<16)|(((a)&0xff)<<24))
-#define LICE_GETB(v) ((v)&0xff)
-#define LICE_GETG(v) (((v)>>8)&0xff)
-#define LICE_GETR(v) (((v)>>16)&0xff)
-#define LICE_GETA(v) (((v)>>24)&0xff)
-
 #else
-
-#define LICE_RGBA(r,g,b,a) (((a)&0xff)|(((r)&0xff)<<8)|(((g)&0xff)<<16)|(((b)&0xff)<<24))
-#define LICE_GETA(v) ((v)&0xff)
-#define LICE_GETR(v) (((v)>>8)&0xff)
-#define LICE_GETG(v) (((v)>>16)&0xff)
-#define LICE_GETB(v) (((v)>>24)&0xff)
-
-#endif
-
-// end apple
-#else
-
-//GDK etc (tested on linux 386/x86_64)
-#define LICE_RGBA(r,g,b,a) (((b)&0xff)|(((g)&0xff)<<8)|(((r)&0xff)<<16)|(((a)&0xff)<<24))
-#define LICE_GETB(v) ((v)&0xff)
-#define LICE_GETG(v) (((v)>>8)&0xff)
-#define LICE_GETR(v) (((v)>>16)&0xff)
-#define LICE_GETA(v) (((v)>>24)&0xff)
-
-
 #define LICE_PIXEL_B 0
 #define LICE_PIXEL_G 1
 #define LICE_PIXEL_R 2
 #define LICE_PIXEL_A 3
-
 #endif
 
 
@@ -156,9 +117,10 @@ public:
   virtual int getWidth() { return m_width; }
   virtual int getHeight() { return m_height; }
   virtual int getRowSpan() { return (m_width+m_linealign)&~m_linealign; }
-  virtual bool resize(int w, int h); // returns TRUE if a resize occurred
+  virtual bool resize(int w, int h) { return __resize(w,h); } // returns TRUE if a resize occurred
 
 private:
+  bool __resize(int w, int h);
   LICE_pixel *m_fb;
   int m_width, m_height;
   int m_allocsize;
@@ -176,13 +138,14 @@ public:
   virtual int getWidth() { return m_width; }
   virtual int getHeight() { return m_height; }
   virtual int getRowSpan() { return m_allocw; }; 
-  virtual bool resize(int w, int h); // returns TRUE if a resize occurred
+  virtual bool resize(int w, int h) { return __resize(w,h); } // returns TRUE if a resize occurred
 
   // sysbitmap specific calls
   virtual HDC getDC() { return m_dc; }
 
 
 private:
+  bool __resize(int w, int h);
   int m_width, m_height;
 
   HDC m_dc;
@@ -232,20 +195,19 @@ class LICE_SubBitmap : public LICE_IBitmap // note: you should only keep these a
       if(x<0)x=0; 
       if(y<0)y=0;
       m_x=x;m_y=y;
-      resize(w,h);
+      __resize(w,h);
     }
     virtual ~LICE_SubBitmap() { }
 
-    virtual bool resize(int w, int h)
+    virtual bool resize(int w, int h) { return __resize(w,h); }
+
+    bool __resize(int w, int h)
     {
       m_w=0;m_h=0;
-      if (m_parent)
+      if (m_parent && m_x >= 0 && m_y >= 0 && m_x < m_parent->getWidth() && m_y < m_parent->getHeight())
       {
-        if(m_x+w>m_parent->getWidth()) w=m_parent->getWidth()-m_x;
-        if (w<0)w=0;
-
-        if (m_y+h>m_parent->getHeight()) h=m_parent->getHeight()-m_y;
-        if (h<0)h=0;
+        if (w > m_parent->getWidth()-m_x) w=m_parent->getWidth()-m_x;
+        if (h > m_parent->getHeight()-m_y) h=m_parent->getHeight()-m_y;
 
         m_w=w; 
         m_h=h;
@@ -267,8 +229,15 @@ class LICE_SubBitmap : public LICE_IBitmap // note: you should only keep these a
       return parentptr; 
     }
 
+    enum { 
+        LICE_GET_SUBBITMAP_VERSION = 0x51b7000, 
+        LICE_SUBBITMAP_VERSION = 0x1000  // if we change any of this struct, then we *must* increment this version.
+    }; 
+
     virtual INT_PTR Extended(int id, void* data)
     {
+      if (id == LICE_GET_SUBBITMAP_VERSION) return LICE_SUBBITMAP_VERSION;
+
       if (!m_parent) return 0;
       return m_parent->Extended(id, data);
     }
@@ -281,7 +250,6 @@ class LICE_SubBitmap : public LICE_IBitmap // note: you should only keep these a
 
     int m_w,m_h,m_x,m_y;
     LICE_IBitmap *m_parent;
-    //LICE_pixel *m_parentptr;
 };
 
 
@@ -304,6 +272,11 @@ class LICE_SubBitmap : public LICE_IBitmap // note: you should only keep these a
 
 #define LICE_BLIT_USE_ALPHA 0x10000 // use source's alpha channel
 
+#ifndef lice_max
+#define lice_max(x,y) ((x)<(y)?(y):(x))
+#define lice_min(x,y) ((x)<(y)?(x):(y))
+#endif
+
 
 // Reaper exports most LICE functions, so the function declarations below
 // will collide with reaper_plugin.h
@@ -321,19 +294,19 @@ bool LICE_ImageIsSupported(const char *filename);  // must be a filename that en
 // pass a bmp if you wish to load it into that bitmap. note that if it fails bmp will not be deleted.
 LICE_IBitmap *LICE_LoadPNG(const char *filename, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
 LICE_IBitmap *LICE_LoadPNGFromMemory(const void *data_in, int buflen, LICE_IBitmap *bmp=NULL);
-LICE_IBitmap *LICE_LoadPNGFromResource(HINSTANCE hInst, int resid, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
+LICE_IBitmap *LICE_LoadPNGFromResource(HINSTANCE hInst, const char *resid, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
 #ifndef _WIN32
 LICE_IBitmap *LICE_LoadPNGFromNamedResource(const char *name, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
 #endif
 
 LICE_IBitmap *LICE_LoadBMP(const char *filename, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
-LICE_IBitmap *LICE_LoadBMPFromResource(HINSTANCE hInst, int resid, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
+LICE_IBitmap *LICE_LoadBMPFromResource(HINSTANCE hInst, const char *resid, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
 
 LICE_IBitmap *LICE_LoadIcon(const char *filename, int reqiconsz=16, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
-LICE_IBitmap *LICE_LoadIconFromResource(HINSTANCE hInst, int resid, int reqiconsz=16, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
+LICE_IBitmap *LICE_LoadIconFromResource(HINSTANCE hInst, const char *resid, int reqiconsz=16, LICE_IBitmap *bmp=NULL); // returns a bitmap (bmp if nonzero) on success
 
 LICE_IBitmap *LICE_LoadJPG(const char *filename, LICE_IBitmap *bmp=NULL);
-LICE_IBitmap* LICE_LoadJPGFromResource(HINSTANCE hInst, int resid, LICE_IBitmap* bmp = 0);
+LICE_IBitmap* LICE_LoadJPGFromResource(HINSTANCE hInst, const char *resid, LICE_IBitmap* bmp = 0);
 
 LICE_IBitmap *LICE_LoadGIF(const char *filename, LICE_IBitmap *bmp=NULL, int *nframes=NULL); // if nframes set, will be set to number of images (stacked vertically), otherwise first frame used
 
@@ -348,10 +321,20 @@ bool LICE_WriteGIF(const char *filename, LICE_IBitmap *bmp, int transparent_alph
 
 // animated GIF API. use transparent_alpha=-1 to encode unchanged pixels as transparent
 void *LICE_WriteGIFBegin(const char *filename, LICE_IBitmap *firstframe, int transparent_alpha=0, int frame_delay=0, bool dither=true, int nreps=0); // nreps=0 for infinite
-void *LICE_WriteGIFBeginNoFrame(const char *filename, int w, int h, int transparent_alpha=0, bool dither=true);
+void *LICE_WriteGIFBeginNoFrame(const char *filename, int w, int h, int transparent_alpha=0, bool dither=true, bool is_append=false);
 bool LICE_WriteGIFFrame(void *handle, LICE_IBitmap *frame, int xpos, int ypos, bool perImageColorMap=false, int frame_delay=0, int nreps=0); // nreps only used on the first frame, 0=infinite
+unsigned int LICE_WriteGIFGetSize(void *handle); // gets current output size
 bool LICE_WriteGIFEnd(void *handle);
 int LICE_SetGIFColorMapFromOctree(void *wr, void *octree, int numcolors); // can use after LICE_WriteGIFBeginNoFrame and before LICE_WriteGIFFrame
+
+// animated GIF reading
+void *LICE_GIF_LoadEx(const char *filename);
+void LICE_GIF_Close(void *handle);
+void LICE_GIF_Rewind(void *handle);
+unsigned int LICE_GIF_GetFilePos(void *handle); // gets current read position
+int LICE_GIF_UpdateFrame(void *handle, LICE_IBitmap *bm); // returns duration in msec (0 or more), or <0 if no more frames. bm will be modified/resized with new frame data
+
+
 
 // basic primitives
 void LICE_PutPixel(LICE_IBitmap *bm, int x, int y, LICE_pixel color, float alpha, int mode);
@@ -363,7 +346,7 @@ void LICE_Copy(LICE_IBitmap *dest, LICE_IBitmap *src); // resizes dest to fit
 
 
 //alpha parameter = const alpha (combined with source alpha if spcified)
-void LICE_Blit(LICE_IBitmap *dest, LICE_IBitmap *src, int dstx, int dsty, RECT *srcrect, float alpha, int mode);
+void LICE_Blit(LICE_IBitmap *dest, LICE_IBitmap *src, int dstx, int dsty, const RECT *srcrect, float alpha, int mode);
 void LICE_Blit(LICE_IBitmap *dest, LICE_IBitmap *src, int dstx, int dsty, int srcx, int srcy, int srcw, int srch, float alpha, int mode);
 
 void LICE_Blur(LICE_IBitmap *dest, LICE_IBitmap *src, int dstx, int dsty, int srcx, int srcy, int srcw, int srch);
@@ -386,12 +369,17 @@ void LICE_RotatedBlit(LICE_IBitmap *dest, LICE_IBitmap *src,
 
 void LICE_TransformBlit(LICE_IBitmap *dest, LICE_IBitmap *src,  
                     int dstx, int dsty, int dstw, int dsth,
-                    float *srcpoints, int div_w, int div_h, // srcpoints coords should be div_w*div_h*2 long, and be in source image coordinates
+                    const float *srcpoints, int div_w, int div_h, // srcpoints coords should be div_w*div_h*2 long, and be in source image coordinates
                     float alpha, int mode);
 void LICE_TransformBlit2(LICE_IBitmap *dest, LICE_IBitmap *src,  
                     int dstx, int dsty, int dstw, int dsth,
-                    double *srcpoints, int div_w, int div_h, // srcpoints coords should be div_w*div_h*2 long, and be in source image coordinates
+                    const double *srcpoints, int div_w, int div_h, // srcpoints coords should be div_w*div_h*2 long, and be in source image coordinates
                     float alpha, int mode);
+
+void LICE_TransformBlit2Alpha(LICE_IBitmap *dest, LICE_IBitmap *src,  
+                    int dstx, int dsty, int dstw, int dsth,
+                    const double *srcpoints, int div_w, int div_h, // srcpoints coords should be div_w*div_h*3 long, and be in source image coordinates + alpha
+                    int mode);
 
 // if cliptosourcerect is false, then areas outside the source rect can get in (otherwise they are not drawn)
 void LICE_DeltaBlit(LICE_IBitmap *dest, LICE_IBitmap *src, 
@@ -400,6 +388,13 @@ void LICE_DeltaBlit(LICE_IBitmap *dest, LICE_IBitmap *src,
                     double dsdx, double dtdx, double dsdy, double dtdy,         
                     double dsdxdy, double dtdxdy,
                     bool cliptosourcerect, float alpha, int mode);
+
+void LICE_DeltaBlitAlpha(LICE_IBitmap *dest, LICE_IBitmap *src, 
+                    int dstx, int dsty, int dstw, int dsth,                     
+                    float srcx, float srcy, float srcw, float srch, 
+                    double dsdx, double dtdx, double dsdy, double dtdy,         
+                    double dsdxdy, double dtdxdy,
+                    bool cliptosourcerect, float alpha, int mode, double dadx, double dady, double dadxdy);
 
 
 // only LICE_BLIT_MODE_ADD or LICE_BLIT_MODE_COPY are used by this, for flags
@@ -430,7 +425,7 @@ void LICE_SimpleFill(LICE_IBitmap *dest, int x, int y, LICE_pixel newcolor,
 
 
 // texture generators
-void LICE_TexGen_Marble(LICE_IBitmap *dest, RECT *rect, float rv, float gv, float bv, float intensity); //fills whole bitmap if rect == NULL
+void LICE_TexGen_Marble(LICE_IBitmap *dest, const RECT *rect, float rv, float gv, float bv, float intensity); //fills whole bitmap if rect == NULL
 
 //this function generates a Perlin noise
 //fills whole bitmap if rect == NULL
@@ -440,12 +435,12 @@ enum
   NOISE_MODE_NORMAL = 0,
   NOISE_MODE_WOOD,
 };
-void LICE_TexGen_Noise(LICE_IBitmap *dest, RECT *rect, float rv, float gv, float bv, float intensity, int mode=NOISE_MODE_NORMAL, int smooth=1); 
+void LICE_TexGen_Noise(LICE_IBitmap *dest, const RECT *rect, float rv, float gv, float bv, float intensity, int mode=NOISE_MODE_NORMAL, int smooth=1); 
 
 //this function generates a Perlin noise in a circular fashion
 //fills whole bitmap if rect == NULL
 //size needs to be a multiple of 2
-void LICE_TexGen_CircNoise(LICE_IBitmap *dest, RECT *rect, float rv, float gv, float bv, float nrings, float power, int size);
+void LICE_TexGen_CircNoise(LICE_IBitmap *dest, const RECT *rect, float rv, float gv, float bv, float nrings, float power, int size);
 
 
 // bitmapped text drawing:
@@ -483,6 +478,8 @@ void LICE_RoundRect(LICE_IBitmap *drawbm, float xpos, float ypos, float w, float
 void LICE_DrawGlyph(LICE_IBitmap* dest, int x, int y, LICE_pixel color, const LICE_pixel_chan* alphas, int glyph_w, int glyph_h, float alpha=1.0f, int mode = 0);
 void LICE_DrawGlyphEx(LICE_IBitmap* dest, int x, int y, LICE_pixel color, const LICE_pixel_chan* alphas, int glyph_w, int glyph_span, int glyph_h, float alpha=1.0f, int mode = 0);
 
+void LICE_DrawMonoGlyph(LICE_IBitmap* dest, int x, int y, LICE_pixel color, const unsigned char* alphas, int glyph_w, int glyph_span, int glyph_h, float alpha=1.0f, int mode = 0);
+
 // quadratic bezier
 // tol means try to draw segments no longer than tol px
 void LICE_DrawQBezier(LICE_IBitmap* dest, float xstart, float ystart, float xctl, float yctl, float xend, float yend, 
@@ -506,6 +503,7 @@ void LICE_BorderedRect(LICE_IBitmap *dest, int x, int y, int w, int h, LICE_pixe
 
 // bitmap compare-by-value function
 int LICE_BitmapCmp(LICE_IBitmap* a, LICE_IBitmap* b, int *coordsOut=NULL);
+int LICE_BitmapCmpEx(LICE_IBitmap* a, LICE_IBitmap* b, LICE_pixel mask, int *coordsOut=NULL);
 
 // colorspace functions
 void LICE_RGB2HSV(int r, int g, int b, int* h, int* s, int* v); // rgb, sv: [0,256), h: [0,384)
@@ -534,7 +532,10 @@ void LICE_DestroyLVG(void *lvg);
 
 void* LICE_CreateOctree(int maxcolors);
 void LICE_DestroyOctree(void* octree);
+void LICE_ResetOctree(void *octree, int maxcolors); // resets back to stock, but with spares (to avoid mallocs)
 int LICE_BuildOctree(void* octree, LICE_IBitmap* bmp);
+int LICE_BuildOctreeForAlpha(void* octree, LICE_IBitmap* bmp, int minalpha);
+int LICE_BuildOctreeForDiff(void* octree, LICE_IBitmap* bmp, LICE_IBitmap* refbmp, LICE_pixel mask=LICE_RGBA(255,255,255,0));
 int LICE_FindInOctree(void* octree, LICE_pixel color);
 int LICE_ExtractOctreePalette(void* octree, LICE_pixel* palette);
 

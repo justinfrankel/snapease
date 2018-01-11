@@ -9,7 +9,7 @@
 #include "lice.h"
 #include <math.h>
 
-void LICE_TexGen_Marble(LICE_IBitmap *dest, RECT *rect, float rv, float gv, float bv, float intensity)
+void LICE_TexGen_Marble(LICE_IBitmap *dest, const RECT *rect, float rv, float gv, float bv, float intensity)
 {
   int span=dest->getRowSpan();
   int w = dest->getWidth();
@@ -26,10 +26,13 @@ void LICE_TexGen_Marble(LICE_IBitmap *dest, RECT *rect, float rv, float gv, floa
 
   if (x<0) { w+=x; x=0; }
   if (y<0) { h+=y; y=0; }
-  if (x+w > dest->getWidth()) w=dest->getWidth()-x;
-  if (y+h > dest->getHeight()) h=dest->getHeight()-y;
 
-  if (w<1 || h<1) return;
+  const int destbm_w = dest->getWidth(), destbm_h = dest->getHeight();
+  if (w<1 || h < 1 || x >= destbm_w || y >= destbm_h) return;
+
+  if (w>destbm_w-x) w=destbm_w-x;
+  if (h>destbm_h-y) h=destbm_h-y;
+
 
   LICE_pixel *startp = dest->getBits();
   if (dest->isFlipped())
@@ -211,37 +214,38 @@ float noise(float x, float y)
 }
 #endif
 
-void LICE_TexGen_Noise(LICE_IBitmap *dest, RECT *rect, float rv, float gv, float bv, float intensity, int mode, int smooth)
+void LICE_TexGen_Noise(LICE_IBitmap *dest, const RECT *rect, float rv, float gv, float bv, float intensity, int mode, int smooth)
 {
   initNoise();
 
   int span=dest->getRowSpan();
   int w = dest->getWidth();
   int h = dest->getHeight();
-  int x = 0;
-  int y = 0;
+  int dx = 0;
+  int dy = 0;
   if(rect)
   {
-    x = rect->left;
-    y = rect->top;
+    dx = rect->left;
+    dy = rect->top;
     w = rect->right - rect->left;
     h = rect->bottom - rect->top;
   }
 
-  if (x<0) { w+=x; x=0; }
-  if (y<0) { h+=y; y=0; }
-  if (x+w > dest->getWidth()) w=dest->getWidth()-x;
-  if (y+h > dest->getHeight()) h=dest->getHeight()-y;
+  if (dx<0) { w+=dx; dx=0; }
+  if (dy<0) { h+=dy; dy=0; }
+  const int destbm_w = dest->getWidth(), destbm_h = dest->getHeight();
+  if (w<1 || h < 1 || dx >= destbm_w || dy >= destbm_h) return;
 
-  if (w<1 || h<1) return;
+  if (w>destbm_w-dx) w=destbm_w-dx;
+  if (h>destbm_h-dy) h=destbm_h-dy;
 
   LICE_pixel *startp = dest->getBits();
   if (dest->isFlipped())
   {
-    startp += x + (dest->getHeight()-1-y)*span;
+    startp += dx + (dest->getHeight()-1-dy)*span;
     span=-span;
   }
-  else startp  += x + y*span;
+  else startp  += dx + dy*span;
 
   {
     LICE_pixel *p = startp;
@@ -286,7 +290,7 @@ static float turbulence(int x, int y, float size, float isize)
   return(128.0f * value * initialSize);
 }
 
-void LICE_TexGen_CircNoise(LICE_IBitmap *dest, RECT *rect, float rv, float gv, float bv, float nrings, float power, int size)
+void LICE_TexGen_CircNoise(LICE_IBitmap *dest, const RECT *rect, float rv, float gv, float bv, float nrings, float power, int size)
 {
   initNoise();
 
@@ -305,10 +309,11 @@ void LICE_TexGen_CircNoise(LICE_IBitmap *dest, RECT *rect, float rv, float gv, f
 
   if (x<0) { w+=x; x=0; }
   if (y<0) { h+=y; y=0; }
-  if (x+w > dest->getWidth()) w=dest->getWidth()-x;
-  if (y+h > dest->getHeight()) h=dest->getHeight()-y;
+  const int destbm_w = dest->getWidth(), destbm_h = dest->getHeight();
+  if (w<1 || h < 1 || x >= destbm_w || y >= destbm_h) return;
 
-  if (w<1 || h<1) return;
+  if (w>destbm_w-x) w=destbm_w-x;
+  if (h>destbm_h-y) h=destbm_h-y;
 
   LICE_pixel *startp = dest->getBits();
   if (dest->isFlipped())
@@ -332,7 +337,7 @@ void LICE_TexGen_CircNoise(LICE_IBitmap *dest, RECT *rect, float rv, float gv, f
         float xValue = ((float)j - w / 2) / w;
         float yValue = ((float)i - h / 2) / h;
 
-        float distValue = sqrt(xValue * xValue + yValue * yValue) + turbPower * turbulence(j, i, turbSize, iturbSize) / 256.0f;
+        float distValue = (float) (sqrt(xValue * xValue + yValue * yValue) + turbPower * turbulence(j, i, turbSize, iturbSize) / 256.0);
         float col = (float)fabs(256.0 * sin(2 * xyPeriod * distValue * 3.14159));
 
         p[j] = LICE_RGBA((int)(col*rv),(int)(col*bv),(int)(col*gv),255);

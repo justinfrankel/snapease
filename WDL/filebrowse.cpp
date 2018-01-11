@@ -73,9 +73,18 @@ static int CALLBACK WINAPI WDL_BrowseCallbackProc( HWND hwnd, UINT uMsg, LPARAM 
 {
 	switch (uMsg)
 	{
-		case BFFM_INITIALIZED:
-				if (lpData && ((char *)lpData)[0]) SendMessage(hwnd,BFFM_SETSELECTION,1,(LPARAM)lpData);
-    break;
+    case BFFM_INITIALIZED:
+    {
+      if (lpData && ((char *)lpData)[0])
+      {
+#ifndef WDL_NO_SUPPORT_UTF8
+        WDL_UTF8_SendBFFM_SETSEL(hwnd, (const char *)lpData);
+#else
+        SendMessage(hwnd, BFFM_SETSELECTION, 1, lpData);
+#endif
+      }
+      break;
+    }
 	}
 	return 0;
 }
@@ -90,10 +99,9 @@ bool WDL_ChooseDirectory(HWND parent, const char *text, const char *initialdir, 
   char name[4096];
   lstrcpyn_safe(name,initialdir?initialdir:"",sizeof(name));
   BROWSEINFO bi={parent,NULL, name, text, BIF_RETURNONLYFSDIRS|BIF_NEWDIALOGSTYLE, WDL_BrowseCallbackProc, (LPARAM)name,};
-  LPITEMIDLIST idlist = SHBrowseForFolder( &bi );
-  if (idlist) 
+  LPITEMIDLIST idlist = SHBrowseForFolderUTF8( &bi );
+  if (idlist && SHGetPathFromIDListUTF8(idlist, name, sizeof(name)))
   {
-    SHGetPathFromIDList( idlist, name );        
     IMalloc *m;
     SHGetMalloc(&m);
     m->Free(idlist);
@@ -184,7 +192,7 @@ bool WDL_ChooseFileForSave(HWND parent,
           fd.setFilename(temp + strlen(temp) + 1);
         }
         else
-          fd.setFilename(temp);
+          fd.setFilename(*temp ? temp : initialfile);
       }
       fd.setTemplate(hInstance, dlgid, (LPOFNHOOKPROC)dlgProc);
       
@@ -222,11 +230,15 @@ bool WDL_ChooseFileForSave(HWND parent,
 #else
   BrowseFile_SetTemplate(dlgid,(DLGPROC)dlgProc,reshead);
   char if_temp[4096];
-  if (initialfile) 
+  if (initialfile && *initialfile) 
   {
     lstrcpyn_safe(if_temp,initialfile,sizeof(if_temp));
     WDL_fixfnforopenfn(if_temp);
     initialfile = if_temp;
+  }
+  else
+  {
+    if (defext && *defext == '.') initialfile = defext; // SWELL supports default extension in filename field
   }
 
   bool r = BrowseForSaveFile(text,initialdir,initialfile,extlist,fn,fnsize);
@@ -238,7 +250,7 @@ bool WDL_ChooseFileForSave(HWND parent,
 }
 
 
-char *WDL_ChooseFileForOpen(HWND parent,
+char *WDL_ChooseFileForOpen2(HWND parent,
                                         const char *text, 
                                         const char *initialdir,  
                                         const char *initialfile, 
@@ -246,7 +258,7 @@ char *WDL_ChooseFileForOpen(HWND parent,
                                         const char *defext,
 
                                         bool preservecwd,
-                                        bool allowmul, 
+                                        int allowmul, 
 
                                         const char *dlgid, 
                                         void *dlgProc, 
@@ -263,13 +275,13 @@ char *WDL_ChooseFileForOpen(HWND parent,
 #ifdef _WIN32
 
 #ifdef WDL_FILEBROWSE_WIN7VISTAMODE
-  if (!allowmul) // todo : check impl of multiple select, too?
+  if (allowmul!=1)
   {
     Win7FileDialog fd(text);
     if(fd.inited())
     {
       //vista+ file open dialog
-      fd.addOptions(FOS_FILEMUSTEXIST);
+      fd.addOptions(FOS_FILEMUSTEXIST|(allowmul?FOS_ALLOWMULTISELECT:0));
       fd.setFilterList(extlist);
       if (defext) 
       {
@@ -309,15 +321,51 @@ char *WDL_ChooseFileForOpen(HWND parent,
 
       if(fd.show(parent))
       {
+        char *ret=NULL;
         char temp[4096];
         temp[0]=0;
+
         //ifileopendialog saves the last folder automatically
-        fd.getResult(temp, sizeof(temp)-1);
+        if (!allowmul)
+        {
+          fd.getResult(temp, sizeof(temp)-1);
+          ret= temp[0] ? strdup(temp) : NULL;
+        }
+        else
+        {
+          char* p=NULL;
+          int totallen=0, cnt=fd.getResultCount();
+          if (cnt>1)
+          {
+            // sets an empty path as 1st returned string for multipath support
+            // (when selecting files among search results for ex.)
+            ret = strdup("");
+            totallen=1;
+          }
 
-
+          int i;
+          for (i=0; i<cnt; i++)
+          {
+            int len = fd.getResult(i, temp, sizeof(temp)-1);
+            p = len ? (char*)realloc(ret, totallen + len + ((i==cnt-1)?1:0)) : NULL;
+            if (p)
+            {
+              ret=p;
+              memcpy(ret+totallen, temp, len);
+              totallen+=len;
+            }
+            else
+            {
+              free(ret);
+              ret=NULL;
+              break;
+            }
+          }
+          if (ret) p[totallen]=0;
+        }
 
         if (preservecwd) SetCurrentDirectory(olddir);
-        return temp[0] ? strdup(temp) : NULL;
+        return ret;
       }
 
       if (preservecwd) SetCurrentDirectory(olddir);
@@ -364,4 +412,32 @@ char *WDL_ChooseFileForOpen(HWND parent,
 
   return ret;
 #endif
+}
+
+char *WDL_ChooseFileForOpen(HWND parent,
+                                        const char *text, 
+                                        const char *initialdir,
+                                        const char *initialfile,
+                                        const char *extlist,
+                                        const char *defext,
+
+                                        bool preservecwd,
+                                        bool allowmul,
+
+                                        const char *dlgid, 
+                                        void *dlgProc, 
+#ifdef _WIN32
+                                        HINSTANCE hInstance
+#else
+                                        struct SWELL_DialogResourceIndex *reshead
+#endif
+                                        )
+{
+  return WDL_ChooseFileForOpen2(parent,text, initialdir,initialfile,extlist,defext,preservecwd,allowmul?1:0,dlgid,dlgProc,
+#ifdef _WIN32
+                                        hInstance
+#else
+                                        reshead
+#endif
+                                        );
 }
