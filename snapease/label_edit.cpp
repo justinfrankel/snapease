@@ -96,7 +96,7 @@ void EditImageLabel(ImageRecord *rec)
   SendMessage(s_wnd,WM_SETFONT,SendMessage(g_hwnd,WM_GETFONT,0,0),0);
 #else
   SWELL_MakeSetCurParms(1,1,0,0,g_hwnd,false,false);
-  s_wnd = __SWELL_MakeEditField(0,tr.left,tr.top,tr.right-tr.left,tr.bottom-tr.top,ES_AUTOHSCROLL|ES_WANTRETURN);
+  s_wnd = SWELL_MakeEditField(0,tr.left,tr.top,tr.right-tr.left,tr.bottom-tr.top,ES_AUTOHSCROLL|ES_WANTRETURN);
   SWELL_MakeSetCurParms(1,1,0,0,NULL,false,false);
   
 #endif
