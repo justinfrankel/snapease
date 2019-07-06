@@ -1427,7 +1427,6 @@ int MainProcessMessage(MSG *msg)
 int WDL_STYLE_WantGlobalButtonBorders() { return 0; }
 bool WDL_STYLE_WantGlobalButtonBackground(int *col) { return false; }
 int WDL_STYLE_GetSysColor(int p) { return GetSysColor(p); }
-void WDL_STYLE_ScaleImageCoords(int *x, int *y) { }
 bool WDL_Style_WantTextShadows(int *col) { return false; }
 bool WDL_STYLE_GetBackgroundGradient(double *gradstart, double *gradslope) { return false; } // return values 0.0-1.0 for each, return false if no gradient desired
 
