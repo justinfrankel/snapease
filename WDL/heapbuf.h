@@ -52,7 +52,8 @@ class WDL_HeapBuf
     void *Resize(int newsize, bool resizedown=true);
     void CopyFrom(const WDL_HeapBuf *hb, bool exactCopyOfConfig=false);
 #endif
-    void *Get() const { return m_size?m_buf:NULL; }
+    void *Get() const { return m_size?m_buf:NULL; } // returns NULL if size is 0
+    void *GetFast() const { return m_buf; } // returns last buffer if size is 0
     int GetSize() const { return m_size; }
     void *GetAligned(int align) const {  return (void *)(((UINT_PTR)Get() + (align-1)) & ~(UINT_PTR)(align-1)); }
 
@@ -258,6 +259,7 @@ template<class PTRTYPE> class WDL_TypedBuf
 {
   public:
     PTRTYPE *Get() const { return (PTRTYPE *) m_hb.Get(); }
+    PTRTYPE *GetFast() const { return (PTRTYPE *) m_hb.GetFast(); }
     int GetSize() const { return m_hb.GetSize()/(unsigned int)sizeof(PTRTYPE); }
 
     PTRTYPE *Resize(int newsize, bool resizedown = true) { return (PTRTYPE *)m_hb.Resize(newsize*sizeof(PTRTYPE),resizedown); }
@@ -286,7 +288,7 @@ template<class PTRTYPE> class WDL_TypedBuf
         {
           p+=sz;
           if (buf) memcpy(p,buf,bufsz*sizeof(PTRTYPE));
-          else memset(p,0,bufsz*sizeof(PTRTYPE));
+          else memset((char*)p,0,bufsz*sizeof(PTRTYPE));
           return p;
         }
       }
@@ -300,7 +302,7 @@ template<class PTRTYPE> class WDL_TypedBuf
         if (p)
         {
           if (buf) memcpy(p,buf,bufsz*sizeof(PTRTYPE));
-          else memset(p,0,bufsz*sizeof(PTRTYPE));
+          else memset((char*)p,0,bufsz*sizeof(PTRTYPE));
           return p;
         }
       }
@@ -355,6 +357,25 @@ template<class PTRTYPE> class WDL_TypedBuf
 
     WDL_HeapBuf *GetHeapBuf() { return &m_hb; }
     const WDL_HeapBuf *GetHeapBuf() const { return &m_hb; }
+
+    int DeleteBatch(bool (*proc)(PTRTYPE *p, void *ctx), void *ctx=NULL) // proc returns true to delete item. returns number deleted
+    {
+      const int sz = GetSize();
+      int cnt=0;
+      PTRTYPE *rd = Get(), *wr = rd;
+      for (int x = 0; x < sz; x ++)
+      {
+        if (!proc(rd,ctx))
+        {
+          if (rd != wr) *wr=*rd;
+          wr++;
+          cnt++;
+        }
+        rd++;
+      }
+      if (cnt < sz) Resize(cnt,false);
+      return sz - cnt;
+    }
 
   private:
     WDL_HeapBuf m_hb;

@@ -204,6 +204,7 @@ public:
       DWORD h=0;
       DWORD l=GetFileSize(m_fh,&h);
       m_fsize=(((WDL_FILEREAD_POSTYPE)h)<<32)|l;
+      if (m_fsize<0 || (l == INVALID_FILE_SIZE && GetLastError() != NO_ERROR)) m_fsize=0;
 
       if (!h && l < mmap_maxsize && m_async<=0)
       {
@@ -224,8 +225,11 @@ public:
         else if (l>0)
         {
           m_mmap_totalbufmode = malloc(l);
-          DWORD sz;
-          ReadFile(m_fh,m_mmap_totalbufmode,l,&sz,NULL);
+          if (m_mmap_totalbufmode)
+          {
+            DWORD sz;
+            ReadFile(m_fh,m_mmap_totalbufmode,l,&sz,NULL);
+          }
           m_fsize_maychange=false;
         }
       }
@@ -253,7 +257,14 @@ public:
 #elif defined(WDL_POSIX_NATIVE_READ)
     m_filedes_locked=false;
     m_filedes_rdpos=0;
-    m_filedes=open(filename,O_RDONLY);
+    m_filedes=open(filename,O_RDONLY 
+        // todo: use fcntl() for platforms when O_CLOEXEC is not available (if we ever need to support them)
+        // (currently the only platform that meets this criteria is macOS w/ old SDK, but we don't use execve()
+        // there
+#ifdef O_CLOEXEC
+        | O_CLOEXEC
+#endif
+        );
     if (m_filedes>=0)
     {
       if (flock(m_filedes,LOCK_SH|LOCK_NB)>=0) // get shared lock
@@ -271,23 +282,24 @@ public:
 #endif
       m_fsize=lseek(m_filedes,0,SEEK_END);
       lseek(m_filedes,0,SEEK_SET);
+      if (m_fsize<0) m_fsize=0;
 
       if (m_fsize < mmap_maxsize)
       {
         if (m_fsize >= mmap_minsize)
         {
-          m_mmap_view = mmap(NULL,m_fsize,PROT_READ,MAP_SHARED,m_filedes,0);
+          m_mmap_view = mmap(NULL,(size_t)m_fsize,PROT_READ,MAP_SHARED,m_filedes,0);
           if (m_mmap_view == MAP_FAILED) m_mmap_view = 0;
           else m_fsize_maychange=false;
         }
         else
         {
-          m_mmap_totalbufmode = malloc(m_fsize);
-          m_fsize = pread(m_filedes,m_mmap_totalbufmode,m_fsize,0);
+          m_mmap_totalbufmode = malloc((size_t)m_fsize);
+          if (m_mmap_totalbufmode)
+            m_fsize = pread(m_filedes,m_mmap_totalbufmode,(size_t)m_fsize,0);
           m_fsize_maychange=false;
         }
       }
-
     }
     if (!m_mmap_view && !m_mmap_totalbufmode && m_filedes>=0 && nbufs*bufsize>=WDL_UNBUF_ALIGN)
       m_bufspace.Resize(nbufs*bufsize+(WDL_UNBUF_ALIGN-1));
@@ -332,7 +344,7 @@ public:
     if (m_fh != INVALID_HANDLE_VALUE) CloseHandle(m_fh);
     m_fh=INVALID_HANDLE_VALUE;
 #elif defined(WDL_POSIX_NATIVE_READ)
-    if (m_mmap_view) munmap(m_mmap_view,m_fsize);
+    if (m_mmap_view) munmap(m_mmap_view,(size_t)m_fsize);
     m_mmap_view=0;
     if (m_filedes>=0) 
     {
@@ -355,6 +367,31 @@ public:
     return m_filedes >= 0;
 #else
     return m_fp != NULL;
+#endif
+  }
+
+  void CloseHandlesIfFullyInMemory()
+  {
+    if (!m_mmap_totalbufmode) return;
+#ifdef WDL_WIN32_NATIVE_READ
+    if (m_fh != INVALID_HANDLE_VALUE) 
+    {
+      CloseHandle(m_fh);
+      m_fh=INVALID_HANDLE_VALUE;
+    }
+#elif defined(WDL_POSIX_NATIVE_READ)
+    if (m_filedes>=0) 
+    {
+      if (m_filedes_locked) flock(m_filedes,LOCK_UN); // release shared lock
+      close(m_filedes);
+      m_filedes=-1;
+    }
+#else
+    if (m_fp) 
+    {
+      fclose(m_fp);
+      m_fp=NULL;
+    }
 #endif
   }
 
@@ -634,6 +671,7 @@ public:
 
   WDL_FILEREAD_POSTYPE GetSize()
   {
+    if (m_mmap_totalbufmode) return m_fsize;
 #ifdef WDL_WIN32_NATIVE_READ
     if (m_fh == INVALID_HANDLE_VALUE) return 0;
 #elif defined(WDL_POSIX_NATIVE_READ)
@@ -661,6 +699,7 @@ public:
 
   WDL_FILEREAD_POSTYPE GetPosition()
   {
+    if (m_mmap_totalbufmode) return m_file_position;
 #ifdef WDL_WIN32_NATIVE_READ
     if (m_fh == INVALID_HANDLE_VALUE) return -1;
 #elif defined(WDL_POSIX_NATIVE_READ)
@@ -675,13 +714,16 @@ public:
   {
     m_async_hashaderr=false;
 
-#ifdef WDL_WIN32_NATIVE_READ
-    if (m_fh == INVALID_HANDLE_VALUE) return true;
-#elif defined(WDL_POSIX_NATIVE_READ)
-    if (m_filedes<0) return true;
-#else
-    if (!m_fp) return true;
-#endif
+    if (!m_mmap_totalbufmode)
+    {
+      #ifdef WDL_WIN32_NATIVE_READ
+        if (m_fh == INVALID_HANDLE_VALUE) return true;
+      #elif defined(WDL_POSIX_NATIVE_READ)
+        if (m_filedes<0) return true;
+      #else
+        if (!m_fp) return true;
+      #endif
+    }
 
     if (m_fsize_maychange) GetSize();
 

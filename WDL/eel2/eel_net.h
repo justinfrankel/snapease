@@ -27,18 +27,6 @@
 #define JNL_NO_IMPLEMENTATION
 #include "../jnetlib/asyncdns.h"
 
-#ifndef _WIN32
-  // this can probably be removed after a merge...
-  typedef int SOCKET;
-  #ifndef INVALID_SOCKET
-    #define INVALID_SOCKET (-1)
-  #endif
-#else
-  #ifndef ENOTCONN
-    #define ENOTCONN WSAENOTCONN
-  #endif
-#endif
-
 class eel_net_state
 {
   public:
@@ -106,6 +94,7 @@ eel_net_state::~eel_net_state()
   for (x=0;x<m_listens.GetSize();x++)
   {
     SOCKET s=m_listens.Enumerate(x);
+    shutdown(s, SHUT_RDWR);
     closesocket(s);
   }
 }
@@ -189,7 +178,11 @@ EEL_F eel_net_state::onListen(void *opaque, EEL_F handle, int mode, EEL_F *ifStr
 
     SOCKET ss=*sockptr;
     m_listens.Delete(port);
-    if (ss != INVALID_SOCKET) closesocket(ss);
+    if (ss != INVALID_SOCKET) 
+    {
+      shutdown(ss, SHUT_RDWR);
+      closesocket(ss);
+    }
     return 0.0;
   }
   if (!sockptr)
@@ -212,9 +205,11 @@ EEL_F eel_net_state::onListen(void *opaque, EEL_F handle, int mode, EEL_F *ifStr
     SOCKET sock = socket(AF_INET,SOCK_STREAM,0);
     if (sock != INVALID_SOCKET)
     {
+      SET_SOCK_DEFAULTS(sock);
       SET_SOCK_BLOCK(sock,0);
       if (bind(sock,(struct sockaddr *)&sin,sizeof(sin)) || listen(sock,8)==-1) 
       {
+        shutdown(sock, SHUT_RDWR);
         closesocket(sock);
         sock=INVALID_SOCKET;
       }
@@ -235,6 +230,7 @@ EEL_F eel_net_state::onListen(void *opaque, EEL_F handle, int mode, EEL_F *ifStr
   {
     return 0; // nothing to report here
   }
+  SET_SOCK_DEFAULTS(newsock);
 
   int x;
   for(x=0;x<m_cons.GetSize();x++)
@@ -246,7 +242,7 @@ EEL_F eel_net_state::onListen(void *opaque, EEL_F handle, int mode, EEL_F *ifStr
       free(cs->hostname);
       cs->hostname=NULL;
       cs->sock = newsock;
-      cs->blockmode=0;
+      cs->blockmode=true;
       cs->port=0;
       if (ipOut)
       {
@@ -268,6 +264,7 @@ EEL_F eel_net_state::onListen(void *opaque, EEL_F handle, int mode, EEL_F *ifStr
       return x + CONNECTION_ID_BASE;
     }
   }
+  shutdown(newsock, SHUT_RDWR);
   closesocket(newsock);
   return -1;
 
@@ -278,6 +275,7 @@ int eel_net_state::__run_connect(connection_state *cs, unsigned int ip)
 {
   SOCKET s=socket(AF_INET,SOCK_STREAM,0);
   if (s == INVALID_SOCKET) return 0;
+  SET_SOCK_DEFAULTS(s);
 
   if (!cs->blockmode) SET_SOCK_BLOCK(s,0);
 
@@ -285,12 +283,13 @@ int eel_net_state::__run_connect(connection_state *cs, unsigned int ip)
   sa.sin_family=AF_INET;
   sa.sin_addr.s_addr = ip;
   sa.sin_port = htons(cs->port);
-  if (!connect(s,(struct sockaddr *)&sa,16) || (!cs->blockmode && ERRNO == EINPROGRESS))
+  if (!connect(s,(struct sockaddr *)&sa,16) || (!cs->blockmode && JNL_ERRNO == JNL_EINPROGRESS))
   {
     cs->state = STATE_CONNECTED;
     cs->sock = s;
     return 1;
   }
+  shutdown(s, SHUT_RDWR);
   closesocket(s);
   return 0;
 }
@@ -332,7 +331,7 @@ int eel_net_state::do_recv(void *opaque, EEL_F h, char *buf, int maxlen)
     if (maxlen == 0) return 0;
 
     const int rv=(int)recv(s->sock,buf,maxlen,0);
-    if (rv < 0 && !s->blockmode && (ERRNO == EWOULDBLOCK||ERRNO==ENOTCONN)) return 0;
+    if (rv < 0 && !s->blockmode && (JNL_ERRNO == JNL_EWOULDBLOCK || JNL_ERRNO == JNL_ENOTCONN)) return 0;
 
     if (!rv) return -1; // TCP, 0=connection terminated
 
@@ -356,7 +355,7 @@ int eel_net_state::do_send(void *opaque, EEL_F h, const char *src, int len)
 #endif
     if (__run(s) || s->sock == INVALID_SOCKET) return s->state == STATE_ERR ? -1 : 0;
     const int rv=(int)send(s->sock,src,len,0);
-    if (rv < 0 && !s->blockmode && (ERRNO == EWOULDBLOCK || ERRNO==ENOTCONN)) return 0;
+    if (rv < 0 && !s->blockmode && (JNL_ERRNO == JNL_EWOULDBLOCK || JNL_ERRNO == JNL_ENOTCONN)) return 0;
     return rv;
   }
   else

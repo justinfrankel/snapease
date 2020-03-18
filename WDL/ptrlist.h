@@ -51,7 +51,7 @@ template<class PTRTYPE> class WDL_PtrList
     PTRTYPE *Get(INT_PTR index) const 
     { 
       PTRTYPE **list = (PTRTYPE**)m_hb.Get(); 
-      if (list && index >= 0 && index < (INT_PTR)(m_hb.GetSize()/sizeof(PTRTYPE *))) return list[index]; 
+      if (list && (UINT_PTR)index < (UINT_PTR)(m_hb.GetSize()/sizeof(PTRTYPE *))) return list[index]; 
       return NULL; 
     }
 
@@ -230,6 +230,26 @@ template<class PTRTYPE> class WDL_PtrList
     }
 
     void Compact() { m_hb.Resize(m_hb.GetSize(),true); }
+
+
+    int DeleteBatch(bool (*proc)(PTRTYPE *p, void *ctx), void *ctx=NULL) // proc returns true to remove item. returns number removed
+    {
+      const int sz = GetSize();
+      int cnt=0;
+      PTRTYPE **rd = GetList(), **wr = rd;
+      for (int x = 0; x < sz; x ++)
+      {
+        if (!proc(*rd,ctx))
+        {
+          if (rd != wr) *wr=*rd;
+          wr++;
+          cnt++;
+        }
+        rd++;
+      }
+      if (cnt < sz) m_hb.Resize(cnt * sizeof(PTRTYPE*),false);
+      return sz - cnt;
+    }
 
   private:
     WDL_HeapBuf m_hb;

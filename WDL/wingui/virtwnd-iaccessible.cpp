@@ -216,7 +216,7 @@ public:
 
     *ppdispParent = NULL;
 
-    if (__CreateStdAccessibleObject)
+    if (__CreateStdAccessibleObject && m_br.vwnd)
     {
       HWND realparent = m_br.vwnd->GetRealParent();
       if (realparent)
@@ -543,6 +543,11 @@ public:
     pvarState->vt = VT_I4;
     pvarState->lVal = 0;
     if (!vw->IsVisible()) pvarState->lVal |= STATE_SYSTEM_INVISIBLE;
+    else
+    {
+      if (!vw->GetParent() && vw->GetRealParent() && GetFocus() == vw->GetRealParent())
+        pvarState->lVal |= STATE_SYSTEM_FOCUSED;
+    }
 
     if (!strcmp(type,"vwnd_iconbutton")) 
     {
